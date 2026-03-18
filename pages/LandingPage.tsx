@@ -31,6 +31,8 @@ import ChevronDownIcon from '../components/icons/ChevronDownIcon';
 import AnimatedSendButton from '../components/AnimatedSendButton';
 import { Menu, X } from 'lucide-react';
 
+const [openHTWTH, setOpenHTWTH] = useState(false);
+
 interface LandingPageProps {
   onGetStarted: () => void;
   onSignIn: () => void;
@@ -1031,7 +1033,40 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
                     <button onClick={() => { setActiveTab('community'); setMobileMenuOpen(false); }} className={`text-left text-sm font-bold transition-colors ${activeTab === 'community' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>Community</button>
                     <button onClick={() => { setActiveTab('resources'); setMobileMenuOpen(false); }} className={`text-left text-sm font-bold transition-colors ${activeTab === 'resources' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>Resources</button>
                     <button onClick={() => { setActiveTab('pricing'); setMobileMenuOpen(false); }} className={`text-left text-sm font-bold transition-colors ${activeTab === 'pricing' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>Pricing</button>
-                    <button onClick={() => { setActiveTab('resumeai'); setMobileMenuOpen(false); }} className={`text-left text-sm font-bold transition-colors flex items-center gap-1.5 ${activeTab === 'resumeai' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>
+                   
+                  
+                  <div className="relative">
+  <button 
+    onClick={() => setOpenHTWTH(!openHTWTH)} 
+    className="text-left text-sm font-bold transition-colors flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400"
+  >
+    HTWTH Vercel 
+    <span className="px-1.5 py-0.5 rounded-full bg-gradient-to-r from-indigo-500 via-pink-500 to-yellow-400 text-white text-[10px] uppercase tracking-wider shadow-sm">
+      Premium
+    </span>
+  </button>
+
+  {openHTWTH && (
+    <div className="absolute left-0 mt-2 w-52 rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 shadow-2xl border border-slate-700 z-50 overflow-hidden">
+      
+      <button 
+        onClick={() => window.open("https://htwth.vercel.app/", "_blank")}
+        className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-indigo-600/30 transition"
+      >
+        🚀 HTWTH Vercel (New)
+      </button>
+
+      <button 
+        onClick={() => window.open("https://writeupportalos.netlify.app/", "_blank")}
+        className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-pink-600/30 transition"
+      >
+        🌐 Netlify (Old)
+      </button>
+
+    </div>
+  )}
+</div>
+                  <button onClick={() => { setActiveTab('resumeai'); setMobileMenuOpen(false); }} className={`text-left text-sm font-bold transition-colors flex items-center gap-1.5 ${activeTab === 'resumeai' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>
                         ResumeAI <span className="px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 text-[10px] uppercase tracking-wider">New</span>
                     </button>
                     <div className="pt-4 border-t border-slate-200/60 dark:border-white/5">
