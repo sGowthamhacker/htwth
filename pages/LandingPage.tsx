@@ -1026,45 +1026,45 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
             </div>
             
             {/* Mobile Menu Dropdown */}
-            {/* Mobile Menu Dropdown */}
-<div className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${mobileMenuOpen ? 'max-h-96 opacity-100 border-t border-slate-200/60 dark:border-white/5' : 'max-h-0 opacity-0'}`}>
-  <div className="flex flex-col py-4 gap-4 px-2 relative">
+<RevealOnScroll animation="fade-down" duration={500}>
+  <div className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${mobileMenuOpen ? 'max-h-96 opacity-100 border-t border-slate-200/60 dark:border-white/5' : 'max-h-0 opacity-0'}`}>
+    <div className="flex flex-col py-4 gap-4 px-2 relative">
 
-    <button onClick={() => { setActiveTab('features'); setMobileMenuOpen(false); }} className={`text-left text-sm font-bold transition-colors ${activeTab === 'features' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>Features</button>
-    <button onClick={() => { setActiveTab('community'); setMobileMenuOpen(false); }} className={`text-left text-sm font-bold transition-colors ${activeTab === 'community' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>Community</button>
-    <button onClick={() => { setActiveTab('resources'); setMobileMenuOpen(false); }} className={`text-left text-sm font-bold transition-colors ${activeTab === 'resources' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>Resources</button>
-    <button onClick={() => { setActiveTab('pricing'); setMobileMenuOpen(false); }} className={`text-left text-sm font-bold transition-colors ${activeTab === 'pricing' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>Pricing</button>
-    
-    {/* Dropdown Section with Premium Badge */}
-    <div className="mt-2 w-full bg-white dark:bg-slate-900 shadow rounded flex flex-col gap-1">
-      <button 
-        onClick={() => window.open("https://htwth.vercel.app/", "_blank")}
-        className="flex items-center justify-between w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800"
-      >
-        HTWTH Vercel
-        <span className="px-1.5 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400 text-[10px] uppercase tracking-wider">
-          Premium
-        </span>
+      <button onClick={() => { setActiveTab('features'); setMobileMenuOpen(false); }} className={`text-left text-sm font-bold transition-colors ${activeTab === 'features' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>Features</button>
+      <button onClick={() => { setActiveTab('community'); setMobileMenuOpen(false); }} className={`text-left text-sm font-bold transition-colors ${activeTab === 'community' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>Community</button>
+      <button onClick={() => { setActiveTab('resources'); setMobileMenuOpen(false); }} className={`text-left text-sm font-bold transition-colors ${activeTab === 'resources' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>Resources</button>
+      <button onClick={() => { setActiveTab('pricing'); setMobileMenuOpen(false); }} className={`text-left text-sm font-bold transition-colors ${activeTab === 'pricing' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>Pricing</button>
+
+      {/* Dropdown Section with Premium Badge */}
+      <div className="mt-2 w-full bg-white dark:bg-slate-900 shadow rounded flex flex-col gap-1">
+        <button 
+          onClick={() => window.open("https://htwth.vercel.app/", "_blank")}
+          className="flex items-center justify-between w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800"
+        >
+          HTWTH Vercel
+          <span className="px-1.5 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400 text-[10px] uppercase tracking-wider">
+            Premium
+          </span>
+        </button>
+
+        <button 
+          onClick={() => window.open("https://writeupportalos.netlify.app/", "_blank")}
+          className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800"
+        >
+          Netlify (Old)
+        </button>
+      </div>
+
+      <button onClick={() => { setActiveTab('resumeai'); setMobileMenuOpen(false); }} className={`text-left text-sm font-bold transition-colors flex items-center gap-1.5 ${activeTab === 'resumeai' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>
+        ResumeAI <span className="px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 text-[10px] uppercase tracking-wider">New</span>
       </button>
 
-      <button 
-        onClick={() => window.open("https://writeupportalos.netlify.app/", "_blank")}
-        className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800"
-      >
-        Netlify (Old)
-      </button>
-    </div>
-
-    <button onClick={() => { setActiveTab('resumeai'); setMobileMenuOpen(false); }} className={`text-left text-sm font-bold transition-colors flex items-center gap-1.5 ${activeTab === 'resumeai' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>
-      ResumeAI <span className="px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 text-[10px] uppercase tracking-wider">New</span>
-    </button>
-
-    <div className="pt-4 border-t border-slate-200/60 dark:border-white/5">
-      <SignInButton onClick={() => { onSignIn(); setMobileMenuOpen(false); }} />
+      <div className="pt-4 border-t border-slate-200/60 dark:border-white/5">
+        <SignInButton onClick={() => { onSignIn(); setMobileMenuOpen(false); }} />
+      </div>
     </div>
   </div>
-</div>
-      </RevealOnScroll>
+</RevealOnScroll>
 
       {/* Main Content */}
       <main className="pt-32 pb-16 sm:pt-40 sm:pb-24 lg:pb-32 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto relative z-10 min-h-[80vh]">
