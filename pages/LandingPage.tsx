@@ -996,7 +996,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
                     <button onClick={() => setActiveTab('community')} className={`text-sm font-bold transition-colors ${activeTab === 'community' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>Community</button>
                     <button onClick={() => setActiveTab('resources')} className={`text-sm font-bold transition-colors ${activeTab === 'resources' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>Resources</button>
                     <button onClick={() => setActiveTab('pricing')} className={`text-sm font-bold transition-colors ${activeTab === 'pricing' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>Pricing</button>
-                    <button onClick={() => setActiveTab('resumeai')} className={`text-sm font-bold transition-colors flex items-center gap-1.5 ${activeTab === 'resumeai' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>
+                  <button 
+  onClick={() => window.open("https://htwth.vercel.app/", "_blank")} 
+  className="text-sm font-bold transition-colors flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400">
+  HTWTH Vercel
+  <span className="px-1.5 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400 text-[10px] uppercase tracking-wider">
+    New
+  </span>
+</button> 
+                  <button onClick={() => setActiveTab('resumeai')} className={`text-sm font-bold transition-colors flex items-center gap-1.5 ${activeTab === 'resumeai' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>
                         ResumeAI <span className="px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 text-[10px] uppercase tracking-wider">New</span>
                     </button>
                 </div>
