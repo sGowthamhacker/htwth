@@ -1040,15 +1040,27 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
                     <button onClick={() => { setActiveTab('community'); setMobileMenuOpen(false); }} className={`text-left text-sm font-bold transition-colors ${activeTab === 'community' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>Community</button>
                     <button onClick={() => { setActiveTab('resources'); setMobileMenuOpen(false); }} className={`text-left text-sm font-bold transition-colors ${activeTab === 'resources' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>Resources</button>
                   
-                  <button 
-  onClick={() => window.open("https://htwth.vercel.app/", "_blank")} 
-  className="text-sm font-bold transition-colors flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400"
->
-  HTWTH Vercel
-  <span className="px-1.5 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400 text-[10px] uppercase tracking-wider">
-    Premium
-  </span>
-</button>
+                  <div className="relative inline-block">
+  <button
+    onClick={() => window.open("https://htwth.vercel.app/", "_blank")}
+    className="text-sm font-bold transition-colors flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400"
+  >
+    HTWTH Vercel
+    <span className="px-1.5 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400 text-[10px] uppercase tracking-wider">
+      Premium
+    </span>
+  </button>
+
+  {/* Dropdown */}
+  <div className="absolute left-0 mt-1 w-48 hidden group-hover:block bg-white dark:bg-slate-900 shadow rounded z-10">
+    <button
+      onClick={() => window.open("https://writeupportalos.netlify.app/", "_blank")}
+      className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800 text-sm font-bold"
+    >
+      Netlify (Old)
+    </button>
+  </div>
+</div>
                   <button onClick={() => { setActiveTab('pricing'); setMobileMenuOpen(false); }} className={`text-left text-sm font-bold transition-colors ${activeTab === 'pricing' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>Pricing</button>
                     <button onClick={() => { setActiveTab('resumeai'); setMobileMenuOpen(false); }} className={`text-left text-sm font-bold transition-colors flex items-center gap-1.5 ${activeTab === 'resumeai' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>
                         ResumeAI <span className="px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 text-[10px] uppercase tracking-wider">New</span>
