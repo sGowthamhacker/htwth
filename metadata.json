@@ -1,0 +1,5 @@
+{
+  "name": "Remix: Copy of HackToWriteToHack",
+  "description": "A mini-portal and blogging system with AI-powered content generation, inspired by platforms like Bugcrowd and HackerOne. It features a modern UI with theme support and a modular component-based architecture.",
+  "requestFramePermissions": []
+}
