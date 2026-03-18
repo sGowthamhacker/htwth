@@ -280,6 +280,7 @@ const Footer: React.FC<{ onAction: () => void; onShowCopyright: () => void }> = 
                   <li><button onClick={onAction} className="hover:text-indigo-500 transition-colors text-left">Features</button></li>
                   <li><button onClick={onAction} className="hover:text-indigo-500 transition-colors text-left">Community</button></li>
                   <li><button onClick={onAction} className="hover:text-indigo-500 transition-colors text-left">Resources</button></li>
+                  <li><button onClick={() => window.open("https://htwth.vercel.app/", "_blank")} className="hover:text-indigo-500 transition-colors text-left">HTWTH Vercel</button></li>
                   <li><button onClick={onShowCopyright} className="hover:text-indigo-500 transition-colors text-left">Legal & Copyright</button></li>
                   <li><button onClick={handleShowSitemap} className="hover:text-indigo-500 transition-colors text-left">Sitemap</button></li>
                 </ul>
