@@ -294,9 +294,9 @@ const Footer: React.FC<{ onAction: () => void; onShowCopyright: () => void }> = 
   onClick={() => window.open("https://nifty-50.vercel.app/", "_blank")} 
   className="text-sm font-bold transition-colors flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400"
 >
-  HTWTH Vercel
+  Nifty-50
   <span className="px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 text-[10px] uppercase tracking-wider">
-    Premium
+    Pro
   </span>
 </button>
                   <li><button onClick={onShowCopyright} className="hover:text-indigo-500 transition-colors text-left">Legal & Copyright</button></li>
