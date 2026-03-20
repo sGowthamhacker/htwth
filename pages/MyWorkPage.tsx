@@ -823,7 +823,7 @@ const MyWorkPage: React.FC<MyWorkPageProps> = ({ user, allUsers, writeups, blogP
   };
 
   const handleDownloadCV = async () => {
-      const cvUrl = "https://gowthamsportfolio.netlify.app/assets/img/cv.pdf";
+      const cvUrl = "https://htwth.pages.dev/Gowtham_S_Cv_2026.pdf";
       const filename = `${workProfile?.display_name?.replace(/\s+/g, '_') || 'Resume'}_CV.pdf`;
       try {
           const response = await fetch(cvUrl);
