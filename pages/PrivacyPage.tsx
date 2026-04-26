@@ -11,7 +11,8 @@ interface PrivacyPageProps {
   onShowCopyright?: () => void;
 }
 
-const PrivacyPage: React.FC<PrivacyPageProps> = ({ onNavigateHome, isDarkMode }) => {
+const PrivacyPage: React.FC<PrivacyPageProps> = ({ onNavigateHome, isDarkMode, onAction, onShowCopyright }) => {
+  console.log("PrivacyPage onAction:", onAction);
   return (
     <div className={`min-h-screen bg-white dark:bg-[#0a0a0a] font-sans transition-colors duration-300 text-slate-900 dark:text-slate-100 ${isDarkMode ? 'dark' : ''}`}>
       <header className="sticky top-0 w-full px-4 sm:px-8 py-4 flex justify-between items-center z-50 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-800/50">
@@ -29,7 +30,7 @@ const PrivacyPage: React.FC<PrivacyPageProps> = ({ onNavigateHome, isDarkMode })
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

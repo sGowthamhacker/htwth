@@ -156,7 +156,7 @@ export interface Post {
   is_protected?: boolean;
 }
 
-export type Page = 'home' | 'writeup' | 'blog' | 'settings' | 'about' | 'login' | 'signup' | 'chat' | 'dashboard' | 'privacy' | 'terms' | 'security';
+export type Page = 'home' | 'writeup' | 'blog' | 'settings' | 'about' | 'login' | 'signup' | 'chat' | 'dashboard' | 'privacy' | 'terms' | 'security' | 'status';
 
 export interface ChatMessage {
   id: string;

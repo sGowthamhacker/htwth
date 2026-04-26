@@ -149,7 +149,7 @@ const HelpCenterPage: React.FC<HelpCenterPageProps> = ({ onNavigateHome, onNavig
         </div>
       </header>
 
-      <main className="flex-grow pt-8 sm:pt-12 pb-24 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full">
+      <main className="flex-grow pt-8 sm:pt-12 pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
         {/* Header Section */}
         <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-16">
           <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-slate-900 dark:text-white mb-4 animate-fade-in">

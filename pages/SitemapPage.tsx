@@ -60,7 +60,7 @@ const SitemapPage: React.FC<SitemapPageProps> = ({ onNavigateHome, onAction, onS
         </div>
       </header>
 
-      <main className="flex-grow pt-16 pb-24 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full">
+      <main className="flex-grow pt-16 pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
         <div className="text-center mb-20">
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-6">
             Ecosystem Sitemap

@@ -211,8 +211,10 @@ async function startServer() {
   } else {
     console.log("Serving static production assets from /dist...");
     const buildPath = path.join(process.cwd(), 'dist');
+    console.log("BUILD PATH:", buildPath);
     app.use(express.static(buildPath));
-    app.use((req, res) => {
+    app.use((req, res, next) => {
+      console.log("Fallback serving index.html for:", req.url);
       res.sendFile(path.join(buildPath, 'index.html'));
     });
   }

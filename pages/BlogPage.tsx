@@ -169,7 +169,7 @@ const BlogPostPreviewPanel: React.FC<{ post: Post | Omit<Post, 'id'|'created_at'
             <div className="sticky top-0 bg-cyan-600/90 backdrop-blur-sm text-white text-center text-sm font-semibold z-10 py-1.5 animate-fade-in">
                 Live Preview
             </div>
-            <article className="max-w-4xl mx-auto">
+            <article className="max-w-7xl mx-auto">
                  <header className="p-4 sm:p-6 md:p-8">
                     <h1 className="text-3xl lg:text-5xl font-extrabold tracking-tight mb-6 text-slate-900 dark:text-white break-words">
                         {post.title || <span className="text-slate-400">[Your Title Here]</span>}
@@ -362,7 +362,7 @@ const BlogPage: React.FC<BlogPageProps> = ({ user, posts, onSavePost, onDeletePo
                 
                 <main className="flex-1 overflow-y-auto relative z-10 flex flex-col">
                     <div className="sticky top-0 w-full bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md z-50 border-b border-slate-200 dark:border-slate-800 shrink-0 transition-colors">
-                        <div className="max-w-4xl mx-auto p-3 sm:p-4 px-4 sm:px-6 flex justify-between items-center">
+                        <div className="max-w-7xl mx-auto p-3 sm:p-4 px-4 sm:px-6 flex justify-between items-center">
                             <button onClick={() => onNavigateWithinApp('blog')} className="flex items-center gap-2 text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" /></svg>
                                 Back to all posts
@@ -390,7 +390,7 @@ const BlogPage: React.FC<BlogPageProps> = ({ user, posts, onSavePost, onDeletePo
                         </div>
                     </div>
 
-                    <div className="max-w-4xl mx-auto w-full">
+                    <div className="max-w-7xl mx-auto w-full">
                         <article className="animate-fade-in break-words overflow-hidden w-full">
                             <header className="p-4 sm:p-6 md:p-8">
                                 <h1 className="text-3xl lg:text-5xl font-extrabold tracking-tight mb-6 text-slate-900 dark:text-white break-words">{selectedPost.title}</h1>

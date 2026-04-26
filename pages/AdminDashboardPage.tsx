@@ -8,6 +8,7 @@ import XCircleIcon from '../components/icons/XCircleIcon';
 import ActivityLogIcon from '../components/icons/ActivityLogIcon';
 import { getCloudinaryUrl } from '../utils/imageService';
 import { updateUser, getActivityLog, addActivityLog, deleteActivityLog, clearActivityLog, sendGlobalNotifications, getGlobalSettings, updateGlobalSettings, subscribeToGlobalSettings, subscribeToActivityLog, subscribeToUsers, getPosts, getContactRequests, updateContactRequestStatus } from '../services/database';
+import { getIncidents, addIncident, updateIncident, deleteIncident, type SystemIncident } from '../services/incidents';
 import MailIcon from '../components/icons/MailIcon';
 import UsersIcon from '../components/icons/UsersIcon';
 import KeyIcon from '../components/icons/KeyIcon';
@@ -27,6 +28,7 @@ import { auth } from '../firebaseConfig';
 import ParticlesBackground from '../components/ParticlesBackground';
 import { EMAIL_TEMPLATES, EmailTemplate } from '../utils/emailTemplates';
 import DOMPurify from 'dompurify';
+import { Server } from 'lucide-react';
 
 // EyeIcon for Permissions dropdown
 const EyeIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -967,6 +969,21 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
     const [maintenanceStartTime, setMaintenanceStartTime] = useState('');
     const [maintenanceEndTime, setMaintenanceEndTime] = useState('');
 
+    const [incidents, setIncidents] = useState<SystemIncident[]>([]);
+    
+    useEffect(() => {
+        const fetchIncidents = async () => {
+            const data = await getIncidents();
+            setIncidents(data);
+        };
+        fetchIncidents();
+    }, []);
+
+    const [newIncidentTitle, setNewIncidentTitle] = useState('');
+    const [newIncidentDesc, setNewIncidentDesc] = useState('');
+    const [newIncidentStatus, setNewIncidentStatus] = useState<SystemIncident['status']>('investigating');
+    const [newIncidentImpact, setNewIncidentImpact] = useState<SystemIncident['impact']>('minor');
+
     const toLocalDatetimeString = (isoString: string | null | undefined) => {
         if (!isoString) return '';
         try {
@@ -1027,6 +1044,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
         if (!isArmed) return;
         
         const notifications: GlobalNotification[] = allUsers.map(user => ({
+            id: crypto.randomUUID(),
             to: user.email,
             from: 'System Admin',
             type: 'system',
@@ -2064,6 +2082,117 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
                                 >
                                     Save Settings
                                 </button>
+                            </div>
+                        </div>
+
+                        {/* System Incidents Manager */}
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><div className="w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-900/30 text-rose-500 flex items-center justify-center"><Server className="w-4 h-4" /></div> System Incidents</h2>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Manage system incidents to display on the public Status Page.</p>
+                                
+                                {/* New Incident Form */}
+                                <div className="space-y-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 mb-6">
+                                    <h3 className="font-semibold text-sm">Post New Incident</h3>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Incident Title"
+                                        value={newIncidentTitle}
+                                        onChange={(e) => setNewIncidentTitle(e.target.value)}
+                                        className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
+                                    />
+                                    <textarea 
+                                        placeholder="Incident Description"
+                                        value={newIncidentDesc}
+                                        onChange={(e) => setNewIncidentDesc(e.target.value)}
+                                        className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm h-20 resize-none"
+                                    />
+                                    <div className="flex gap-4">
+                                        <div className="flex-1">
+                                            <select 
+                                                value={newIncidentStatus} 
+                                                onChange={(e) => setNewIncidentStatus(e.target.value as any)}
+                                                className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
+                                            >
+                                                <option value="investigating">Investigating</option>
+                                                <option value="identified">Identified</option>
+                                                <option value="monitoring">Monitoring</option>
+                                                <option value="resolved">Resolved</option>
+                                            </select>
+                                        </div>
+                                        <div className="flex-1">
+                                            <select 
+                                                value={newIncidentImpact} 
+                                                onChange={(e) => setNewIncidentImpact(e.target.value as any)}
+                                                className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
+                                            >
+                                                <option value="minor">Minor Impact</option>
+                                                <option value="major">Major Impact</option>
+                                                <option value="critical">Critical Outage</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={async () => {
+                                            if (!newIncidentTitle || !newIncidentDesc) return addNotification({ title: 'Error', message: 'Title and description required.', type: 'error' });
+                                            const newIncident = {
+                                                id: crypto.randomUUID(),
+                                                title: newIncidentTitle,
+                                                description: newIncidentDesc,
+                                                status: newIncidentStatus,
+                                                impact: newIncidentImpact,
+                                                date: new Date().toISOString()
+                                            } as SystemIncident;
+                                            await addIncident(newIncident);
+                                            setIncidents(await getIncidents());
+                                            setNewIncidentTitle('');
+                                            setNewIncidentDesc('');
+                                            addNotification({ title: 'Success', message: 'Incident posted.', type: 'success' });
+                                        }}
+                                        className="w-full p-2 bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 rounded-lg font-medium text-sm hover:opacity-90 transition-opacity"
+                                    >
+                                        Publish Incident
+                                    </button>
+                                </div>
+
+                                {/* Incident List */}
+                                <div className="space-y-3">
+                                    <h3 className="font-semibold text-sm">Active & Past Incidents</h3>
+                                    {incidents.length === 0 ? (
+                                        <p className="text-sm text-slate-500 italic">No incidents recorded.</p>
+                                    ) : (
+                                        incidents.map(inc => (
+                                            <div key={inc.id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col gap-2 relative">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex-1">
+                                                        <h4 className="font-bold text-sm">{inc.title}</h4>
+                                                        <p className="text-[11px] text-slate-500 mb-2">{new Date(inc.date).toLocaleString()}</p>
+                                                    </div>
+                                                    <button onClick={async () => { await deleteIncident(inc.id); setIncidents(await getIncidents()); addNotification({title:'Success', message: 'Incident deleted.', type:'success'}) }} className="text-rose-500 hover:text-rose-600 p-1">
+                                                        <TrashIcon className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                                <p className="text-xs text-slate-600 dark:text-slate-300">{inc.description}</p>
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    <select 
+                                                        value={inc.status} 
+                                                        onChange={async (e) => {
+                                                            await updateIncident(inc.id, { status: e.target.value as any });
+                                                            setIncidents(await getIncidents());
+                                                            addNotification({title:'Success', message: 'Status updated.', type:'success'});
+                                                        }}
+                                                        className="p-1 rounded bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-[10px] font-bold uppercase tracking-wider"
+                                                    >
+                                                        <option value="investigating">Investigating</option>
+                                                        <option value="identified">Identified</option>
+                                                        <option value="monitoring">Monitoring</option>
+                                                        <option value="resolved">Resolved</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>

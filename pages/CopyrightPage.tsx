@@ -125,7 +125,7 @@ const CopyrightPage: React.FC<CopyrightPageProps> = ({ onClose }) => {
                 ref={mainScrollRef} 
                 className="flex-1 overflow-y-auto scroll-smooth bg-white dark:bg-slate-950 md:rounded-none md:m-0 mx-3 mb-3 rounded-2xl shadow-sm md:shadow-none border md:border-0 border-slate-200 dark:border-slate-800"
             >
-                <div className="max-w-4xl mx-auto p-5 sm:p-10 md:p-16 pb-24 md:pb-32">
+                <div className="max-w-7xl mx-auto p-5 sm:p-10 md:p-16 pb-24 md:pb-32">
                     
                     {/* Header */}
                     <header className="mb-10 md:mb-16 border-b border-slate-200 dark:border-slate-800 pb-8">

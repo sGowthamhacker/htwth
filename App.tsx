@@ -13,6 +13,7 @@ import HelpCenterPage from './pages/HelpCenterPage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import SecurityPage from './pages/SecurityPage';
+import StatusPage from './pages/StatusPage';
 import { User, ThemeStyle, ThemeMode, Notification, Post, Comment, GlobalNotification, Page } from './types';
 import { NotificationProvider } from './contexts/NotificationContext';
 import useLocalStorage from './hooks/useLocalStorage';
@@ -138,6 +139,7 @@ const App: React.FC = () => {
   const [showPrivacy, setShowPrivacy] = useState<boolean>(() => window.location.hash === '#/privacy');
   const [showTerms, setShowTerms] = useState<boolean>(() => window.location.hash === '#/terms');
   const [showSecurity, setShowSecurity] = useState<boolean>(() => window.location.hash === '#/security');
+  const [showStatus, setShowStatus] = useState<boolean>(() => window.location.hash === '#/status');
 
   // Helper to check if maintenance is active based on settings and time
   const isMaintenanceActive = useCallback((settings: GlobalSettings | null) => {
@@ -328,7 +330,7 @@ const App: React.FC = () => {
         // if (appUser) return; 
         
         const cleanHash = hash.replace(/^#\/?/, ''); 
-        const validRoots = ['', '#', '#/', '#/sitemap', '#/helpcenter', '#/privacy', '#/terms', '#/security'];
+        const validRoots = ['', '#', '#/', '#/sitemap', '#/helpcenter', '#/privacy', '#/terms', '#/security', '#/status'];
         
         const validProtectedApps = ['home', 'writeup', 'blog', 'chat', 'notes', 'todolist', 'settings', 'search', 'start', 'admin', 'notifications', 'mywork', 'resources', 'kali', 'docs', 'resumeai', 'features', 'community', 'pricing'];
         
@@ -348,6 +350,7 @@ const App: React.FC = () => {
             setShowPrivacy(false);
             setShowTerms(false);
             setShowSecurity(false);
+            setShowStatus(false);
         } else if (isProtectedAppRoute) {
             setIs404(false);
             // If user is logged in, and we are on a protected app route, we should NOT show landing
@@ -369,6 +372,7 @@ const App: React.FC = () => {
             setShowPrivacy(hash === '#/privacy');
             setShowTerms(hash === '#/terms');
             setShowSecurity(hash === '#/security');
+            setShowStatus(hash === '#/status');
         }
     };
 
@@ -806,6 +810,7 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
                     setShowPrivacy(false);
                     setShowTerms(false);
                     setShowSecurity(false);
+                    setShowStatus(false);
                 } else {
                     setIs404(false);
                     setShowSitemap(currentPath === '#/sitemap');
@@ -813,6 +818,7 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
                     setShowPrivacy(currentPath === '#/privacy');
                     setShowTerms(currentPath === '#/terms');
                     setShowSecurity(currentPath === '#/security');
+                    setShowStatus(currentPath === '#/status');
                     if (!isPublicPage) {
                         if (currentPath && currentPath !== '#' && currentPath !== '#/') {
                             if (isProtectedAppRoute) {
@@ -1905,6 +1911,7 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
       setShowPrivacy(false);
       setShowTerms(false);
       setShowSecurity(false);
+      setShowStatus(false);
       window.location.hash = "#/";
   };
 
@@ -1922,6 +1929,7 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
     setShowPrivacy(false);
     setShowTerms(false);
     setShowSecurity(false);
+    setShowStatus(false);
     setShowLanding(false);
     setAuthPage(null);
     setIs404(false);
@@ -1967,6 +1975,10 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
         setShowSecurity(true);
         window.location.hash = '#/security';
         break;
+      case 'status':
+        setShowStatus(true);
+        window.location.hash = '#/status';
+        break;
       default:
         setShowLanding(true);
         window.location.hash = '#/';
@@ -1992,7 +2004,7 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
   if (showSitemap) {
       return (
         <div style={backgroundStyle} className={`min-h-screen font-sans`}>
-            <SitemapPage />
+            <SitemapPage onNavigateHome={handleBackToLanding} />
         </div>
       );
   }
@@ -2000,7 +2012,7 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
   if (showHelpCenterPage) {
       return (
         <HelpCenterPage 
-            onNavigateHome={handleGoBack}
+            onNavigateHome={handleBackToLanding}
             onNavigate={handleNavigate}
             user={appUser}
         />
@@ -2008,15 +2020,19 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
   }
 
   if (showPrivacy) {
-    return <PrivacyPage onNavigateHome={handleGoBack} isDarkMode={themeMode === 'dark'} />;
+    return <PrivacyPage onNavigateHome={handleBackToLanding} isDarkMode={themeMode === 'dark'} onAction={() => handleNavigate('home')} onShowCopyright={() => { }} />;
   }
 
   if (showTerms) {
-    return <TermsPage onNavigateHome={handleGoBack} isDarkMode={themeMode === 'dark'} />;
+    return <TermsPage onNavigateHome={handleBackToLanding} isDarkMode={themeMode === 'dark'} onAction={() => handleNavigate('home')} onShowCopyright={() => { }} />;
   }
 
   if (showSecurity) {
-    return <SecurityPage onNavigateHome={handleGoBack} isDarkMode={themeMode === 'dark'} />;
+    return <SecurityPage onNavigateHome={handleBackToLanding} isDarkMode={themeMode === 'dark'} onAction={() => handleNavigate('home')} onShowCopyright={() => { }} />;
+  }
+
+  if (showStatus) {
+    return <StatusPage onNavigateHome={handleBackToLanding} isDarkMode={themeMode === 'dark'} />;
   }
 
   if (is404) {

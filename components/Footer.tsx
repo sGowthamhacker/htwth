@@ -138,26 +138,26 @@ const Footer: React.FC<FooterProps> = ({ onAction, onShowCopyright, onShowInnova
 
   return (
     <footer className="bg-[#0a0a0a] text-slate-300 font-sans pt-24 pb-12 border-t border-white/5 relative overflow-hidden z-10" id="footer">
-      <div className="w-full px-6 sm:px-12 relative z-10">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-12 lg:gap-8 mb-20 whitespace-normal">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 relative z-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8 mb-20 whitespace-normal">
           {/* Column 1: About */}
-          <RevealOnScroll animation="fade-up" delay={0} className="lg:col-span-3">
+          <RevealOnScroll animation="fade-up" delay={0} className="lg:col-span-1">
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-4">
                    <img src={LOGO_SRC} alt="HTWTH Cyber Platform Logo" title="HTWTH Official Logo" className="w-8 h-8 rounded-full object-cover" />
                    <h3 className="text-white text-lg font-bold uppercase tracking-wider">HTWTH</h3>
                 </div>
-                <p className="leading-relaxed text-sm max-w-sm">
-                  The ultimate ecosystem for ethical hackers. From documenting findings to remote pentesting with Kali Linux integration, we provide the tools you need to succeed in cybersecurity.
+                <p className="leading-relaxed text-sm">
+                  The ultimate ecosystem for ethical hackers. We provide the tools you need to succeed in cybersecurity.
                 </p>
-                <div className="flex flex-wrap gap-3 mt-6">
+                <div className="flex flex-wrap gap-2 mt-6">
                   {socialLinks.map((social, idx) => (
                     <a 
                       key={idx} 
                       href={sanitizeUrl(social.url)} 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-white hover:bg-indigo-600 hover:scale-110 transition-all duration-300 border border-white/5"
+                      className="w-8 h-8 rounded-full bg-[#111] flex items-center justify-center text-white hover:bg-indigo-600 hover:scale-110 transition-all duration-300 border border-white/5"
                     >
                       {social.icon}
                     </a>
@@ -167,95 +167,80 @@ const Footer: React.FC<FooterProps> = ({ onAction, onShowCopyright, onShowInnova
           </RevealOnScroll>
 
           {/* Column 2: Platform Links */}
-          <RevealOnScroll animation="fade-up" delay={100} className="lg:col-span-2">
+          <RevealOnScroll animation="fade-up" delay={100} className="lg:col-span-1">
               <div className="space-y-6">
-                  <h3 className="text-white text-lg font-bold uppercase tracking-wider mb-6">Platform</h3>
+                  <h3 className="text-white text-base font-bold uppercase tracking-wider mb-6">Platform</h3>
                   <ul className="space-y-3 text-sm">
-                  <li><button onClick={() => navigateTo('#/')} className="hover:text-indigo-500 transition-colors text-left uppercase text-[11px] font-bold tracking-wider">Overview</button></li>
-                  <li><button onClick={() => onAction ? onAction() : navigateTo('#/auth')} className="hover:text-indigo-500 transition-colors text-left uppercase text-[11px] font-bold tracking-wider">Features</button></li>
-                  <li><button onClick={() => onAction ? onAction() : navigateTo('#/auth')} className="hover:text-indigo-500 transition-colors text-left uppercase text-[11px] font-bold tracking-wider">Community</button></li>
-                  <li><button onClick={() => onAction ? onAction() : navigateTo('#/auth')} className="hover:text-indigo-500 transition-colors text-left uppercase text-[11px] font-bold tracking-wider">Resources</button></li>
-                  <li><button onClick={() => { if (onSetTab) onSetTab('blog'); navigateTo('#/'); }} className="hover:text-indigo-500 transition-colors text-left uppercase text-[11px] font-bold tracking-wider text-indigo-400">Blog</button></li>
-                  <li><button onClick={() => onShowInnovation ? onShowInnovation() : navigateTo('#/')} className="hover:text-indigo-500 transition-colors text-left uppercase text-[11px] font-bold tracking-wider text-purple-400">Innovation Lab</button></li>
+                  <li><button onClick={() => navigateTo('#/')} className="hover:text-indigo-500 transition-colors text-left uppercase text-[11px] font-bold tracking-widest text-slate-400">Overview</button></li>
+                  <li><button onClick={() => onAction ? onAction() : navigateTo('#/auth')} className="hover:text-indigo-500 transition-colors text-left uppercase text-[11px] font-bold tracking-widest text-slate-400">Features</button></li>
+                  <li><button onClick={() => onAction ? onAction() : navigateTo('#/auth')} className="hover:text-indigo-500 transition-colors text-left uppercase text-[11px] font-bold tracking-widest text-slate-400">Community</button></li>
+                  <li><button onClick={() => onAction ? onAction() : navigateTo('#/auth')} className="hover:text-indigo-500 transition-colors text-left uppercase text-[11px] font-bold tracking-widest text-slate-400">Resources</button></li>
+                  <li><button onClick={() => { if (onSetTab) onSetTab('blog'); navigateTo('#/'); }} className="hover:text-indigo-500 transition-colors text-left uppercase text-[11px] font-bold tracking-widest text-indigo-400">Blog</button></li>
+                  <li><button onClick={() => onShowInnovation ? onShowInnovation() : navigateTo('#/')} className="hover:text-indigo-500 transition-colors text-left uppercase text-[11px] font-bold tracking-widest text-purple-400">Innovation Lab</button></li>
                   </ul>
               </div>
           </RevealOnScroll>
 
           {/* Column 3: Legal & Support */}
-          <RevealOnScroll animation="fade-up" delay={150} className="lg:col-span-2">
+          <RevealOnScroll animation="fade-up" delay={150} className="lg:col-span-1">
               <div className="space-y-6">
-                  <h3 className="text-white text-lg font-bold uppercase tracking-wider mb-6">Legal & Support</h3>
+                  <h3 className="text-white text-base font-bold uppercase tracking-wider mb-6">Legal & Support</h3>
                   <ul className="space-y-3 text-sm">
-                  <li><button onClick={() => navigateTo('#/helpcenter')} className="hover:text-indigo-500 transition-colors text-left uppercase text-[11px] font-bold tracking-wider opacity-60 text-slate-500">Help Center</button></li>
-                  <li><button onClick={handleShowSitemap} className="hover:text-indigo-500 transition-colors text-left uppercase text-[11px] font-bold tracking-wider opacity-60 text-slate-500">Sitemap</button></li>
-                  <li><button onClick={() => onShowCopyright ? onShowCopyright() : navigateTo('#/legal')} className="hover:text-indigo-500 transition-colors text-left uppercase text-[11px] font-bold tracking-wider opacity-60 text-slate-500">Legal Index</button></li>
-                  <li><button onClick={() => navigateTo('#/privacy')} className="hover:text-indigo-500 transition-colors text-left uppercase text-[11px] font-bold tracking-wider opacity-60 text-slate-500">Privacy Policy</button></li>
-                  <li><button onClick={() => navigateTo('#/terms')} className="hover:text-indigo-500 transition-colors text-left uppercase text-[11px] font-bold tracking-wider opacity-60 text-slate-500">Terms of Service</button></li>
-                  <li><button onClick={() => navigateTo('#/security')} className="hover:text-indigo-500 transition-colors text-left uppercase text-[11px] font-bold tracking-wider opacity-60 text-slate-500">Security Policy</button></li>
+                  <li><button onClick={() => navigateTo('#/helpcenter')} className="hover:text-indigo-500 transition-all text-left uppercase text-[11px] font-bold tracking-widest text-slate-400 hover:translate-x-1">Help Center</button></li>
+                  <li><button onClick={handleShowSitemap} className="hover:text-indigo-500 transition-all text-left uppercase text-[11px] font-bold tracking-widest text-slate-400 hover:translate-x-1">Sitemap</button></li>
+                  <li><button onClick={() => onShowCopyright ? onShowCopyright() : navigateTo('#/legal')} className="hover:text-indigo-500 transition-all text-left uppercase text-[11px] font-bold tracking-widest text-slate-400 hover:translate-x-1">Legal Index</button></li>
+                  <li><button onClick={() => navigateTo('#/privacy')} className="hover:text-indigo-500 transition-all text-left uppercase text-[11px] font-bold tracking-widest text-slate-400 hover:translate-x-1">Privacy Policy</button></li>
+                  <li><button onClick={() => navigateTo('#/terms')} className="hover:text-indigo-500 transition-all text-left uppercase text-[11px] font-bold tracking-widest text-slate-400 hover:translate-x-1">Terms of Service</button></li>
+                  <li><button onClick={() => navigateTo('#/security')} className="hover:text-indigo-500 transition-all text-left uppercase text-[11px] font-bold tracking-widest text-slate-400 hover:translate-x-1">Security Policy</button></li>
+                  <li><button onClick={() => navigateTo('#/status')} className="hover:text-emerald-500 transition-all text-left uppercase text-[11px] font-bold tracking-widest text-slate-400 hover:translate-x-1">System Status</button></li>
                   </ul>
               </div>
           </RevealOnScroll>
 
           {/* Column 4: Contact Info */}
-          <RevealOnScroll animation="fade-up" delay={200} className="lg:col-span-2">
+          <RevealOnScroll animation="fade-up" delay={200} className="lg:col-span-1">
               <div className="space-y-6">
-                  <h3 className="text-white text-lg font-bold uppercase tracking-wider mb-6">Connect</h3>
+                  <h3 className="text-white text-base font-bold uppercase tracking-wider mb-6">Connect</h3>
                   <ul className="space-y-4 text-sm">
-                  <li className="flex items-start gap-4">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-indigo-500 flex-shrink-0 mt-1" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                      <span className="opacity-80">Research Lab, Tamil Nadu, India</span>
+                  <li className="flex items-start gap-3">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-indigo-500 flex-shrink-0 mt-1" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                      <span className="opacity-80 text-xs">Research Lab, Tamil Nadu, India</span>
                   </li>
-                  <li className="flex items-center gap-4">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-indigo-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
-                      <span className="opacity-80 font-mono tracking-tight">+91 93460 82957</span>
+                  <li className="flex items-center gap-3">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-indigo-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+                      <span className="opacity-80 font-mono tracking-tight text-xs">+91 93460 82957</span>
                   </li>
-                  <li className="flex items-center gap-4">
-                      <MailIcon className="w-5 h-5 text-indigo-500 flex-shrink-0" />
-                      <a href="mailto:ragow49@gmail.com" className="hover:text-indigo-400 transition-colors opacity-80 break-all">ragow49@gmail.com</a>
+                  <li className="flex items-center gap-3">
+                      <MailIcon className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                      <a href="mailto:ragow49@gmail.com" className="hover:text-indigo-400 transition-colors opacity-80 break-all text-xs">ragow49@gmail.com</a>
                   </li>
                   </ul>
               </div>
           </RevealOnScroll>
 
-          {/* Column 5: Our Environment */}
-          <RevealOnScroll animation="fade-up" delay={250} className="lg:col-span-3">
+          {/* Column 5: Environment */}
+          <RevealOnScroll animation="fade-up" delay={250} className="lg:col-span-1">
               <div className="space-y-6">
-                  <h3 className="text-white text-lg font-bold uppercase tracking-wider mb-6">Environment</h3>
-                  <div className="bg-[#111] rounded-xl p-4 border border-white/5 font-mono text-[10px] backdrop-blur-md shadow-2xl group transition-all hover:border-indigo-500/30">
-                      <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
-                            <div className="flex gap-1.5 font-sans">
-                                <div className="w-2 h-2 rounded-full bg-red-500/50"></div>
-                                <div className="w-2 h-2 rounded-full bg-yellow-500/50"></div>
-                                <div className="w-2 h-2 rounded-full bg-green-500/50"></div>
-                            </div>
-                            <span className="text-[9px] text-white/50 tracking-widest uppercase font-bold">Status: v5.7</span>
+                  <h3 className="text-white text-base font-bold uppercase tracking-wider mb-6">Environment</h3>
+                  <div className="bg-[#111] rounded-xl p-4 border border-white/5 font-mono text-[9px] backdrop-blur-md shadow-2xl group transition-all hover:border-indigo-500/30">
+                      <div className="flex items-center justify-between mb-3 border-b border-white/5 pb-2">
+                             <span className="text-[8px] text-white/50 tracking-widest uppercase font-bold">NODE STATUS</span>
+                             <span className="text-[8px] text-indigo-500 font-bold">V5.7</span>
                       </div>
-                      <div className="space-y-5">
+                      <div className="space-y-4">
                           <div>
-                                <div className="flex justify-between items-center mb-1.5 opacity-60 uppercase tracking-tighter text-[9px] font-bold">
+                                <div className="flex justify-between items-center mb-1 opacity-60 uppercase tracking-tighter text-[7px] font-bold">
                                     <span>Vercel</span>
-                                    <span className="text-green-500 flex items-center gap-1">
-                                        <span className="w-1 h-1 rounded-full bg-green-500 animate-pulse"></span>
-                                        ONLINE
-                                    </span>
+                                    <span className="text-green-500">RUNNING</span>
                                 </div>
-                                <a href="https://htwth.vercel.app" target="_blank" rel="noopener noreferrer" 
-                                className="block p-2 rounded bg-black/40 border border-white/5 hover:border-indigo-500/50 hover:bg-black/60 transition-all text-indigo-400 truncate tracking-tight shadow-inner">
-                                htwth.vercel.app
-                                </a>
+                                <div className="text-indigo-400 truncate tracking-tight text-[8px]">htwth.vercel.app</div>
                             </div>
                             <div>
-                                <div className="flex justify-between items-center mb-1.5 opacity-60 uppercase tracking-tighter text-[9px] font-bold">
+                                <div className="flex justify-between items-center mb-1 opacity-60 uppercase tracking-tighter text-[7px] font-bold">
                                     <span>Netlify</span>
-                                    <span className="text-green-500 flex items-center gap-1">
-                                        <span className="w-1 h-1 rounded-full bg-green-500 animate-pulse"></span>
-                                        ONLINE
-                                    </span>
+                                    <span className="text-green-500">RUNNING</span>
                                 </div>
-                                <a href="https://writeupportalos.netlify.app/" target="_blank" rel="noopener noreferrer" 
-                                className="block p-2 rounded bg-black/40 border border-white/5 hover:border-indigo-500/50 hover:bg-black/60 transition-all text-indigo-400 truncate tracking-tight shadow-inner">
-                                writeupportalos.netlify.app
-                                </a>
+                                <div className="text-indigo-400 truncate tracking-tight text-[8px]">writeupportalos.app</div>
                             </div>
                       </div>
                   </div>
@@ -267,7 +252,7 @@ const Footer: React.FC<FooterProps> = ({ onAction, onShowCopyright, onShowInnova
         <RevealOnScroll animation="fade-in" delay={300}>
             <div className="border-y border-white/5 py-12 mb-16 relative group">
                 <div className="absolute inset-0 bg-indigo-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-                <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 px-4 relative z-10">
+                <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 px-4 relative z-10">
                     <div className="flex-1 text-center md:text-left">
                         <h3 className="text-white text-xl font-bold mb-2">Subscribe to our Newsletter</h3>
                         <p className="text-sm opacity-80">Get the latest vulnerability insights and platform updates delivered to you.</p>

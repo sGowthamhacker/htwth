@@ -11,7 +11,7 @@ interface SecurityPageProps {
   onShowCopyright?: () => void;
 }
 
-const SecurityPage: React.FC<SecurityPageProps> = ({ onNavigateHome, isDarkMode }) => {
+const SecurityPage: React.FC<SecurityPageProps> = ({ onNavigateHome, isDarkMode, onAction, onShowCopyright }) => {
   return (
     <div className={`min-h-screen bg-white dark:bg-[#0a0a0a] font-sans transition-colors duration-300 text-slate-900 dark:text-slate-100 ${isDarkMode ? 'dark' : ''}`}>
       <header className="sticky top-0 w-full px-4 sm:px-8 py-4 flex justify-between items-center z-50 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-800/50">
@@ -29,7 +29,7 @@ const SecurityPage: React.FC<SecurityPageProps> = ({ onNavigateHome, isDarkMode 
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
         <div className="text-center mb-16 sm:mb-24">
           <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-indigo-500/40 transform -rotate-6">
             <Lock className="w-10 h-10 text-white" />

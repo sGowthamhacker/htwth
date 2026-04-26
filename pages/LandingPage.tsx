@@ -33,7 +33,7 @@ import ParticlesBackground from '../components/ParticlesBackground';
 import ChevronDownIcon from '../components/icons/ChevronDownIcon';
 import AnimatedSendButton from '../components/AnimatedSendButton';
 import Footer from '../components/Footer';
-import RevealOnScroll from '../components/RevealOnScroll';
+import RevealOnScroll, { AnimationType } from '../components/RevealOnScroll';
 import { Menu, X, Cloud, CircleHelp, Rocket, Send, Search, Command, Terminal, Zap, Cpu, Sparkles, ArrowRight } from 'lucide-react';
 import { sanitizeUrl } from '../utils/sanitizeUrl';
 
@@ -432,7 +432,7 @@ const ContactSection: React.FC<{ onSendMessage: (name: string, email: string, ms
     };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 py-20 max-w-6xl mx-auto px-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 py-20 max-w-7xl mx-auto px-6">
             <div className="space-y-6">
                 <div className="mb-8">
                      <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Frequently Asked Questions</h2>
@@ -816,6 +816,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
   
   // State for Innovation Fade Open
   const [expandedFeatureId, setExpandedFeatureId] = useState<string | null>(null);
+  const [showAllFeatures, setShowAllFeatures] = useState(false);
 
   const handleSendAdminMessage = async (name: string, email: string, message: string): Promise<{success: boolean}> => {
       // Mock success
@@ -1344,7 +1345,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
 
         {activeTab === 'home' && (
         <div className="animate-fade-in">
-        <div className="text-center max-w-4xl mx-auto">
+        <div className="text-center max-w-7xl mx-auto px-4">
           <RevealOnScroll animation="fade-down" duration={1000}>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-sm font-medium mb-8 border border-indigo-100 dark:border-indigo-500/20">
               <span className="flex h-2 w-2 rounded-full bg-indigo-600 dark:bg-indigo-400"></span>
@@ -1385,7 +1386,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
         </div>
 
         {/* Dashboard Preview Mockup */}
-        <RevealOnScroll animation="fade-up" delay={600} duration={1200} className="mt-20 relative max-w-5xl mx-auto">
+        <RevealOnScroll animation="fade-up" delay={600} duration={1200} className="mt-20 relative max-w-7xl mx-auto px-4">
           <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-[2rem] blur-2xl opacity-20 transition duration-1000"></div>
           <div className="relative rounded-2xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-2xl bg-white dark:bg-slate-900">
             {/* Mockup Header */}
@@ -1407,45 +1408,25 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
             />
           </div>
         </RevealOnScroll>
-
-        {/* Stats Section */}
-        <div className="mt-32 mb-20 border-y border-slate-200 dark:border-slate-800 py-12 bg-slate-50/50 dark:bg-slate-900/20" id="features">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center max-w-5xl mx-auto px-4">
-                <RevealOnScroll animation="fade-up" delay={0}>
-                    <div className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white mb-2">20+</div>
-                    <div className="text-sm font-bold text-slate-500 uppercase tracking-wider">Pro Features</div>
-                </RevealOnScroll>
-                <RevealOnScroll animation="fade-up" delay={100}>
-                    <div className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white mb-2">500+</div>
-                    <div className="text-sm font-bold text-slate-500 uppercase tracking-wider">Active Hackers</div>
-                </RevealOnScroll>
-                <RevealOnScroll animation="fade-up" delay={200}>
-                    <div className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white mb-2">100+</div>
-                    <div className="text-sm font-bold text-slate-500 uppercase tracking-wider">Writeups</div>
-                </RevealOnScroll>
-                <RevealOnScroll animation="fade-up" delay={300}>
-                    <div className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white mb-2">24/7</div>
-                    <div className="text-sm font-bold text-slate-500 uppercase tracking-wider">Live Community</div>
-                </RevealOnScroll>
-            </div>
-        </div>
         </div>
         )}
 
         {(activeTab === 'home' || activeTab === 'features') && (
         <div className="animate-fade-in">
-        {/* 20+ Features Section */}
+        {/* Features Section */}
         <div className="mt-32 mb-24">
             <RevealOnScroll animation="fade-up">
                  <div className="text-center max-w-3xl mx-auto mb-16">
                    <h2 className="text-indigo-600 dark:text-indigo-400 font-bold tracking-wide uppercase text-sm mb-3">Everything you need</h2>
-                   <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white mb-6">20+ Powerful Features for Security Professionals</h2>
+                   <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white mb-6">
+                     {showAllFeatures ? 'All Powerful Features' : 'Top Security Features'} for Professionals
+                   </h2>
                    <p className="text-slate-600 dark:text-slate-400 text-lg">A complete ecosystem designed specifically for security researchers and ethical hackers. HTWTH provides an integrated environment to document complex vulnerabilities, automate reporting, map CVEs, and collaborate in real-time, helping you secure the digital world faster and more efficiently.</p>
                  </div>
             </RevealOnScroll>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {FEATURES.map((feature, index) => {
+                {FEATURES.slice(0, showAllFeatures ? FEATURES.length : 10).map((feature, index) => {
                     const isExpanded = expandedFeatureId === feature.id;
 
                     return (
@@ -1492,6 +1473,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
                     );
                 })}
             </div>
+
+            {!showAllFeatures && FEATURES.length > 10 && (
+                <div className="mt-12 text-center">
+                    <button 
+                        onClick={() => setShowAllFeatures(true)}
+                        className="inline-flex items-center gap-2 px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/25 transition-all hover:-translate-y-0.5 group"
+                    >
+                        View More Features
+                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    </button>
+                    <p className="mt-4 text-sm text-slate-500 dark:text-slate-400 font-medium">Explore all 20+ power tools in our ecosystem</p>
+                </div>
+            )}
         </div>
         </div>
         )}
@@ -1520,75 +1514,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
             <ContactSection onSendMessage={handleSendAdminMessage} />
         </RevealOnScroll>
 
-        {/* Platform Ecosystem Statistics - New! */}
-        <RevealOnScroll animation="fade-up" className="mb-24">
-            <div className="bg-indigo-600 rounded-3xl p-8 sm:p-12 relative overflow-hidden shadow-2xl">
-                <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-                <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl"></div>
-                
-                <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-12 items-center text-left">
-                    <div>
-                        <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">Platform Ecosystem Statistics</h2>
-                        <p className="text-indigo-100 text-lg mb-8 leading-relaxed">
-                            HTWTH is rapidly growing as the preferred workspace for ethical hackers. Our ecosystem is powered by advanced AI and a global community of security researchers.
-                        </p>
-                        
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/10">
-                                <div className="text-3xl font-black text-white mb-1">5,420+</div>
-                                <div className="text-xs font-bold uppercase tracking-wider text-indigo-200">Active Hackers</div>
-                            </div>
-                            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/10">
-                                <div className="text-3xl font-black text-white mb-1">12,890+</div>
-                                <div className="text-xs font-bold uppercase tracking-wider text-indigo-200">Reports Generated</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="hidden md:block">
-                        <div className="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-3xl">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="flex gap-1.5">
-                                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                                    <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                                </div>
-                                <div className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">System Status: ONLINE</div>
-                            </div>
-                            
-                            <div className="space-y-4 font-mono text-xs">
-                                <div className="flex justify-between items-center text-slate-400">
-                                    <span>AI Neural Threads:</span>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                            <div className="w-[88%] h-full bg-indigo-500 animate-pulse"></div>
-                                        </div>
-                                        <span className="text-indigo-400">88%</span>
-                                    </div>
-                                </div>
-                                <div className="flex justify-between items-center text-slate-400">
-                                    <span>Payload Analysis:</span>
-                                    <span className="text-yellow-500">ACTIVE: 421 req/s</span>
-                                </div>
-                                <div className="pt-4 border-t border-white/5">
-                                    <div className="text-[10px] text-slate-500 mb-2 uppercase">Recent Activity Log</div>
-                                    <div className="space-y-1.5 text-left text-[10px]">
-                                        <div className="flex gap-2 text-indigo-400">
-                                            <span>[16:13:21]</span>
-                                            <span>&gt; Verified block #4312 - Integrity 100%</span>
-                                        </div>
-                                        <div className="flex gap-2 text-green-400">
-                                            <span>[16:13:38]</span>
-                                            <span>&gt; API connection established with Gemini-Ultra</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </RevealOnScroll>
+        {/* Community Buzz section */}
         </div>
         )}
 
@@ -1596,7 +1522,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
             <div className="animate-fade-in text-center py-20">
                 <h2 className="text-4xl font-bold mb-6 text-slate-900 dark:text-white">Join the Elite Hacker Community</h2>
                 <p className="text-xl text-slate-500 dark:text-slate-400 mb-12 max-w-2xl mx-auto">Connect, collaborate, and learn with top security researchers around the globe.</p>
-                <div className="max-w-4xl mx-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-2xl">
+                <div className="max-w-7xl mx-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-2xl px-4">
                     <div className="text-left space-y-6">
                         <div className="flex items-start gap-4">
                             <div className="w-10 h-10 bg-indigo-500 rounded-full flex-shrink-0"></div>
@@ -1755,7 +1681,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
         )}
 
         {activeTab === 'resumeai' && (
-            <div className="animate-fade-in text-center py-24 max-w-4xl mx-auto">
+            <div className="animate-fade-in text-center py-24 max-w-7xl mx-auto px-4">
                 <RevealOnScroll animation="fade-down">
                     <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 mb-8 shadow-2xl shadow-purple-500/30 animate-pulse">
                         <svg className="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
@@ -2033,13 +1959,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
             </div>
         </div>
       )}
-
-      <Footer 
-        onAction={() => {}} 
-        onShowCopyright={() => setShowCopyright(true)} 
-        onShowInnovation={() => {}}
-        onSetTab={() => {}}
-      />
 
     </div>
   );
