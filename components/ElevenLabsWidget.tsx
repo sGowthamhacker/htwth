@@ -1,4 +1,4 @@
-export const ElevenLabsWidget = () => {
+const ElevenLabsWidget = () => {
   const agentId = "agent_2901kg6r4ktrf7wvwa4mn4txgs49";
 
   return (
@@ -8,3 +8,5 @@ export const ElevenLabsWidget = () => {
     />
   );
 };
+
+export default ElevenLabsWidget;

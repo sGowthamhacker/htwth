@@ -3,12 +3,14 @@ import React, { useState, useCallback, useMemo, useEffect, useRef, lazy, Suspens
 import { useTheme } from './contexts/ThemeContext';
 import { useTime } from './contexts/TimeContext';
 
-// Keep LandingPage static as it's the first thing users see
+// Keep critical path components static
 import LandingPage from './pages/LandingPage';
+import AuthPage from './pages/AuthPage';
+import DashboardPage from './pages/DashboardPage';
+import MicrochipLoader from './components/MicrochipLoader';
+import ElevenLabsWidget from './components/ElevenLabsWidget';
 
-// Lazy load all other major pages to reduce initial bundle size
-const AuthPage = lazy(() => import('./pages/AuthPage'));
-const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+// Lazy load secondary pages
 const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
 const MaintenancePage = lazy(() => import('./pages/MaintenancePage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
@@ -53,12 +55,10 @@ import {
 } from './services/database';
 import { GlobalSettings } from './types';
 import { sendWelcomeEmail } from './services/emailService';
+const WelcomeAnimation = lazy(() => import('./components/WelcomeAnimation'));
+const DeletionAnimation = lazy(() => import('./components/DeletionAnimation'));
+const NotificationContainer = lazy(() => import('./components/NotificationContainer'));
 import XCircleIcon from './components/icons/XCircleIcon';
-import MicrochipLoader from './components/MicrochipLoader';
-import WelcomeAnimation from './components/WelcomeAnimation';
-import DeletionAnimation from './components/DeletionAnimation';
-import NotificationContainer from './components/NotificationContainer';
-import { ElevenLabsWidget } from './components/ElevenLabsWidget';
 import { verifyTOTP } from './utils/totp';
 
 const wittyVerificationMessages = [
@@ -233,6 +233,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDbLoading(false);
+      setIsInitialAuthLoading(false);
     }, 2000);
     return () => clearTimeout(timer);
   }, []);
@@ -1889,15 +1890,17 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
     backgroundPosition: 'center',
   };
   
-  if (isInitialAuthLoading || isDbLoading || (isAuthLoading && !appUser)) {
-    return (
-        <div style={backgroundStyle} className={`min-h-screen font-sans flex items-center justify-center`}>
-            <div className="text-center">
-                <MicrochipLoader />
-                <h1 className="text-xl font-bold text-slate-800 dark:text-white mt-4">Loading workspace...</h1>
-            </div>
+  const LoadingScreen = ({ showLabel = true }: { showLabel?: boolean }) => (
+    <div style={backgroundStyle} className={`min-h-screen font-sans flex items-center justify-center`}>
+        <div className="text-center">
+            <MicrochipLoader />
+            {showLabel && <h1 className="text-xl font-bold text-slate-800 dark:text-white mt-4">Loading workspace...</h1>}
         </div>
-    );
+    </div>
+  );
+
+  if (isInitialAuthLoading || isDbLoading || (isAuthLoading && !appUser)) {
+    return <LoadingScreen />;
   }
 
   const handleNavigateToAuth = (mode: 'signin' | 'signup') => {
@@ -1990,65 +1993,91 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
 
   if (window.location.hash === ADMIN_LOGIN_PATH) {
       return (
-        <div style={backgroundStyle} className={`min-h-screen font-sans`}>
-            <AdminLoginPage />
-        </div>
+        <Suspense fallback={<LoadingScreen showLabel={false} />}>
+          <div style={backgroundStyle} className={`min-h-screen font-sans`}>
+              <AdminLoginPage />
+          </div>
+        </Suspense>
       );
   }
 
   if (showMaintenance) {
       return (
-        <div style={backgroundStyle} className={`min-h-screen font-sans`}>
-            <MaintenancePage settings={globalSettings} />
-        </div>
+        <Suspense fallback={<LoadingScreen showLabel={false} />}>
+          <div style={backgroundStyle} className={`min-h-screen font-sans`}>
+              <MaintenancePage settings={globalSettings} />
+          </div>
+        </Suspense>
       );
   }
 
   if (showSitemap) {
       return (
-        <div style={backgroundStyle} className={`min-h-screen font-sans`}>
-            <SitemapPage onNavigateHome={handleBackToLanding} />
-        </div>
+        <Suspense fallback={<LoadingScreen showLabel={false} />}>
+          <div style={backgroundStyle} className={`min-h-screen font-sans`}>
+              <SitemapPage onNavigateHome={handleBackToLanding} />
+          </div>
+        </Suspense>
       );
   }
 
   if (showHelpCenterPage) {
       return (
-        <HelpCenterPage 
-            onNavigateHome={handleBackToLanding}
-            onNavigate={handleNavigate}
-            user={appUser}
-        />
+        <Suspense fallback={<LoadingScreen showLabel={false} />}>
+          <HelpCenterPage 
+              onNavigateHome={handleBackToLanding}
+              onNavigate={handleNavigate}
+              user={appUser}
+          />
+        </Suspense>
       );
   }
 
   if (showPrivacy) {
-    return <PrivacyPage onNavigateHome={handleBackToLanding} isDarkMode={themeMode === 'dark'} onAction={() => handleNavigate('home')} onShowCopyright={() => { }} />;
+    return (
+      <Suspense fallback={<LoadingScreen showLabel={false} />}>
+        <PrivacyPage onNavigateHome={handleBackToLanding} isDarkMode={themeMode === 'dark'} onAction={() => handleNavigate('home')} onShowCopyright={() => { }} />
+      </Suspense>
+    );
   }
 
   if (showTerms) {
-    return <TermsPage onNavigateHome={handleBackToLanding} isDarkMode={themeMode === 'dark'} onAction={() => handleNavigate('home')} onShowCopyright={() => { }} />;
+    return (
+      <Suspense fallback={<LoadingScreen showLabel={false} />}>
+        <TermsPage onNavigateHome={handleBackToLanding} isDarkMode={themeMode === 'dark'} onAction={() => handleNavigate('home')} onShowCopyright={() => { }} />
+      </Suspense>
+    );
   }
 
   if (showSecurity) {
-    return <SecurityPage onNavigateHome={handleBackToLanding} isDarkMode={themeMode === 'dark'} onAction={() => handleNavigate('home')} onShowCopyright={() => { }} />;
+    return (
+      <Suspense fallback={<LoadingScreen showLabel={false} />}>
+        <SecurityPage onNavigateHome={handleBackToLanding} isDarkMode={themeMode === 'dark'} onAction={() => handleNavigate('home')} onShowCopyright={() => { }} />
+      </Suspense>
+    );
   }
 
   if (showStatus) {
-    return <StatusPage onNavigateHome={handleBackToLanding} isDarkMode={themeMode === 'dark'} />;
+    return (
+      <Suspense fallback={<LoadingScreen showLabel={false} />}>
+        <StatusPage onNavigateHome={handleBackToLanding} isDarkMode={themeMode === 'dark'} />
+      </Suspense>
+    );
   }
 
   if (is404) {
       return (
-        <div style={backgroundStyle} className={`min-h-screen font-sans`}>
-            <NotFoundPage />
-        </div>
+        <Suspense fallback={<LoadingScreen showLabel={false} />}>
+          <div style={backgroundStyle} className={`min-h-screen font-sans`}>
+              <NotFoundPage />
+          </div>
+        </Suspense>
       );
   }
 
   return (
     <NotificationProvider value={notificationContextValue}>
-      <Suspense fallback={<MicrochipLoader />}>
+      <Suspense fallback={<LoadingScreen showLabel={false} />}>
         <div style={backgroundStyle} className={`${(authPage === null && appUser) ? 'h-[100dvh] overflow-hidden' : 'min-h-screen'} font-sans relative`}>
           {appUser && !showLanding && <AnimatedBackground />}
           <NotificationContainer />
