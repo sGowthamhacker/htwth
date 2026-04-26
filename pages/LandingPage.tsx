@@ -36,6 +36,7 @@ import XCircleIcon from '../components/icons/XCircleIcon';
 import ChevronDownIcon from '../components/icons/ChevronDownIcon';
 import AnimatedSendButton from '../components/AnimatedSendButton';
 import Footer from '../components/Footer';
+import MicrochipLoader from '../components/MicrochipLoader';
 import RevealOnScroll, { AnimationType } from '../components/RevealOnScroll';
 import { Menu, X, Cloud, CircleHelp, Rocket, Send, Search, Command, Terminal, Zap, Cpu, Sparkles, ArrowRight } from 'lucide-react';
 import { sanitizeUrl } from '../utils/sanitizeUrl';

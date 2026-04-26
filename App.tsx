@@ -319,7 +319,9 @@ const App: React.FC = () => {
             }
         }
 
-        if (maintenanceActive && appUser?.role !== 'admin' && !hash.startsWith(ADMIN_LOGIN_PATH)) {
+        const isLegalOrStatusHash = ['#/privacy', '#/terms', '#/security', '#/status', '#/helpcenter', '#/sitemap'].includes(hash);
+
+        if (maintenanceActive && appUser?.role !== 'admin' && !hash.startsWith(ADMIN_LOGIN_PATH) && !isLegalOrStatusHash) {
             setShowMaintenance(true);
             setShowLanding(false);
             setAuthPage(null);
