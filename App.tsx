@@ -229,12 +229,11 @@ const App: React.FC = () => {
   const allUsersRef = useRef(allUsers);
   allUsersRef.current = allUsers;
 
-  // Force loading to finish after 10 seconds to prevent infinite db loading
-  // Initial Auth Loading is now strictly controlled by Firebase to prevent UI flashing
+  // Force loading to finish after 2 seconds to provide a consistent visual experience
   useEffect(() => {
     const timer = setTimeout(() => {
       setDbLoading(false);
-    }, 10000);
+    }, 2000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -553,16 +552,18 @@ const App: React.FC = () => {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const users = await getAllUsers();
-        setAllUsers(users.length > 0 ? users : MOCK_USERS);
+        // Parallelize all initial data fetches
+        const [users, settings] = await Promise.all([
+          getAllUsers(),
+          getGlobalSettings(),
+          refreshPosts()
+        ]);
         
-        const settings = await getGlobalSettings();
+        setAllUsers(users.length > 0 ? users : MOCK_USERS);
         setGlobalSettings(settings);
       } catch (e) {
+        console.error("Initial data fetch error:", e);
       }
-
-      // Initial post fetch
-      await refreshPosts();
       
       if (isUsingMockData()) {
           const initError = getInitError();
@@ -574,8 +575,6 @@ const App: React.FC = () => {
               duration: 10000,
           });
       }
-
-      setDbLoading(false);
     };
 
     fetchInitialData();
@@ -1890,7 +1889,7 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
     backgroundPosition: 'center',
   };
   
-  if (isInitialAuthLoading || isDbLoading || isAuthLoading) {
+  if (isInitialAuthLoading || isDbLoading || (isAuthLoading && !appUser)) {
     return (
         <div style={backgroundStyle} className={`min-h-screen font-sans flex items-center justify-center`}>
             <div className="text-center">
