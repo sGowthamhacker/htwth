@@ -169,7 +169,12 @@ const PostCard: React.FC<PostCardProps> = ({ post, currentUser, onClick, onUpdat
       <div className="p-5 flex-1 w-full">
         <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-3 min-w-0">
-                <img src={getCloudinaryUrl(author.avatar || 'https://i.pravatar.cc/150?u=anonymous', { width: 40, height: 40, radius: 'max' })} alt={author.name} className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-700 flex-shrink-0" />
+                <img 
+                    src={getCloudinaryUrl(author.avatar || 'https://i.pravatar.cc/150?u=anonymous', { width: 40, height: 40, radius: 'max' })} 
+                    alt={author.name} 
+                    className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-700 flex-shrink-0"
+                    loading="lazy"
+                />
                 <div className="min-w-0 overflow-hidden">
                     <div className="flex items-center gap-1">
                         <p className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate">{author.name}</p>

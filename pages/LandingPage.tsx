@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../contexts/ThemeContext';
 import AdminNameButton from '../components/AdminNameButton';
@@ -16,20 +16,23 @@ import SpinnerIcon from '../components/icons/SpinnerIcon';
 import CheckIcon from '../components/icons/CheckIcon';
 import { GlobalNotification, User, Post } from '../types';
 import PostCard from '../components/PostCard';
-import BlogPostViewer from './BlogPostViewer';
+
+// Lazy load complex sections/components
+const BlogPostViewer = lazy(() => import('./BlogPostViewer'));
+const MyWorkPage = lazy(() => import('./MyWorkPage'));
+const CopyrightPage = lazy(() => import('./CopyrightPage'));
+const ParticlesBackground = lazy(() => import('../components/ParticlesBackground'));
+
 import SignInButton from '../components/SignInButton';
 import CookieCard from '../components/CookieCard';
 import { MOCK_USERS } from '../data/users';
 import ImageLightbox from '../components/ImageLightbox';
 import { getCloudinaryUrl } from '../utils/imageService';
-import MyWorkPage from './MyWorkPage';
 import ArrowLeftIcon from '../components/icons/ArrowLeftIcon';
 import LockIcon from '../components/icons/LockIcon';
 import KaliIcon from '../components/icons/KaliIcon';
 import ResourcesIcon from '../components/icons/ResourcesIcon';
-import CopyrightPage from './CopyrightPage';
 import XCircleIcon from '../components/icons/XCircleIcon';
-import ParticlesBackground from '../components/ParticlesBackground';
 import ChevronDownIcon from '../components/icons/ChevronDownIcon';
 import AnimatedSendButton from '../components/AnimatedSendButton';
 import Footer from '../components/Footer';
@@ -1026,7 +1029,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
         }
       `}</style>
 
-      <ParticlesBackground />
+      <Suspense fallback={<div className="fixed inset-0 bg-slate-950 z-[-1]" />}>
+        <ParticlesBackground />
+      </Suspense>
 
       {/* Navigation */}
       <RevealOnScroll animation="fade-down" duration={1000} className="fixed top-0 left-0 right-0 z-50">
@@ -1229,7 +1234,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
                             {/* Main Content Viewer */}
                             <div className="relative">
                                 <div className={`bg-white dark:bg-slate-900 rounded-2xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-800 transition-all ${selectedBlogPost.is_protected ? 'max-h-[600px] overflow-hidden' : ''}`}>
-                                    <BlogPostViewer post={selectedBlogPost} onUpdate={onPostInteraction} />
+                                    <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><SpinnerIcon className="w-8 h-8 animate-spin text-indigo-600" /></div>}>
+                                        <BlogPostViewer post={selectedBlogPost} onUpdate={onPostInteraction} />
+                                    </Suspense>
                                     
                                     {selectedBlogPost.is_protected && (
                                         <div className="absolute inset-x-0 bottom-0 top-[300px] bg-gradient-to-t from-white dark:from-slate-950 via-white/95 dark:via-slate-950/95 to-transparent z-20 flex flex-col items-center justify-end pb-16 px-6 text-center">
@@ -1405,6 +1412,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
               alt="HTWTH Ethical Hacking Platform Interface Preview" 
               title="Dashboard Workspace Preview"
               className="w-full aspect-[16/10] sm:aspect-[16/9] object-cover opacity-90"
+              loading="lazy"
             />
           </div>
         </RevealOnScroll>
@@ -1786,13 +1794,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
                </svg>
             </button>
 
-            <MyWorkPage 
-                user={GUEST_VIEWER}
-                allUsers={getUsersForProfile()}
-                writeups={[]}
-                blogPosts={[]}
-                profileUserEmail={ADMIN_EMAIL}
-            />
+            <Suspense fallback={<MicrochipLoader />}>
+                <MyWorkPage 
+                    user={GUEST_VIEWER}
+                    allUsers={getUsersForProfile()}
+                    writeups={[]}
+                    blogPosts={[]}
+                    profileUserEmail={ADMIN_EMAIL}
+                />
+            </Suspense>
         </div>
       )}
 
@@ -1954,7 +1964,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
         >
             <div className="bg-white dark:bg-slate-900 w-full h-full sm:h-[90vh] sm:max-w-4xl sm:rounded-2xl shadow-2xl relative flex flex-col overflow-hidden animate-slide-up border-0 sm:border border-slate-200 dark:border-slate-800">
                 <div className="flex-1 overflow-hidden">
-                    <CopyrightPage onClose={() => setShowCopyright(false)} />
+                    <Suspense fallback={<MicrochipLoader />}>
+                        <CopyrightPage onClose={() => setShowCopyright(false)} />
+                    </Suspense>
                 </div>
             </div>
         </div>

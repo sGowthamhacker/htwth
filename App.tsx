@@ -1,19 +1,23 @@
 
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef, lazy, Suspense } from 'react';
 import { useTheme } from './contexts/ThemeContext';
 import { useTime } from './contexts/TimeContext';
-import AuthPage from './pages/AuthPage';
-import DashboardPage from './pages/DashboardPage';
+
+// Keep LandingPage static as it's the first thing users see
 import LandingPage from './pages/LandingPage';
-import AdminLoginPage from './pages/AdminLoginPage';
-import MaintenancePage from './pages/MaintenancePage';
-import NotFoundPage from './pages/NotFoundPage';
-import SitemapPage from './pages/SitemapPage';
-import HelpCenterPage from './pages/HelpCenterPage';
-import PrivacyPage from './pages/PrivacyPage';
-import TermsPage from './pages/TermsPage';
-import SecurityPage from './pages/SecurityPage';
-import StatusPage from './pages/StatusPage';
+
+// Lazy load all other major pages to reduce initial bundle size
+const AuthPage = lazy(() => import('./pages/AuthPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
+const MaintenancePage = lazy(() => import('./pages/MaintenancePage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const SitemapPage = lazy(() => import('./pages/SitemapPage'));
+const HelpCenterPage = lazy(() => import('./pages/HelpCenterPage'));
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
+const TermsPage = lazy(() => import('./pages/TermsPage'));
+const SecurityPage = lazy(() => import('./pages/SecurityPage'));
+const StatusPage = lazy(() => import('./pages/StatusPage'));
 import { User, ThemeStyle, ThemeMode, Notification, Post, Comment, GlobalNotification, Page } from './types';
 import { NotificationProvider } from './contexts/NotificationContext';
 import useLocalStorage from './hooks/useLocalStorage';
@@ -2045,95 +2049,97 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
 
   return (
     <NotificationProvider value={notificationContextValue}>
-      <div style={backgroundStyle} className={`${(authPage === null && appUser) ? 'h-[100dvh] overflow-hidden' : 'min-h-screen'} font-sans relative`}>
-        {appUser && !showLanding && <AnimatedBackground />}
-        <NotificationContainer />
-        {(!appUser && showLanding && !authPage) && <ElevenLabsWidget />}
-        
-        {(showWelcomeAnimation || isWelcomeAnimationRunning.current) && userForWelcome ? (
-             <WelcomeAnimation onComplete={handleWelcomeAnimationEnd} username={userForWelcome.name.split(' ')[0]} />
-        ) : (
-            <>
-                {appUser && !showLanding && (
-                  <main className="h-full w-full overflow-hidden">
-                    <DashboardPage 
-                      user={appUser} 
-                      allUsers={allUsers}
-                      writeups={writeups}
-                      blogPosts={blogPosts}
-                      setAllUsers={setAllUsers} 
-                      onLogout={handleLogout} 
-                      onSendFriendRequest={handleSendFriendRequest} 
-                      onAcceptFriendRequest={handleAcceptFriendRequest}
-                      onRejectFriendRequest={handleRejectFriendRequest}
-                      onRemoveFriend={handleRemoveFriend} 
-                      onProfileUpdate={handleProfileUpdate}
-                      onSavePost={handleSavePost}
-                      onDeletePost={handleDeletePost}
-                      onLikePost={handleLikePost}
-                      onAddCommentToPost={handleAddCommentToPost}
-                      onDeleteCommentFromPost={handleDeleteCommentFromPost}
-                      onRequestWriteupAccess={handleRequestWriteupAccess}
-                      onApproveWriteupAccess={handleApproveWriteupAccess}
-                      onRejectWriteupAccess={handleRejectWriteupAccess}
-                      onDeleteAccount={handleDeleteAccount}
-                      onVerifyPassword={handleVerifyPassword}
-                      onEmailChange={handleEmailChange}
-                      isSyncingProfile={isSyncingProfile}
-                    />
-                  </main>
-                )}
-                
-                {!appUser && showLanding && !authPage && !isPerformingLoginRef.current && !userForWelcome && (
-                    <LandingPage 
-                        onGetStarted={() => handleNavigateToAuth('signup')}
-                        onSignIn={() => handleNavigateToAuth('signin')}
-                        onContactAdmin={handleContactAdmin}
+      <Suspense fallback={<MicrochipLoader />}>
+        <div style={backgroundStyle} className={`${(authPage === null && appUser) ? 'h-[100dvh] overflow-hidden' : 'min-h-screen'} font-sans relative`}>
+          {appUser && !showLanding && <AnimatedBackground />}
+          <NotificationContainer />
+          {(!appUser && showLanding && !authPage) && <ElevenLabsWidget />}
+          
+          {(showWelcomeAnimation || isWelcomeAnimationRunning.current) && userForWelcome ? (
+               <WelcomeAnimation onComplete={handleWelcomeAnimationEnd} username={userForWelcome.name.split(' ')[0]} />
+          ) : (
+              <>
+                  {appUser && !showLanding && (
+                    <main className="h-full w-full overflow-hidden">
+                      <DashboardPage 
+                        user={appUser} 
                         allUsers={allUsers}
+                        writeups={writeups}
                         blogPosts={blogPosts}
-                        onPostInteraction={refreshPosts}
-                    />
-                )}
+                        setAllUsers={setAllUsers} 
+                        onLogout={handleLogout} 
+                        onSendFriendRequest={handleSendFriendRequest} 
+                        onAcceptFriendRequest={handleAcceptFriendRequest}
+                        onRejectFriendRequest={handleRejectFriendRequest}
+                        onRemoveFriend={handleRemoveFriend} 
+                        onProfileUpdate={handleProfileUpdate}
+                        onSavePost={handleSavePost}
+                        onDeletePost={handleDeletePost}
+                        onLikePost={handleLikePost}
+                        onAddCommentToPost={handleAddCommentToPost}
+                        onDeleteCommentFromPost={handleDeleteCommentFromPost}
+                        onRequestWriteupAccess={handleRequestWriteupAccess}
+                        onApproveWriteupAccess={handleApproveWriteupAccess}
+                        onRejectWriteupAccess={handleRejectWriteupAccess}
+                        onDeleteAccount={handleDeleteAccount}
+                        onVerifyPassword={handleVerifyPassword}
+                        onEmailChange={handleEmailChange}
+                        isSyncingProfile={isSyncingProfile}
+                      />
+                    </main>
+                  )}
+                  
+                  {!appUser && showLanding && !authPage && !isPerformingLoginRef.current && !userForWelcome && (
+                      <LandingPage 
+                          onGetStarted={() => handleNavigateToAuth('signup')}
+                          onSignIn={() => handleNavigateToAuth('signin')}
+                          onContactAdmin={handleContactAdmin}
+                          allUsers={allUsers}
+                          blogPosts={blogPosts}
+                          onPostInteraction={refreshPosts}
+                      />
+                  )}
 
-                {authPage && !appUser && !userForWelcome && (
-                  <div ref={authBodyRef} className="fixed inset-0 z-50 transition-opacity duration-300 auth-body">
-                    <AuthPage 
-                      isExiting={isAuthExiting}
-                      initialMode={authInitialMode}
-                      onLogin={handleLogin}
-                      onSignup={handleSignup}
-                      onSocialLogin={handleSocialLogin}
-                      onForgotPassword={handleForgotPassword}
-                      email={verificationEmail || emailFor2FA}
-                      onResend={handleResendVerification}
-                      onGoToLogin={() => { 
-                        if (auth.currentUser) {
-                          signOut(auth); 
-                        }
-                        setAuthInitialMode('signin');
-                      }}
-                      isResending={isResending}
-                      resendCooldown={resendCooldown}
-                      onCheckStatus={checkVerificationStatus}
-                      onResendMagicLink={handleResendMagicLink}
-                      onVerify2FACode={handleVerify2FACode}
-                      isVerifying2FACode={isVerifying2FA}
-                      twoFACodeError={twoFAError}
-                      twoFAAttemptFailed={twoFAAttemptFailed}
-                      onClear2FAError={() => setTwoFAError(null)}
-                      onContactAdmin={handleContactAdmin}
-                      onBackToHome={handleBackToLanding} 
-                    />
-                  </div>
-                )}
-                
-            </>
-        )}
-        
-        {showDeletionAnimation && (
-            <DeletionAnimation onAnimationEnd={handlePostDeletionAnimation} />
-        )}
-      </div>
+                  {authPage && !appUser && !userForWelcome && (
+                    <div ref={authBodyRef} className="fixed inset-0 z-50 transition-opacity duration-300 auth-body">
+                      <AuthPage 
+                        isExiting={isAuthExiting}
+                        initialMode={authInitialMode}
+                        onLogin={handleLogin}
+                        onSignup={handleSignup}
+                        onSocialLogin={handleSocialLogin}
+                        onForgotPassword={handleForgotPassword}
+                        email={verificationEmail || emailFor2FA}
+                        onResend={handleResendVerification}
+                        onGoToLogin={() => { 
+                          if (auth.currentUser) {
+                            signOut(auth); 
+                          }
+                          setAuthInitialMode('signin');
+                        }}
+                        isResending={isResending}
+                        resendCooldown={resendCooldown}
+                        onCheckStatus={checkVerificationStatus}
+                        onResendMagicLink={handleResendMagicLink}
+                        onVerify2FACode={handleVerify2FACode}
+                        isVerifying2FACode={isVerifying2FA}
+                        twoFACodeError={twoFAError}
+                        twoFAAttemptFailed={twoFAAttemptFailed}
+                        onClear2FAError={() => setTwoFAError(null)}
+                        onContactAdmin={handleContactAdmin}
+                        onBackToHome={handleBackToLanding} 
+                      />
+                    </div>
+                  )}
+                  
+              </>
+          )}
+          
+          {showDeletionAnimation && (
+              <DeletionAnimation onAnimationEnd={handlePostDeletionAnimation} />
+          )}
+        </div>
+      </Suspense>
     </NotificationProvider>
   );
 };
