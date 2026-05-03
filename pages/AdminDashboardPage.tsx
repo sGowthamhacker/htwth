@@ -936,9 +936,10 @@ interface AdminDashboardPageProps {
     deepLinkInfo?: string | null;
     onNavigateWithinApp?: (path: string) => void;
     liveUsers: any[];
+    refreshKey?: number;
 }
 
-export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers, setAllUsers, user, onApproveWriteupAccess, onRejectWriteupAccess, deepLinkInfo, onNavigateWithinApp = (path: string) => {}, liveUsers }) => {
+export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers, setAllUsers, user, onApproveWriteupAccess, onRejectWriteupAccess, deepLinkInfo, onNavigateWithinApp = (path: string) => {}, liveUsers, refreshKey }) => {
     // Security check: only admins can access this page
     if (!user || user.role !== 'admin') {
         return (
@@ -1043,15 +1044,22 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
     const notifyUsersOfMaintenance = async (isArmed: boolean, message: string, start?: string | null, end?: string | null) => {
         if (!isArmed) return;
         
+        const systemFrom = {
+            email: 'admin@system.local',
+            name: 'System Admin',
+            avatar: 'https://res.cloudinary.com/demo/image/upload/v1611000000/sample.jpg',
+            role: 'admin' as const
+        };
+        
         const notifications: GlobalNotification[] = allUsers.map(user => ({
             id: crypto.randomUUID(),
             to: user.email,
-            from: 'System Admin',
-            type: 'system',
+            from: systemFrom,
+            type: 'admin_message',
             title: 'Maintenance Scheduled',
             message: `System maintenance is scheduled. ${message} ${start ? `Starts: ${new Date(start).toLocaleString()}` : ''} ${end ? `Estimated Return: ${new Date(end).toLocaleString()}` : ''}`,
             targetId: 'maintenance',
-            targetType: 'system'
+            targetType: 'system' as any
         }));
 
         try {
@@ -1156,6 +1164,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
             unsubscribeUsers();
         };
     }, []);
+
+    // Refresh data when the window refresh button is clicked
+    useEffect(() => {
+        if (refreshKey && refreshKey > 0) {
+            getContactRequests().then(reqs => setContactRequests(reqs.filter(r => !r.handled)));
+        }
+    }, [refreshKey]);
 
     const logAdminActivity = (action: string, target?: string) => {
         addActivityLog(user.id, action, target).then(async () => {

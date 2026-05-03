@@ -1,3 +1,11 @@
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'elevenlabs-convai': any;
+    }
+  }
+}
+
 const ElevenLabsWidget = () => {
   const agentId = "agent_2901kg6r4ktrf7wvwa4mn4txgs49";
 

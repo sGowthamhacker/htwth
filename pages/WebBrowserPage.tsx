@@ -1,7 +1,9 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, ArrowLeft, ArrowRight, RotateCcw, Home, X, Search, ExternalLink, ShieldCheck, ChevronLeft, ChevronRight, Lock, Users, Activity, MessageSquare } from 'lucide-react';
+import { Globe, ArrowLeft, ArrowRight, RotateCcw, Home, X, Lock, ShieldCheck, Plus } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import { User } from '../types';
+import { getCloudinaryUrl } from '../utils/imageService';
 
 interface Tab {
   id: string;
@@ -9,15 +11,18 @@ interface Tab {
   url: string;
   favicon?: string;
   loading: boolean;
+  history: string[];
+  historyIndex: number;
+  refreshCount?: number;
 }
 
-const WebBrowserPage: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
+const WebBrowserPage: React.FC<{ user?: User; onClose?: () => void; refreshKey?: number }> = ({ user, onClose, refreshKey }) => {
   const { themeStyle, themeMode } = useTheme();
   const isWindows = themeStyle === 'windows';
   const isDark = themeMode === 'dark';
 
   const [tabs, setTabs] = useState<Tab[]>([
-    { id: '1', title: 'Google', url: 'https://www.google.com/search?igu=1', loading: false }
+    { id: '1', title: 'Google', url: 'https://www.google.com/search?igu=1', loading: false, history: ['https://www.google.com/search?igu=1'], historyIndex: 0 }
   ]);
   const [activeTabId, setActiveTabId] = useState('1');
   const [urlInput, setUrlInput] = useState('');
@@ -25,18 +30,31 @@ const WebBrowserPage: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
   const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0];
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  const [liveVisitors, setLiveVisitors] = useState(Math.floor(Math.random() * 50) + 10);
-
   useEffect(() => {
     setUrlInput(activeTab.url);
   }, [activeTab.id, activeTab.url]);
 
+  // Handle external refresh (from window header)
   useEffect(() => {
-    const interval = setInterval(() => {
-      setLiveVisitors(prev => Math.max(5, prev + (Math.random() > 0.5 ? 1 : -1)));
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    if (refreshKey && refreshKey > 0) {
+      try {
+        if (iframeRef.current && iframeRef.current.contentWindow) {
+          // Attempt to access a restricted property to check if it's cross-origin
+          const _ = iframeRef.current.contentWindow.location.href;
+          iframeRef.current.contentWindow.location.reload();
+          setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, loading: true } : t));
+          return;
+        }
+      } catch (e) {
+        // Cross-origin iframe reload blocked.
+      }
+      
+      setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, loading: true } : t));
+      setTimeout(() => {
+          setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, loading: false } : t));
+      }, 800);
+    }
+  }, [refreshKey, activeTabId]);
 
   const handleNavigate = (newUrl: string) => {
     let finalUrl = newUrl.trim();
@@ -48,10 +66,64 @@ const WebBrowserPage: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
       }
     }
 
-    setTabs(prev => prev.map(t => 
-      t.id === activeTabId ? { ...t, url: finalUrl, loading: true, title: finalUrl.split('//')[1]?.split('/')[0] || finalUrl } : t
-    ));
+    setTabs(prev => prev.map(t => {
+      if (t.id === activeTabId && t.url !== finalUrl) {
+        const newHistory = t.history.slice(0, t.historyIndex + 1);
+        newHistory.push(finalUrl);
+        return { 
+          ...t, 
+          url: finalUrl, 
+          loading: true, 
+          title: finalUrl.split('//')[1]?.split('/')[0] || finalUrl,
+          history: newHistory,
+          historyIndex: newHistory.length - 1
+        };
+      }
+      return t;
+    }));
     setUrlInput(finalUrl);
+  };
+
+  const goBack = () => {
+    try {
+      if (iframeRef.current && iframeRef.current.contentWindow) {
+        // Attempt native iframe back (will throw SecurityError if cross-origin)
+        iframeRef.current.contentWindow.history.back();
+        return; // If it didn't throw, we're same origin and it worked
+      }
+    } catch (e) {
+      // Cross-origin iframe back blocked, silently fallback to URL history
+    }
+
+    setTabs(prev => prev.map(t => {
+      if (t.id === activeTabId && t.historyIndex > 0) {
+        const newIndex = t.historyIndex - 1;
+        const prevUrl = t.history[newIndex];
+        return { ...t, url: prevUrl, loading: true, historyIndex: newIndex, title: prevUrl.split('//')[1]?.split('/')[0] || prevUrl, refreshCount: (t.refreshCount || 0) + 1 };
+      }
+      return t;
+    }));
+  };
+
+  const goForward = () => {
+    try {
+      if (iframeRef.current && iframeRef.current.contentWindow) {
+        // Attempt native iframe forward (will throw SecurityError if cross-origin)
+        iframeRef.current.contentWindow.history.forward();
+        return; // If it didn't throw, we're same origin and it worked
+      }
+    } catch (e) {
+      // Cross-origin iframe forward blocked, silently fallback to URL history
+    }
+
+    setTabs(prev => prev.map(t => {
+      if (t.id === activeTabId && t.historyIndex < t.history.length - 1) {
+        const newIndex = t.historyIndex + 1;
+        const nextUrl = t.history[newIndex];
+        return { ...t, url: nextUrl, loading: true, historyIndex: newIndex, title: nextUrl.split('//')[1]?.split('/')[0] || nextUrl, refreshCount: (t.refreshCount || 0) + 1 };
+      }
+      return t;
+    }));
   };
 
   const handleUrlSubmit = (e: React.FormEvent) => {
@@ -61,7 +133,14 @@ const WebBrowserPage: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
 
   const addTab = () => {
     const newId = Math.random().toString(36).substring(7);
-    const newTab: Tab = { id: newId, title: 'New Tab', url: 'https://www.google.com/search?igu=1', loading: false };
+    const newTab: Tab = { 
+      id: newId, 
+      title: 'New Tab', 
+      url: 'https://www.google.com/search?igu=1', 
+      loading: false,
+      history: ['https://www.google.com/search?igu=1'],
+      historyIndex: 0
+    };
     setTabs([...tabs, newTab]);
     setActiveTabId(newId);
   };
@@ -77,80 +156,108 @@ const WebBrowserPage: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
   };
 
   const handleRefresh = () => {
+    try {
+      if (iframeRef.current && iframeRef.current.contentWindow) {
+        // Attempt to access a restricted property to check if it's cross-origin
+        const _ = iframeRef.current.contentWindow.location.href;
+        iframeRef.current.contentWindow.location.reload();
+        setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, loading: true } : t));
+        return;
+      }
+    } catch (e) {
+      // Cross-origin iframe reload blocked.
+    }
+
+    // For cross-origin iframes, we cannot read their internal state or force a native reload without resetting the URL. 
+    // To prevent "data loss" (losing their place inside the iframe), we simply mock the loading state rather than resetting the iframe src.
     setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, loading: true } : t));
     setTimeout(() => {
-      setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, loading: false } : t));
-    }, 500);
+        setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, loading: false } : t));
+    }, 800);
   };
 
   return (
-    <div className={`h-full w-full flex flex-col font-sans overflow-hidden select-none ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
+    <div className={`flex flex-col h-full overflow-hidden ${isDark ? 'bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
       {/* Tab Bar */}
-      <div className={`flex items-center gap-1 px-3 pt-2 ${isDark ? 'bg-slate-950/50' : 'bg-slate-100'}`}>
-        {!isWindows && <div className="w-16" />} {/* Mac controls space */}
-        <div className="flex-1 flex gap-1 items-end overflow-x-auto no-scrollbar pt-1">
+      <div className={`flex items-center px-2 sm:px-3 pt-2 sm:pt-2.5 flex-shrink-0 select-none ${isDark ? 'bg-slate-900 border-b border-slate-800' : 'bg-slate-100 border-b border-slate-200'}`}>
+        {!isWindows && <div className="hidden sm:block w-14" />} {/* Mac controls space */}
+        <div className="flex-1 flex gap-1 sm:gap-2 items-end overflow-x-auto no-scrollbar pt-1 pb-[1px] px-1 sm:px-0">
           {tabs.map(tab => (
             <motion.div
               key={tab.id}
               onClick={() => setActiveTabId(tab.id)}
               layoutId={tab.id}
               className={`
-                flex items-center gap-2 px-3 py-1.5 min-w-[120px] max-w-[200px] cursor-pointer text-xs font-medium transition-all group relative
+                flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 min-w-[80px] sm:min-w-[140px] max-w-[140px] sm:max-w-[240px] cursor-default text-[11px] sm:text-xs font-medium transition-colors group relative flex-shrink-0 overflow-hidden
                 ${activeTabId === tab.id 
-                  ? (isDark ? 'bg-slate-800 text-slate-100 shadow-[0_-2px_10px_rgba(0,0,0,0.3)]' : 'bg-white text-slate-800 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]') 
-                  : (isDark ? 'text-slate-400 hover:bg-white/5 hover:text-slate-300' : 'text-slate-500 hover:bg-black/5 hover:text-slate-700')}
-                ${isWindows ? 'rounded-t-sm' : 'rounded-t-lg'}
+                  ? (isDark ? 'bg-slate-800 text-slate-100' : 'bg-white text-slate-800') 
+                  : (isDark ? 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-300' : 'text-slate-500 hover:bg-white/50 hover:text-slate-700')}
+                ${isWindows ? 'rounded-t-md' : 'rounded-t-xl'}
               `}
             >
-              <Globe className={`w-3.5 h-3.5 ${activeTabId === tab.id ? 'text-blue-500' : 'text-slate-500'}`} />
-              <span className="truncate flex-1">{tab.title}</span>
+              {/* Active Tab Indicators */}
+              {activeTabId === tab.id && (
+                <>
+                  <div className={`absolute left-0 bottom-0 top-0 w-[1px] ${isDark ? 'bg-slate-700' : 'bg-slate-200'} hidden sm:block`} />
+                  <div className={`absolute right-0 bottom-0 top-0 w-[1px] ${isDark ? 'bg-slate-700' : 'bg-slate-200'} hidden sm:block`} />
+                  <div className={`absolute top-0 left-0 right-0 h-[2px] ${isWindows ? 'bg-blue-500' : 'bg-transparent'} hidden sm:block`} />
+                </>
+              )}
+              
+              {/* Icon and Title */}
+              <Globe className={`w-3.5 h-3.5 flex-shrink-0 ${activeTabId === tab.id ? 'text-blue-500' : 'text-slate-400'}`} />
+              <span className="truncate flex-1 text-left">{tab.title}</span>
+              
+              {/* Close Button */}
               <button 
                 onClick={(e) => closeTab(e, tab.id)}
-                className={`opacity-0 group-hover:opacity-100 p-0.5 rounded-md transition-all ${isDark ? 'hover:bg-white/10' : 'hover:bg-black/10'}`}
+                className={`flex-shrink-0 w-4 h-4 flex items-center justify-center rounded-full transition-colors ${
+                  isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-200'
+                } ${activeTabId === tab.id ? 'opacity-100' : 'sm:opacity-0 sm:group-hover:opacity-100 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
               >
-                <X className="w-3 h-3" />
+                <X className="w-2.5 h-2.5" />
               </button>
-              {activeTabId === tab.id && isWindows && (
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500" />
-              )}
             </motion.div>
           ))}
           <button 
             onClick={addTab}
-            className={`p-2 mb-1 rounded-full transition-all ${isDark ? 'text-slate-400 hover:bg-white/10' : 'text-slate-500 hover:bg-black/10'}`}
+            className={`w-7 h-7 sm:w-8 sm:h-8 mb-0.5 sm:mb-1 flex items-center justify-center rounded-full transition-colors flex-shrink-0 ${isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-200'}`}
           >
-            <PlusIcon className="w-4 h-4" />
+            <Plus className="w-4 h-4" />
           </button>
         </div>
       </div>
 
       {/* Toolbar */}
-      <div className={`flex items-center gap-3 px-4 py-2 border-b ${isDark ? 'bg-slate-800 border-slate-700/50' : 'bg-white border-slate-200'}`}>
-        <div className="flex items-center gap-1">
-          <button className={`p-1.5 rounded-md transition-all active:scale-95 ${isDark ? 'text-slate-400 hover:bg-white/5' : 'text-slate-600 hover:bg-black/5'}`}>
+      <div className={`flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-1.5 sm:py-2 flex-shrink-0 ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
+        <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
+          <button 
+            onClick={goBack}
+            className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full transition-colors active:scale-95 ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'}`}>
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <button className={`p-1.5 rounded-md transition-all active:scale-95 ${isDark ? 'text-slate-400 hover:bg-white/5' : 'text-slate-600 hover:bg-black/5'}`}>
+          <button 
+            onClick={goForward}
+            className={`hidden sm:flex w-8 h-8 items-center justify-center rounded-full transition-colors active:scale-95 ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'}`}>
             <ArrowRight className="w-4 h-4" />
           </button>
-          <button onClick={handleRefresh} className={`p-1.5 rounded-md transition-all active:scale-95 ${isDark ? 'text-slate-400 hover:bg-white/5' : 'text-slate-600 hover:bg-black/5'}`}>
-            <RotateCcw className={`w-4 h-4 ${activeTab.loading ? 'animate-spin-slow' : ''}`} />
+          <button onClick={handleRefresh} className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full transition-colors active:scale-95 ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'}`}>
+            <RotateCcw className={`w-4 h-4 ${activeTab.loading ? 'animate-spin' : ''}`} />
           </button>
-          <button onClick={() => handleNavigate('https://www.google.com/search?igu=1')} className={`p-1.5 rounded-md transition-all ml-1 ${isDark ? 'text-slate-400 hover:bg-white/5' : 'text-slate-600 hover:bg-black/5'}`}>
+          <button onClick={() => handleNavigate('https://www.google.com/search?igu=1')} className={`hidden lg:flex w-8 h-8 items-center justify-center rounded-full transition-colors ml-0.5 ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'}`}>
             <Home className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleUrlSubmit} className="flex-1 relative group">
+        <form onSubmit={handleUrlSubmit} className="flex-1 relative group min-w-0 flex items-center">
           <div className={`
-            flex items-center gap-3 px-4 py-1.5 rounded-full transition-all border
+            flex items-center gap-2 px-3 sm:px-4 tracking-wide h-8 sm:h-9 w-full rounded-full transition-all border
             ${isUrlFocused 
-              ? 'bg-transparent border-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.2)]' 
-              : (isDark ? 'bg-slate-950/50 border-white/5 group-hover:bg-slate-950 group-hover:border-white/10' : 'bg-slate-100 border-transparent hover:bg-slate-200')}
+              ? (isDark ? 'bg-slate-900 border-blue-500/50 shadow-[0_0_0_2px_rgba(59,130,246,0.2)]' : 'bg-white border-blue-400 shadow-[0_0_0_3px_rgba(59,130,246,0.15)] text-slate-800') 
+              : (isDark ? 'bg-slate-900/50 border-slate-700/50 hover:bg-slate-900 hover:border-slate-600/50' : 'bg-slate-100 border-transparent hover:bg-slate-200/70')}
           `}>
              <div className="flex items-center gap-1.5 flex-shrink-0">
-               <Lock className={`w-3 h-3 ${activeTab.url.startsWith('https') ? 'text-emerald-500' : 'text-amber-500'}`} />
-               {isUrlFocused && <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider hidden md:inline">HTTPS</span>}
+               <Lock className={`w-3 h-3 ${activeTab.url.startsWith('https') ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : (isDark ? 'text-amber-400' : 'text-amber-500')}`} />
              </div>
             <input
               type="text"
@@ -158,33 +265,36 @@ const WebBrowserPage: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
               onFocus={() => setIsUrlFocused(true)}
               onBlur={() => setIsUrlFocused(false)}
               onChange={(e) => setUrlInput(e.target.value)}
-              className={`flex-1 bg-transparent border-none outline-none text-xs ${isDark ? 'text-slate-200 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'}`}
-              placeholder="Search or enter web address"
+              className={`flex-1 bg-transparent border-none outline-none text-[12px] sm:text-sm min-w-0 ${isDark ? 'text-slate-200 placeholder-slate-500' : 'text-slate-800 placeholder-slate-400'}`}
+              placeholder="Type a URL..."
+              spellCheck={false}
             />
           </div>
         </form>
 
-        <div className="flex items-center gap-2">
-            <div className="hidden sm:flex -space-x-2 mr-2">
-               {[...Array(3)].map((_, i) => (
-                 <div key={i} className={`w-6 h-6 rounded-full border-2 ${isDark ? 'border-slate-800 bg-slate-700' : 'border-white bg-slate-200'} overflow-hidden`}>
-                   <img src={`https://i.pravatar.cc/100?img=${i+10}`} alt="User" />
-                 </div>
-               ))}
-               <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-bold ${isDark ? 'border-slate-800 bg-slate-800 text-slate-400' : 'border-white bg-slate-200 text-slate-600'}`}>
-                 +{liveVisitors}
-               </div>
+        {user && (
+          <div className="flex items-center gap-2 sm:pl-2 flex-shrink-0">
+            <div className="flex flex-col items-end hidden lg:flex px-1">
+              <span className={`text-[11px] font-medium leading-none ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{user.name}</span>
             </div>
-            <button className="p-2 rounded-full bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 active:scale-95 transition-all">
-               <Users className="w-4 h-4" />
-            </button>
-        </div>
+            <div className="relative group flex-shrink-0">
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors ${isDark ? 'group-hover:border-slate-500' : 'group-hover:border-slate-300'}`}>
+                <img 
+                  src={getCloudinaryUrl(user.avatar, { width: 32, height: 32, radius: 'max' })} 
+                  alt={user.name} 
+                  className="w-full h-full object-cover" 
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Browser View */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Main View */}
-        <div className="flex-1 flex flex-col relative bg-white">
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Main View Container */}
+        <div className="flex-1 flex flex-col relative bg-white overflow-hidden">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab.id}
@@ -192,73 +302,23 @@ const WebBrowserPage: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="absolute inset-0"
+              className="absolute inset-0 overflow-hidden bg-white"
             >
               <iframe
                 ref={iframeRef}
                 src={activeTab.url}
-                className="w-full h-full border-none"
+                className="absolute top-0 left-0 w-[125%] h-[125%] lg:w-full lg:h-full scale-[0.8] lg:scale-100 origin-top-left border-none bg-white"
                 onLoad={() => setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, loading: false } : t))}
-                sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+                referrerPolicy="no-referrer"
               />
             </motion.div>
           </AnimatePresence>
-
-          {/* Real-time Toast */}
-          <div className="absolute bottom-4 left-4 z-20 flex flex-col gap-2 pointer-events-none">
-             <motion.div 
-               initial={{ y: 20, opacity: 0 }}
-               animate={{ y: 0, opacity: 1 }}
-               className={`backdrop-blur-md border px-3 py-1.5 rounded-full flex items-center gap-2 shadow-2xl ${isDark ? 'bg-slate-900/80 border-white/10' : 'bg-white/80 border-slate-200'}`}
-             >
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                  Live: browsing {activeTab.title}
-                </span>
-             </motion.div>
-          </div>
-        </div>
-
-        {/* Real-time Activity Sidebar (Collapsible) */}
-        <div className={`w-64 border-l hidden lg:flex flex-col ${isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>
-           <div className="p-4 border-b border-inherit flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-                 <Activity className="w-3 h-3 text-indigo-500" />
-                 Live Activity
-              </h3>
-              <div className="bg-red-500 w-2 h-2 rounded-full animate-pulse" />
-           </div>
-           <div className="flex-1 overflow-y-auto p-3 space-y-4 no-scrollbar">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="flex gap-3 animate-fade-in" style={{ animationDelay: `${i * 150}ms` }}>
-                   <div className="w-8 h-8 rounded-lg bg-slate-800 flex-shrink-0 overflow-hidden ring-1 ring-white/10">
-                      <img src={`https://i.pravatar.cc/100?u=u${i}`} alt="User" />
-                   </div>
-                   <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-bold truncate">User_{120 + i}</p>
-                      <p className={`text-[10px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        Browsing {['Kali Linux', 'Writeups', 'Exploits', 'CVEs', 'Docs'][i % 5]}
-                      </p>
-                      <span className="text-[9px] text-indigo-400 font-medium">Just now</span>
-                   </div>
-                </div>
-              ))}
-           </div>
-           <div className="p-3 border-t border-inherit">
-              <button className={`w-full py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors ${isDark ? 'bg-slate-800 hover:bg-slate-700' : 'bg-slate-200 hover:bg-slate-300'}`}>
-                 <MessageSquare className="w-3 h-3" />
-                 Open Browser Chat
-              </button>
-           </div>
         </div>
       </div>
     </div>
   );
 };
-
-const PlusIcon = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-);
 
 export default WebBrowserPage;
 

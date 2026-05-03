@@ -51,7 +51,7 @@ import {
     getAllUsers, addUser, updateUser, getPosts, addPost, updatePost, deletePost, likePost, addCommentToPost, 
     getUserByFirebaseUid, isUsingMockData, addActivityLog, deleteUser, sendMagicLinkWithBrevo,
     getNotificationsForUser, addNotificationToDb, updateNotificationInDb, deleteNotificationFromDb, deleteAllNotificationsForUser, markAllNotificationsAsReadForUser,
-    sendGlobalNotifications, sanitizePost, getInitError, getGlobalSettings, subscribeToGlobalSettings, updateGlobalSettings
+    sendGlobalNotifications, sanitizePost, getInitError, getGlobalSettings, subscribeToGlobalSettings, updateGlobalSettings, addContactRequest
 } from './services/database';
 import { GlobalSettings } from './types';
 import { sendWelcomeEmail } from './services/emailService';
@@ -132,6 +132,20 @@ const App: React.FC = () => {
       return window.location.hash.includes('auth') ? 'auth' : null;
   });
   
+  // Handle AI Studio appParams for deep linking
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const appParams = params.get('appParams');
+    if (appParams) {
+      // Decode if necessary and ensure it's a valid hash
+      const decodedParams = decodeURIComponent(appParams);
+      const targetHash = `#${decodedParams.startsWith('/') ? '' : '/'}${decodedParams}`;
+      if (window.location.hash !== targetHash) {
+        window.location.hash = targetHash;
+      }
+    }
+  }, []);
+
   const [is404, setIs404] = useState<boolean>(false);
   const [showMaintenance, setShowMaintenance] = useState<boolean>(false);
   const [showSitemap, setShowSitemap] = useState<boolean>(() => {
@@ -338,14 +352,14 @@ const App: React.FC = () => {
         const cleanHash = hash.replace(/^#\/?/, ''); 
         const validRoots = ['', '#', '#/', '#/sitemap', '#/helpcenter', '#/privacy', '#/terms', '#/security', '#/status'];
         
-        const validProtectedApps = ['home', 'writeup', 'blog', 'chat', 'notes', 'todolist', 'settings', 'search', 'start', 'admin', 'notifications', 'mywork', 'resources', 'kali', 'docs', 'resumeai', 'features', 'community', 'pricing'];
+        const validProtectedApps = ['home', 'writeup', 'blog', 'chat', 'notes', 'todolist', 'settings', 'search', 'start', 'admin', 'notifications', 'mywork', 'resources', 'kali', 'docs', 'resumeai', 'features', 'community', 'pricing', 'browser', 'consistency', 'copyright', 'about'];
         
         const currentApp = cleanHash.split('/')[0];
         
         const isAuthRoute = cleanHash.startsWith('auth');
         const isRootRoute = validRoots.includes(hash) || cleanHash === '';
         // 'writeup' is also a valid root for landing page deep links
-        const isProtectedAppRoute = (validProtectedApps.includes(currentApp) || currentApp === 'writeup') && currentApp !== '';
+        const isProtectedAppRoute = validProtectedApps.includes(currentApp) && currentApp !== '';
 
         if (!isAuthRoute && !isRootRoute && !isProtectedAppRoute) {
             setIs404(true);
@@ -803,9 +817,9 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
                 const isRoot = currentPath === '' || currentPath === '#' || currentPath === '#/' || 
                               ['#/sitemap', '#/helpcenter', '#/privacy', '#/terms', '#/security', '#/status'].includes(currentPath);
                 
-                const validProtectedApps = ['home', 'writeup', 'blog', 'chat', 'notes', 'todolist', 'settings', 'search', 'start', 'admin', 'notifications', 'mywork', 'resources', 'kali', 'docs', 'resumeai', 'features', 'community', 'pricing'];
+                const validProtectedApps = ['home', 'writeup', 'blog', 'chat', 'notes', 'todolist', 'settings', 'search', 'start', 'admin', 'notifications', 'mywork', 'resources', 'kali', 'docs', 'resumeai', 'features', 'community', 'pricing', 'browser', 'consistency', 'copyright', 'about'];
                 const currentApp = cleanPath.split('/')[0];
-                const isProtectedAppRoute = validProtectedApps.includes(currentApp) || currentApp === 'writeup';
+                const isProtectedAppRoute = validProtectedApps.includes(currentApp);
 
                 if (!isPublicPage && !isRoot && !isProtectedAppRoute) {
                     setIs404(true);
@@ -1814,9 +1828,18 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
        }
   }, []);
   
-  const handleContactAdmin = useCallback((from: GlobalNotification['from'], message: string) => { 
-      // This is handled via database service primarily, but we can add local notification
-      addNotification({ title: 'Message Sent', message: 'Your message has been sent to the admin.', type: 'success' });
+  const handleContactAdmin = useCallback(async (from: GlobalNotification['from'], message: string) => { 
+      try {
+          await addContactRequest({
+              name: from.name,
+              email: from.email || '',
+              message: message
+          });
+          addNotification({ title: 'Message Sent', message: 'Your message has been sent to the admin.', type: 'success' });
+      } catch (err) {
+          console.error("Failed to send contact request", err);
+          addNotification({ title: 'Error', message: 'Failed to send message.', type: 'error' });
+      }
   }, [addNotification]);
 
   // Post Handlers
@@ -2003,7 +2026,7 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
       );
   }
 
-  if (showMaintenance) {
+  if (showMaintenance && !showPrivacy && !showTerms && !showSecurity && !showStatus && !showHelpCenterPage && !showSitemap) {
       return (
         <Suspense fallback={<LoadingScreen showLabel={false} />}>
           <div style={backgroundStyle} className={`min-h-screen font-sans`}>

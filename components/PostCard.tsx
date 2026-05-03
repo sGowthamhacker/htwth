@@ -26,9 +26,9 @@ const severityClasses: Record<Severity, { text: string; bg: string; dot: string;
 };
 
 const rewardIcons: Record<RewardType, React.ReactElement> = {
-    bounty: <MoneyIcon className="w-5 h-5 text-green-500" title="Bounty Reward" />,
-    't-shirt': <ShirtIcon className="w-5 h-5 text-blue-500" title="T-shirt Reward" />,
-    gift: <GiftIcon className="w-5 h-5 text-purple-500" title="Gift Reward" />,
+    bounty: <MoneyIcon className="w-5 h-5 text-green-500" />,
+    't-shirt': <ShirtIcon className="w-5 h-5 text-blue-500" />,
+    gift: <GiftIcon className="w-5 h-5 text-purple-500" />,
 };
 
 const tagColorClasses = [

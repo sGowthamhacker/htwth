@@ -12,12 +12,18 @@ import CodeBracketIcon from '../components/icons/CodeBracketIcon';
 
 type QualitySetting = 'high' | 'medium' | 'low';
 
-const KaliPage: React.FC = () => {
+const KaliPage: React.FC<{ refreshKey?: number }> = ({ refreshKey }) => {
     // Default to empty
     const [ngrokUrl, setNgrokUrl] = useLocalStorage<string>('kali-ngrok-url', '');
     const [isConnected, setIsConnected] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [iframeKey, setIframeKey] = useState(0);
+
+    React.useEffect(() => {
+        if (refreshKey && refreshKey > 0) {
+            handleRefresh();
+        }
+    }, [refreshKey]);
     const [showHelp, setShowHelp] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [showClipboard, setShowClipboard] = useState(false);

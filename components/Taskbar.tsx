@@ -233,7 +233,7 @@ const Taskbar: React.FC<TaskbarProps> = ({
                                             {filteredApps.map(app => (
                                                 <li key={app.id}>
                                                     <button onClick={(e) => handleMobileResultClick(app.id, e)} className="w-full flex items-center gap-3 p-2 rounded-md text-left hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                                                        {React.cloneElement(app.icon, { className: 'w-6 h-6' })}
+                                                        {React.cloneElement(app.icon as any, { className: 'w-6 h-6' })}
                                                         <span className="text-sm font-medium text-slate-800 dark:text-slate-100">{app.name}</span>
                                                     </button>
                                                 </li>
@@ -288,7 +288,7 @@ const Taskbar: React.FC<TaskbarProps> = ({
                             return (
                                 <button key={app.id} onClick={(e) => onAppClick(app.id, e)} className={`relative w-12 h-12 md:w-14 md:h-14 p-2 flex items-center justify-center group flex-shrink-0`} title={app.name}>
                                     <div className="absolute -top-8 bg-slate-800 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">{app.name}</div>
-                                    {React.cloneElement(app.icon, {className: `w-10 h-10 md:w-12 md:h-12 group-hover:scale-125 transition-transform duration-200 drop-shadow-lg`})}
+                                    {React.cloneElement(app.icon as any, {className: `w-10 h-10 md:w-12 md:h-12 group-hover:scale-125 transition-transform duration-200 drop-shadow-lg`})}
                                     {running && <div className="absolute bottom-0 w-1.5 h-1.5 bg-white rounded-full"></div>}
                                 </button>
                             );
@@ -337,7 +337,7 @@ const Taskbar: React.FC<TaskbarProps> = ({
                                 const active = openWindows.find(w => w.appId === app.id && !w.isMinimized)?.id === activeWindowId;
                                 return (
                                     <button key={app.id} onClick={(e) => onAppClick(app.id, e)} className={`relative w-10 h-10 md:w-12 md:h-12 p-2 flex items-center justify-center rounded-lg transition-all duration-200 flex-shrink-0 ${active ? 'bg-black/10 dark:bg-white/20' : 'hover:bg-black/10 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200'}`} title={app.name}>
-                                        {React.cloneElement(app.icon, {className: 'w-6 h-6 md:w-7 md:h-7'})}
+                                        {React.cloneElement(app.icon as any, {className: 'w-6 h-6 md:w-7 md:h-7'})}
                                         <div className={`absolute rounded-full transition-all duration-200 ${running ? 'opacity-100' : 'opacity-0'} ${active ? 'bg-indigo-500' : 'bg-slate-500 dark:bg-slate-400'} ${isVertical ? 'left-0.5 top-1/2 -translate-y-1/2 w-1 h-4' : 'bottom-0.5 left-1/2 -translate-x-1/2 w-4 h-1'}`}></div>
                                     </button>
                                 )

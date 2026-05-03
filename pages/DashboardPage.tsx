@@ -827,35 +827,27 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
             const isMobileSize = availableWidth <= 768;
 
             let defaultWidth = isStartMenu
-                ? isMobileSize ? Math.min(availableWidth * 0.9, 450) : 550
-                : Math.min(800, availableWidth * 0.8);
+                ? isMobileSize ? Math.min(availableWidth * 0.95, 450) : 550
+                : isMobileSize ? availableWidth : Math.min(800, availableWidth * 0.825);
 
-            // Start Menu height logic to ensure visibility
             let defaultHeight = isStartMenu
-                ? isMobileSize ? Math.min(availableHeight * 0.8, 600) : 650 // Keep nice height but responsive
-                : Math.min(600, availableHeight * 0.8);
+                ? isMobileSize ? Math.min(availableHeight * 0.85, 600) : 650
+                : isMobileSize ? (availableHeight - 60) : Math.min(600, availableHeight * 0.825);
 
-            let defaultX = Math.max(0, (availableWidth - defaultWidth) / 2);
-            let defaultY = Math.max(0, (availableHeight - defaultHeight) / 2);
+            let defaultX = isMobileSize && !isStartMenu ? 0 : Math.max(0, (availableWidth - defaultWidth) / 2);
+            let defaultY = isMobileSize && !isStartMenu ? 0 : Math.max(0, (availableHeight - defaultHeight) / 2);
 
-            // Anchor Start Menu to bottom if taskbar is at bottom (improves mobile UX)
+            // Anchor Start Menu to bottom if taskbar is at bottom
             if (isStartMenu && taskbarPosition === 'bottom') {
-                const taskbarHeight = 60; // Approx height
-                const margin = 16; // Increased margin for safety
-                
-                // Calculate maximum available height to avoid clipping
-                // Crucial: Subtract margin twice (top/bottom) + taskbar
+                const taskbarHeight = 60;
+                const margin = isMobileSize ? 8 : 16;
                 const maxAvailableHeight = availableHeight - taskbarHeight - (margin * 2);
                 
-                // If the default height is taller than available space, constrain it
                 if (defaultHeight > maxAvailableHeight) {
                     defaultHeight = Math.max(300, maxAvailableHeight);
                 }
 
-                // Position at bottom with margin from taskbar
                 defaultY = availableHeight - defaultHeight - taskbarHeight - margin;
-                
-                // Ensure it doesn't go off top
                 if (defaultY < margin) defaultY = margin;
             }
 
@@ -864,11 +856,14 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                 appId: targetAppId,
                 title: appDef.name,
                 icon: appDef.icon,
-                width: defaultWidth, height: defaultHeight,
+                width: defaultWidth, 
+                height: defaultHeight,
                 x: defaultX,
                 y: defaultY,
                 zIndex: nextZIndex.current++,
-                isMinimized: false, isMaximized: false, isClosing: false,
+                isMinimized: false, 
+                isMaximized: isMobileSize && !isStartMenu, // Auto-maximize on mobile
+                isClosing: false,
                 props: { deepLinkInfo },
                 refreshKey: 0,
             };
@@ -1658,7 +1653,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
     }
 
     return (
-        <div className="h-full w-full relative text-slate-800 dark:text-slate-200 overflow-visible">
+        <div className="h-full w-full relative text-slate-800 dark:text-slate-200 overflow-hidden">
             {!isWorkMode && <SleepScreen onWake={() => setIsWorkMode(true)} />}
             
             <ConfirmationModal
@@ -1681,7 +1676,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                 <p>Are you sure you want to restart the system?</p>
             </ConfirmationModal>
 
-            <div ref={boundsRef} className="h-full w-full relative z-10" onClick={() => setActiveIconId(null)} onMouseDown={(e) => { if (e.target === e.currentTarget) handleNavigate(''); }}>
+            <div ref={boundsRef} className="h-full w-full relative z-10 overflow-hidden" onClick={() => setActiveIconId(null)} onMouseDown={(e) => { if (e.target === e.currentTarget) handleNavigate(''); }}>
                 {isPending && isPendingBannerVisible && (
                     <div className={`absolute top-4 left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-full max-w-lg z-[1000] bg-amber-100 dark:bg-amber-900/50 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 text-sm font-semibold p-3 rounded-lg shadow-lg flex items-center gap-3 transition-all duration-300 ease-in-out ${isBannerClosing ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
                         <ClockIcon className="w-5 h-5 flex-shrink-0" />
@@ -1741,7 +1736,8 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                     if (app.id === 'kali') props = { ...props };
                     if (app.id === 'consistency') props = { ...props };
 
-                    const childrenWithProps = React.cloneElement(baseComponent, props);
+                    // @ts-expect-error Types for different apps are complex, we safely inject refreshKey here
+                    const childrenWithProps = React.cloneElement(baseComponent as any, { ...props, key: `${win.id}-${win.refreshKey}`, refreshKey: win.refreshKey });
                     
                     return (
                         <Window

@@ -160,7 +160,7 @@ const DesktopIcon: React.FC<DesktopIconProps> = ({ app, onOpen, x, y, onPosition
       }}
     >
       <div className={`flex items-center justify-center drop-shadow-lg ${currentSizeClasses.iconContainer}`}>
-        {React.cloneElement(app.icon, { className: `text-white ${currentSizeClasses.icon}` })}
+        {React.cloneElement(app.icon as React.ReactElement<any>, { className: `text-white ${currentSizeClasses.icon}` })}
       </div>
       <span
         className={`text-xs font-medium mt-1 text-center break-words leading-tight px-1 
