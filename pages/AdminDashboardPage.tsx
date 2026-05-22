@@ -1147,7 +1147,15 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
             setActivityLog(logs);
         };
         fetchLog();
-    }, []);
+
+        let interval: any = null;
+        if (view === 'live') {
+            interval = setInterval(fetchLog, 5000);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [view, refreshKey]);
     
     const writeupAccessRequests = useMemo(() => allUsers.filter(u => u.has_requested_writeup_access), [allUsers]);
     const requestsCount = writeupAccessRequests.length;

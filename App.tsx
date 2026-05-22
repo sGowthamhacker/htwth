@@ -1854,24 +1854,28 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
           // Strip comments and liked_by so they are not overwritten when saving a post edit
           const { comments, liked_by, ...updateData } = postData;
           result = await updatePost(postData.id, updateData);
+          logActivity(`edited post: "${postData.title || ''}"`, type);
       } else {
           // Let database defaults handle likes and comments for fresh posts
           const { comments, liked_by, ...insertData } = postData;
           result = await addPost(insertData);
+          logActivity(`created a ${type}: "${postData.title || ''}"`);
       }
 
       // Refresh posts to ensure state is in sync with database
       await refreshPosts();
       
       return result;
-  }, [refreshPosts]);
+  }, [refreshPosts, logActivity]);
 
   const handleDeletePost = useCallback(async (postId: string, type: 'writeup' | 'blog') => { 
+      const targetPost = (type === 'writeup' ? writeups : blogPosts).find(p => p.id === postId);
       await deletePost(postId); 
+      logActivity(`deleted a ${type}`, targetPost?.title || 'Unknown Title');
       
       // Refresh posts to ensure state is in sync with database
       await refreshPosts();
-  }, [refreshPosts]);
+  }, [refreshPosts, writeups, blogPosts, logActivity]);
   
   // OPTIMISTIC UPDATE
   const handleLikePost = useCallback(async (post: Post, liker: User) => { 
@@ -1885,18 +1889,22 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
       await likePost(post.id, post, liker.id); 
       
       if (!isLiked) {
+          logActivity(`liked the ${post.type}`, `"${post.title}"`);
           createPostNotification(post, liker, 'like_post', `${liker.name} liked your ${post.type}.`);
+      } else {
+          logActivity(`unliked the ${post.type}`, `"${post.title}"`);
       }
-  }, [createPostNotification]);
+  }, [createPostNotification, logActivity]);
   
   const handleAddCommentToPost = useCallback(async (post: Post, commentText: string) => {
       const newComment = { id: crypto.randomUUID(), author: appUser!, text: commentText, created_at: new Date().toISOString() };
       const updated = await addCommentToPost(post.id, post, newComment);
       if (updated) {
+          logActivity(`commented on ${post.type}`, `"${post.title}"`);
           await refreshPosts();
           createPostNotification(post, appUser!, 'comment_post', `${appUser!.name} commented on your ${post.type}.`);
       }
-  }, [appUser, refreshPosts, createPostNotification]);
+  }, [appUser, refreshPosts, createPostNotification, logActivity]);
   
   const handleDeleteCommentFromPost = useCallback(async (post: Post, commentId: string) => { 
        // Implementation requires backend support for specific comment deletion, 
@@ -1904,10 +1912,11 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
        const updatedComments = post.comments.filter(c => c.id !== commentId);
        const updatedPost = await updatePost(post.id, { comments: updatedComments });
        if (updatedPost) {
+           logActivity(`deleted a comment on ${post.type}`, `"${post.title}"`);
            await refreshPosts();
            addNotification({ title: 'Deleted', message: 'Comment deleted.', type: 'success' });
        }
-  }, [refreshPosts, addNotification]);
+  }, [refreshPosts, addNotification, logActivity]);
 
   const backgroundStyle: React.CSSProperties = {
     backgroundImage: (authPage || showLanding || is404 || isInitialAuthLoading || isDbLoading || isAuthLoading || !appUser) ? 'none' : `url(${selectedBackground})`,
