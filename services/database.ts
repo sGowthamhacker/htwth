@@ -73,6 +73,16 @@ export const getInitError = () => initError;
 
 // --- Mock Data Initialization ---
 
+interface DBListeners {
+    activityLog: ((log: ActivityLog) => void)[];
+    users: ((user: User) => void)[];
+}
+
+const dbListeners: DBListeners = {
+    activityLog: [],
+    users: []
+};
+
 let inMemoryUsers = JSON.parse(JSON.stringify(MOCK_USERS));
 let inMemoryWriteups = JSON.parse(JSON.stringify(MOCK_POSTS));
 let inMemoryBlogs = JSON.parse(JSON.stringify(MOCK_BLOG_POSTS));
@@ -245,8 +255,8 @@ export const getAllUsers = async (): Promise<User[]> => {
     return safeDbQuery(async () => { const { data, error } = await supabase!.from('users').select(USER_COLUMNS); if (error) throw error; return { data: (data || []).map(sanitizeUser), error: null }; }, inMemoryUsers, "getAllUsers");
 };
 export const getUserByFirebaseUid = async (firebaseUid: string): Promise<User | null> => { const fallback = inMemoryUsers.find(u => u.id === firebaseUid || (u as any).firebase_uid === firebaseUid) || null; return safeDbQuery(async () => { const { data, error } = await supabase!.from('users').select(USER_COLUMNS).eq('firebase_uid', firebaseUid).single(); if (error && error.code === 'PGRST116') return { data: null, error: null }; return { data: data ? sanitizeUser(data) : null, error }; }, fallback, "getUserByFirebaseUid"); };
-export const addUser = async (user: User): Promise<User | null> => { const backup_codes = Array.from({ length: 3 }, () => generateAlphanumericCode(6)); const userWith2FA = { ...user, is_2fa_enabled: false, backup_codes }; const newUserWithId = { ...userWith2FA, id: user.id || crypto.randomUUID() }; if (!inMemoryUsers.find(u => u.email === user.email)) { inMemoryUsers.push(newUserWithId); } return safeDbQuery(async () => { const { id: firebase_uid, ...rest } = userWith2FA; const dbUserData = { ...rest, firebase_uid }; const { data, error } = await supabase!.from('users').insert([dbUserData]).select(USER_COLUMNS).single(); if (error) throw error; return { data: sanitizeUser(data), error: null }; }, newUserWithId, "addUser"); };
-export const updateUser = async (email: string, updates: Partial<User>): Promise<User | null> => { const userIndex = inMemoryUsers.findIndex(u => u.email === email); if (userIndex > -1) { inMemoryUsers[userIndex] = { ...inMemoryUsers[userIndex], ...updates }; } const fallback = userIndex > -1 ? inMemoryUsers[userIndex] : null; return safeDbQuery(async () => { const { data, error } = await supabase!.from('users').update(updates).eq('email', email).select(USER_COLUMNS).single(); if (error) throw error; return { data: sanitizeUser(data), error: null }; }, fallback, "updateUser"); };
+export const addUser = async (user: User): Promise<User | null> => { const backup_codes = Array.from({ length: 3 }, () => generateAlphanumericCode(6)); const userWith2FA = { ...user, is_2fa_enabled: false, backup_codes }; const newUserWithId = { ...userWith2FA, id: user.id || crypto.randomUUID() }; if (!inMemoryUsers.find(u => u.email === user.email)) { inMemoryUsers.push(newUserWithId); } dbListeners.users.forEach(l => { try { l(newUserWithId); } catch (e) { console.error(e); } }); return safeDbQuery(async () => { const { id: firebase_uid, ...rest } = userWith2FA; const dbUserData = { ...rest, firebase_uid }; const { data, error } = await supabase!.from('users').insert([dbUserData]).select(USER_COLUMNS).single(); if (error) throw error; const addedUser = sanitizeUser(data); dbListeners.users.forEach(l => { try { l(addedUser); } catch(e) {} }); return { data: addedUser, error: null }; }, newUserWithId, "addUser"); };
+export const updateUser = async (email: string, updates: Partial<User>): Promise<User | null> => { const userIndex = inMemoryUsers.findIndex(u => u.email === email); if (userIndex > -1) { inMemoryUsers[userIndex] = { ...inMemoryUsers[userIndex], ...updates }; } const fallback = userIndex > -1 ? inMemoryUsers[userIndex] : null; if (fallback) { dbListeners.users.forEach(l => { try { l(fallback); } catch(e) {} }); } return safeDbQuery(async () => { const { data, error } = await supabase!.from('users').update(updates).eq('email', email).select(USER_COLUMNS).single(); if (error) throw error; const updatedUser = sanitizeUser(data); dbListeners.users.forEach(l => { try { l(updatedUser); } catch(e) {} }); return { data: updatedUser, error: null }; }, fallback, "updateUser"); };
 export const deleteUser = async (userId: string): Promise<boolean> => { const userIndex = inMemoryUsers.findIndex(u => u.id === userId); if (userIndex > -1) { inMemoryUsers.splice(userIndex, 1); } return safeDbQuery(async () => { await supabase!.from('posts').delete().eq('author_id', userId); await supabase!.from('chat_messages').delete().eq('author_id', userId); await supabase!.from('activity_log').delete().eq('user_id', userId); await supabase!.from('notifications').delete().eq('user_id', userId); const res = await supabase!.from('users').delete().eq('id', userId); return { data: true, error: res.error }; }, true, "deleteUser"); };
 
 // --- Work Profile Functions ---
@@ -486,7 +496,7 @@ export const likePost = async (postId: string, post: Post, userId: string): Prom
 
 // --- Activity Log ---
 export const getActivityLog = async (limit: number = 50): Promise<ActivityLog[]> => { const fallback = [...inMemoryActivityLog].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, limit); return safeDbQuery(async () => { const { data: logs, error } = await supabase!.from('activity_log').select(ACTIVITY_LOG_COLUMNS).order('timestamp', { ascending: false }).limit(limit); if (error) return { data: null, error }; const userIds = [...new Set(logs.map((l: any) => l.user_id).filter(Boolean))]; const { data: usersData } = await supabase!.from('users').select(USER_COLUMNS).in('id', userIds); const usersMap = new Map((usersData || []).map((u: any) => [u.id, sanitizeUser(u)])); const enrichedLogs = logs.map((log: any) => ({ ...log, user: usersMap.get(log.user_id) || { name: 'Unknown User', avatar: '', email: 'unknown' } })); return { data: enrichedLogs, error: null }; }, fallback, "getActivityLog"); };
-export const addActivityLog = async (userId: string, action: string, target?: string): Promise<ActivityLog | null> => { const fallbackLog: ActivityLog = { id: Math.random(), user: inMemoryUsers.find(u => u.id === userId)!, action, target, timestamp: new Date().toISOString() }; inMemoryActivityLog.push(fallbackLog); return safeDbQuery(async () => { const { data, error } = await supabase!.from('activity_log').insert([{ user_id: userId, action, target }]).select(ACTIVITY_LOG_COLUMNS).single(); if (error) throw error; let user = inMemoryUsers.find(u => u.id === userId); if (!user) { const { data: userData } = await supabase!.from('users').select(USER_COLUMNS).eq('id', userId).single(); if (userData) { user = sanitizeUser(userData); } else { user = { id: userId, name: 'Unknown', avatar: '', email: '', role: 'user' } as any; } } return { data: { ...data, user: sanitizeUser(user) }, error: null }; }, fallbackLog, "addActivityLog"); };
+export const addActivityLog = async (userId: string, action: string, target?: string): Promise<ActivityLog | null> => { const foundUser = inMemoryUsers.find((u: any) => u.id === userId || u.firebase_uid === userId); const fallbackLog: ActivityLog = { id: Math.random(), user: foundUser || { name: 'Unknown User', avatar: '', email: 'unknown', role: 'user' } as any, action, target, timestamp: new Date().toISOString() }; inMemoryActivityLog.push(fallbackLog); dbListeners.activityLog.forEach(l => { try { l(fallbackLog); } catch(e) {} }); return safeDbQuery(async () => { const { data, error } = await supabase!.from('activity_log').insert([{ user_id: userId, action, target }]).select(ACTIVITY_LOG_COLUMNS).single(); if (error) throw error; let user = inMemoryUsers.find((u: any) => u.id === userId); if (!user) { const { data: userData } = await supabase!.from('users').select(USER_COLUMNS).eq('id', userId).single(); if (userData) { user = sanitizeUser(userData); } else { user = { id: userId, name: 'Unknown', avatar: '', email: '', role: 'user' } as any; } } const enriched = { ...data, user: sanitizeUser(user) }; dbListeners.activityLog.forEach(l => { try { l(enriched); } catch(e) {} }); return { data: enriched, error: null }; }, fallbackLog, "addActivityLog"); };
 export const deleteActivityLog = async (logId: number): Promise<boolean> => { inMemoryActivityLog = inMemoryActivityLog.filter(l => l.id !== logId); return safeDbQuery(async () => { const res = await supabase!.from('activity_log').delete().eq('id', logId); return { data: true, error: res.error }; }, true, "deleteActivityLog"); };
 export const clearActivityLog = async (): Promise<boolean> => { inMemoryActivityLog = []; return safeDbQuery(async () => { const res = await supabase!.from('activity_log').delete().neq('id', -1); return { data: true, error: res.error }; }, true, "clearActivityLog"); };
 
@@ -581,28 +591,35 @@ export const subscribeToGlobalSettings = (onUpdate: (settings: GlobalSettings) =
 };
 
 export const subscribeToActivityLog = (onNewLog: (log: ActivityLog) => void) => {
-    if (!supabase || hasFallenBackToMock) return () => {};
+    dbListeners.activityLog.push(onNewLog);
 
-    const channel = supabase
-        .channel('activity_log_changes')
-        .on(
-            'postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'activity_log' },
-            async (payload) => {
-                const newLog = payload.new as any;
-                // Fetch user data to enrich the log
-                const { data: userData } = await supabase!.from('users').select(USER_COLUMNS).eq('id', newLog.user_id).single();
-                const logWithUser: ActivityLog = {
-                    ...newLog,
-                    user: userData ? sanitizeUser(userData) : { name: 'Unknown', avatar: '', email: '' }
-                };
-                onNewLog(logWithUser);
-            }
-        )
-        .subscribe();
+    let supabaseUnsubscribe = () => {};
+    if (supabase && !hasFallenBackToMock) {
+        const channel = supabase
+            .channel('activity_log_changes')
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'activity_log' },
+                async (payload) => {
+                    const newLog = payload.new as any;
+                    // Fetch user data to enrich the log
+                    const { data: userData } = await supabase!.from('users').select(USER_COLUMNS).eq('id', newLog.user_id).single();
+                    const logWithUser: ActivityLog = {
+                        ...newLog,
+                        user: userData ? sanitizeUser(userData) : { name: 'Unknown', avatar: '', email: '' }
+                    };
+                    onNewLog(logWithUser);
+                }
+            )
+            .subscribe();
+        supabaseUnsubscribe = () => {
+            supabase!.removeChannel(channel);
+        };
+    }
 
     return () => {
-        supabase!.removeChannel(channel);
+        dbListeners.activityLog = dbListeners.activityLog.filter(l => l !== onNewLog);
+        supabaseUnsubscribe();
     };
 };
 
@@ -632,24 +649,108 @@ export const subscribeToChatMessages = (onNewMessage: (msg: ChatMessage) => void
 };
 
 export const subscribeToUsers = (onUpdate: (user: User) => void) => {
-    if (!supabase || hasFallenBackToMock) return () => {};
+    dbListeners.users.push(onUpdate);
 
-    const channel = supabase
-        .channel('users_changes')
-        .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'users' },
-            (payload) => {
-                const data = payload.new as any;
-                if (data) {
-                    onUpdate(sanitizeUser(data));
+    let supabaseUnsubscribe = () => {};
+    if (supabase && !hasFallenBackToMock) {
+        const channel = supabase
+            .channel('users_changes')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'users' },
+                (payload) => {
+                    const data = payload.new as any;
+                    if (data) {
+                        onUpdate(sanitizeUser(data));
+                    }
                 }
-            }
-        )
-        .subscribe();
+            )
+            .subscribe();
+        supabaseUnsubscribe = () => {
+            supabase!.removeChannel(channel);
+        };
+    }
 
     return () => {
-        supabase!.removeChannel(channel);
+        dbListeners.users = dbListeners.users.filter(l => l !== onUpdate);
+        supabaseUnsubscribe();
+    };
+};
+
+export const subscribeToPresence = (
+    currentUser: User, 
+    activeApp: string, 
+    onPresenceSync: (users: any[]) => void
+) => {
+    const s = getSupabase();
+    if (!s || hasFallenBackToMock) {
+        onPresenceSync([{
+            ...currentUser,
+            activeApp,
+            lastActive: new Date().toISOString()
+        }]);
+        return () => {};
+    }
+
+    const channel = s.channel('presence-online-users', {
+        config: {
+            presence: {
+                key: currentUser.id,
+            },
+        },
+    });
+
+    const updatePresenceLocal = () => {
+        const state = channel.presenceState();
+        const onlineUsers: any[] = [];
+        
+        Object.keys(state).forEach((key) => {
+            const presences = state[key] as any[];
+            presences.forEach((p) => {
+                if (p.user) {
+                    onlineUsers.push({
+                        ...p.user,
+                        activeApp: p.activeApp || 'Desktop',
+                        lastActive: p.lastActive || new Date().toISOString()
+                    });
+                }
+            });
+        });
+
+        const unique = new Map();
+        onlineUsers.forEach(u => unique.set(u.email, u));
+        
+        if (!unique.has(currentUser.email)) {
+            unique.set(currentUser.email, {
+                ...currentUser,
+                activeApp,
+                lastActive: new Date().toISOString()
+            });
+        }
+
+        onPresenceSync(Array.from(unique.values()));
+    };
+
+    channel
+        .on('presence', { event: 'sync' }, updatePresenceLocal)
+        .subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+                await channel.track({
+                    user: {
+                        id: currentUser.id,
+                        name: currentUser.name,
+                        email: currentUser.email,
+                        avatar: currentUser.avatar,
+                        role: currentUser.role
+                    },
+                    activeApp,
+                    lastActive: new Date().toISOString()
+                });
+            }
+        });
+
+    return () => {
+        s.removeChannel(channel);
     };
 };
 

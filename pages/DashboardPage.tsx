@@ -34,7 +34,7 @@ import NotificationCenterPage from './NotificationCenterPage';
 import NotificationBellIcon from '../components/icons/NotificationBellIcon';
 import { useTheme } from '../contexts/ThemeContext';
 import { getCloudinaryUrl } from '../utils/imageService';
-import { getChatMessages, addChatMessage, updateChatMessage, deleteChatMessage, clearChatMessages, isUsingMockData, subscribeToChatMessages } from '../services/database';
+import { getChatMessages, addChatMessage, updateChatMessage, deleteChatMessage, clearChatMessages, isUsingMockData, subscribeToChatMessages, subscribeToPresence } from '../services/database';
 import ClockIcon from '../components/icons/ClockIcon';
 import ConfirmationModal from '../components/ConfirmationModal';
 import PlusIcon from '../components/icons/PlusIcon';
@@ -375,6 +375,7 @@ interface DashboardPageProps {
 const baseApps: AppDefinition[] = [
   { id: 'home', name: 'Home', icon: <HomeIcon />, component: HomePage, bgColorClass: 'bg-sky-500', accentColor: '#0ea5e9' },
   { id: 'mywork', name: 'My Work', icon: <BriefcaseIcon />, component: MyWorkPage, bgColorClass: 'bg-pink-500', accentColor: '#ec4899' },
+  { id: 'gowthamprofile', name: 'Gowtham Profile', icon: <UserCircleIcon />, component: MyWorkPage, bgColorClass: 'bg-indigo-600', accentColor: '#4f46e5' },
   { id: 'writeup', name: 'Writeups', icon: <WriteupIcon />, component: WriteupPage, bgColorClass: 'bg-indigo-500', accentColor: '#6366f1' },
   { id: 'blog', name: 'Blog', icon: <BlogIcon />, component: BlogPage, bgColorClass: 'bg-cyan-500', accentColor: '#06b6d4' },
   { id: 'consistency', name: 'Consistency', icon: <HabitTrackerIcon />, component: HabitTrackerPage, bgColorClass: 'bg-emerald-500', accentColor: '#10b981' },
@@ -398,7 +399,7 @@ const internalApps: AppDefinition[] = [
     { id: 'about', name: 'Profile', icon: <UserCircleIcon />, component: MyWorkPage, bgColorClass: 'bg-indigo-500', accentColor: '#6366f1' },
 ];
 
-const defaultPinnedApps = ['home', 'mywork', 'consistency', 'resumeai', 'writeup', 'blog', 'resources', 'kali', 'chat', 'notes', 'todolist', 'docs', 'browser'];
+const defaultPinnedApps = ['home', 'mywork', 'gowthamprofile', 'consistency', 'resumeai', 'writeup', 'blog', 'resources', 'kali', 'chat', 'notes', 'todolist', 'docs', 'browser'];
 
 const parseHash = (hash: string): { appId: string | null; deepLinkInfo: string | null } => {
     // Remove # and optional leading /
@@ -533,6 +534,8 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
 
         if (currentUser.role !== 'admin') {
             allAvailableApps = allAvailableApps.filter(app => app.id !== 'admin');
+        } else {
+            allAvailableApps = allAvailableApps.filter(app => app.id !== 'gowthamprofile');
         }
 
         if (isPending) {
@@ -725,9 +728,24 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
     // --------------------------------------------------------------------------------
 
     useEffect(() => {
-        // Mock live users
-        setLiveUsers([]);
-    }, [currentUser]);
+        if (!currentUser) return;
+
+        const getActiveAppTitle = () => {
+            const activeWindow = [...windows]
+                .filter(w => !w.isMinimized)
+                .sort((a, b) => b.zIndex - a.zIndex)[0];
+            return activeWindow ? activeWindow.title : 'Desktop';
+        };
+
+        const activeApp = getActiveAppTitle();
+        const unsubscribe = subscribeToPresence(currentUser, activeApp, (online) => {
+            setLiveUsers(online);
+        });
+
+        return () => {
+            unsubscribe();
+        };
+    }, [currentUser, windows, allUsers]);
 
     useEffect(() => {
         const handleLocationChange = () => {
@@ -1200,26 +1218,67 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
 
         targetSetter(currentPositions => {
             const desktopAppIds = new Set(desktopAppDefinitions.map(app => app.id));
-    
-            const defaultPositions: Record<string, { x: number; y: number }> = {};
             const iconSize = getIconSizePixels(desktopIconSize);
             const yGap = 8;
             const padding = 16;
-            const containerHeight = boundsRef.current!.offsetHeight;
+            const containerHeight = boundsRef.current!.offsetHeight || 500;
+            
+            // Map x, y center close to the closest column and row slot to detect collisions
+            const getSlot = (x: number, y: number) => {
+                const col = Math.max(0, Math.round((x - padding) / (iconSize + padding)));
+                const row = Math.max(0, Math.round((y - padding) / (iconSize + yGap)));
+                return `${col},${row}`;
+            };
+
+            // Pre-generate a list of standard grid points in column-major order style
+            const gridSequence: { x: number; y: number }[] = [];
             let xPos = padding;
             let yPos = padding;
-    
-            desktopAppDefinitions.forEach(app => {
+            const maxSpots = Math.max(desktopAppDefinitions.length * 3, 60);
+
+            for (let i = 0; i < maxSpots; i++) {
+                gridSequence.push({ x: xPos, y: yPos });
+                yPos += iconSize + yGap;
                 if (yPos + iconSize + yGap > containerHeight) {
                     yPos = padding;
                     xPos += iconSize + padding;
                 }
-                defaultPositions[app.id] = { x: xPos, y: yPos };
-                yPos += iconSize + yGap;
+            }
+
+            const finalPositions: Record<string, { x: number; y: number }> = {};
+            const occupiedSlots = new Set<string>();
+
+            // First pass: maintain existing custom placements that are already occupied
+            desktopAppDefinitions.forEach(app => {
+                const existing = currentPositions[app.id];
+                if (existing && typeof existing.x === 'number' && typeof existing.y === 'number') {
+                    const slot = getSlot(existing.x, existing.y);
+                    if (!occupiedSlots.has(slot)) {
+                        finalPositions[app.id] = existing;
+                        occupiedSlots.add(slot);
+                    }
+                }
             });
-    
-            const finalPositions = { ...defaultPositions, ...currentPositions };
-            
+
+            // Second pass: dynamically allocate unoccupied standard grid coordinates for new icons or resolved collisions
+            desktopAppDefinitions.forEach(app => {
+                if (!finalPositions[app.id]) {
+                    const freeSpot = gridSequence.find(spot => {
+                        const slot = getSlot(spot.x, spot.y);
+                        return !occupiedSlots.has(slot);
+                    });
+                    if (freeSpot) {
+                        finalPositions[app.id] = freeSpot;
+                        occupiedSlots.add(getSlot(freeSpot.x, freeSpot.y));
+                    } else {
+                        // Safe fallback bounding coordinates
+                        const fallbackX = padding + Math.floor(Math.random() * 4) * (iconSize + padding);
+                        const fallbackY = padding + Math.floor(Math.random() * 4) * (iconSize + yGap);
+                        finalPositions[app.id] = { x: fallbackX, y: fallbackY };
+                    }
+                }
+            });
+
             const finalFiltered: Record<string, { x: number; y: number }> = {};
             desktopAppIds.forEach(appId => {
                 if (finalPositions[appId]) {
@@ -1742,6 +1801,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                     if (app.id === 'docs') props = { ...props };
                     if (app.id === 'copyright') props = { ...props }; // Add Copyright props
                     if (app.id === 'mywork') props = { ...props, writeups, blogPosts, allUsers };
+                    if (app.id === 'gowthamprofile') props = { ...props, writeups, blogPosts, allUsers, profileUserEmail: 'ragow49@gmail.com' };
                     if (app.id === 'about') props = { ...props, writeups, blogPosts, allUsers, profileUserEmail: (win.props as any)?.deepLinkInfo };
                     if (app.id === 'kali') props = { ...props };
                     if (app.id === 'consistency') props = { ...props };

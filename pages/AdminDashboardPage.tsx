@@ -971,6 +971,45 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
     const [maintenanceStartTime, setMaintenanceStartTime] = useState('');
     const [maintenanceEndTime, setMaintenanceEndTime] = useState('');
 
+    // Compute user performance score and ranking dynamically
+    const userPerformanceData = useMemo(() => {
+        const activityCounts: Record<string, number> = {};
+        activityLog.forEach(log => {
+            if (log.user?.id) {
+                activityCounts[log.user.id] = (activityCounts[log.user.id] || 0) + 1;
+            } else if (log.user?.email) {
+                activityCounts[log.user.email] = (activityCounts[log.user.email] || 0) + 1;
+            }
+        });
+
+        return allUsers.map(u => {
+            const count = activityCounts[u.id] || activityCounts[u.email] || 0;
+            let baseScore = 15;
+            if (u.status === 'verified') baseScore += 25;
+            if (u.role === 'admin') baseScore += 20;
+            const computedRaw = baseScore + (count * 15);
+            const performanceScore = Math.min(100, Math.max(15, computedRaw));
+
+            let intensity = 'Idle';
+            let color = 'text-slate-500 bg-slate-100 dark:bg-slate-800 dark:text-slate-400';
+            if (performanceScore >= 70) {
+                intensity = 'High Activity';
+                color = 'text-emerald-700 bg-emerald-50 dark:bg-emerald-950/20 dark:text-emerald-400';
+            } else if (performanceScore >= 40) {
+                intensity = 'Moderate';
+                color = 'text-indigo-700 bg-indigo-50 dark:bg-indigo-950/20 dark:text-indigo-400';
+            }
+
+            return {
+                ...u,
+                activityCount: count,
+                performanceScore,
+                intensity,
+                intensityColor: color
+            };
+        }).sort((a, b) => b.performanceScore - a.performanceScore);
+    }, [allUsers, activityLog]);
+
     const [incidents, setIncidents] = useState<SystemIncident[]>([]);
     
     useEffect(() => {
@@ -1876,14 +1915,17 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
                                         {liveUsers.length > 0 ? (
                                              <div className="space-y-3">
                                                 {liveUsers.map(liveUser => (
-                                                    <div key={liveUser.email} className="flex items-center gap-3">
+                                                    <div key={liveUser.email || liveUser.id} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-700/30 rounded-lg transition-colors">
                                                         <div className="relative">
-                                                            <img src={getCloudinaryUrl(liveUser.avatar, { width: 36, height: 36, radius: 'max' })} alt={liveUser.name} className="w-9 h-9 rounded-full" />
-                                                            <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-400 ring-2 ring-white dark:ring-slate-800" />
+                                                            <img src={getCloudinaryUrl(liveUser.avatar, { width: 36, height: 36, radius: 'max' })} alt={liveUser.name} className="w-9 h-9 rounded-full object-cover border border-slate-250 dark:border-slate-700" />
+                                                            <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-white dark:ring-slate-800 animate-pulse" />
                                                         </div>
-                                                        <div>
-                                                           <p className="font-semibold text-sm">{liveUser.name}</p>
-                                                           <p className="text-xs text-slate-400">Active now</p>
+                                                        <div className="min-w-0 flex-1">
+                                                           <p className="font-semibold text-sm truncate text-slate-800 dark:text-slate-100">{liveUser.name}</p>
+                                                           <p className="text-xs text-indigo-500 dark:text-indigo-400 font-medium truncate flex items-center gap-1">
+                                                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-ping" />
+                                                                {liveUser.activeApp || 'Active Now'}
+                                                           </p>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -1927,6 +1969,140 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
                                             </li>
                                         ))}
                                     </ul>
+                                </div>
+                            </div>
+                         </div>
+
+                         {/* User Performance & Engagement Metrics */}
+                         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden mt-6">
+                            <header className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/10 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                    </svg>
+                                    <h3 className="text-lg font-bold text-slate-800 dark:text-white">User Performance & Engagement Metrics</h3>
+                                </div>
+                                <span className="text-xs text-slate-500 font-medium hidden sm:inline">Real-time engagement telemetry based on actions</span>
+                            </header>
+                            
+                            <div className="p-6 space-y-6">
+                                {/* Stats Summary Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-700/50">
+                                        <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Overall Engagement Index</div>
+                                        <div className="mt-1 flex items-baseline gap-2">
+                                            <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
+                                                {Math.round(userPerformanceData.reduce((acc, curr) => acc + curr.performanceScore, 0) / (userPerformanceData.length || 1))}%
+                                            </span>
+                                            <span className="text-xs text-emerald-500 font-bold">▲ Active</span>
+                                        </div>
+                                        <div className="mt-2 text-xs text-slate-400 dark:text-slate-500">Average performance rating across all user accounts</div>
+                                        <div className="mt-2 w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                            <div 
+                                                className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500 transition-all duration-500"
+                                                style={{ width: `${Math.round(userPerformanceData.reduce((acc, curr) => acc + curr.performanceScore, 0) / (userPerformanceData.length || 1))}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-700/50">
+                                        <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Active Operations Logged</div>
+                                        <div className="mt-1 flex items-baseline gap-2">
+                                            <span className="text-3xl font-extrabold text-slate-900 dark:text-white">{activityLog.length}</span>
+                                            <span className="text-xs text-indigo-500 font-bold">● System logs</span>
+                                        </div>
+                                        <div className="mt-2 text-xs text-slate-400 dark:text-slate-500">Total verified events tracked in current session</div>
+                                        <div className="mt-2 grid grid-cols-10 gap-0.5 h-1.5">
+                                            {Array.from({ length: 15 }).map((_, idx) => (
+                                                <div 
+                                                    key={idx} 
+                                                    className={`h-full rounded-sm ${idx < Math.min(15, Math.ceil(activityLog.length / 3)) ? 'bg-indigo-500 animate-pulse' : 'bg-slate-200 dark:bg-slate-700'}`} 
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-700/50">
+                                        <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Live User Ratio</div>
+                                        <div className="mt-1 flex items-baseline gap-2">
+                                            <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
+                                                {liveUsers.length} / {allUsers.length}
+                                            </span>
+                                            <span className="text-xs text-green-500 font-bold animate-pulse">● Live</span>
+                                        </div>
+                                        <div className="mt-2 text-xs text-slate-400 dark:text-slate-500">Percentage of concurrent online members right now</div>
+                                        <div className="mt-2 w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                            <div 
+                                                className="h-full bg-gradient-to-r from-green-500 to-emerald-400 transition-all duration-500"
+                                                style={{ width: `${Math.round((liveUsers.length / (allUsers.length || 1)) * 100)}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Performance Analytics Table */}
+                                <div className="border border-slate-150 dark:border-slate-700 rounded-xl overflow-hidden">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead className="bg-slate-50 dark:bg-slate-900/50 text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-700">
+                                                <tr>
+                                                    <th className="px-6 py-4">User Identity</th>
+                                                    <th className="px-6 py-4 text-center">Activities Count</th>
+                                                    <th className="px-6 py-4 text-center">Engagement Intensity</th>
+                                                    <th className="px-6 py-4">Performance Score Index</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                                {userPerformanceData.map((perfUser) => (
+                                                    <tr key={perfUser.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/10 transition-colors">
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <img 
+                                                                    src={getCloudinaryUrl(perfUser.avatar, { width: 32, height: 32, radius: 'max' })} 
+                                                                    alt={perfUser.name} 
+                                                                    className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 object-cover" 
+                                                                />
+                                                                <div>
+                                                                    <div className="font-semibold text-sm text-slate-800 dark:text-white flex items-center gap-1.5">
+                                                                        {perfUser.name}
+                                                                        {perfUser.role === 'admin' && (
+                                                                            <span className="px-1.5 py-0.2 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 text-[9px] font-bold uppercase rounded">Admin</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="text-xs text-slate-400 truncate max-w-xs">{perfUser.email}</div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-center">
+                                                            <span className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold font-mono rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                                                {perfUser.activityCount} actions
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-center">
+                                                            <span className={`inline-flex px-2.5 py-1 text-xs font-semibold rounded-full items-center gap-1 ${perfUser.intensityColor}`}>
+                                                                <span className={`w-1.5 h-1.5 rounded-full ${perfUser.performanceScore >= 70 ? 'bg-emerald-500' : perfUser.performanceScore >= 40 ? 'bg-indigo-500' : 'bg-slate-400'}`} />
+                                                                {perfUser.intensity}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="space-y-1.5">
+                                                                <div className="flex items-center justify-between text-xs">
+                                                                    <span className="font-bold text-slate-700 dark:text-slate-300">{perfUser.performanceScore}%</span>
+                                                                    <span className="text-[10px] text-slate-400">Score Rating</span>
+                                                                </div>
+                                                                <div className="w-full h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                                    <div 
+                                                                        className={`h-full rounded-full transition-all duration-500 bg-gradient-to-r ${perfUser.performanceScore >= 70 ? 'from-emerald-500 to-green-400' : perfUser.performanceScore >= 40 ? 'from-indigo-500 to-purple-400' : 'from-slate-400 to-gray-300'}`}
+                                                                        style={{ width: `${perfUser.performanceScore}%` }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                          </div>
