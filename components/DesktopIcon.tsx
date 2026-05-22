@@ -160,7 +160,13 @@ const DesktopIcon: React.FC<DesktopIconProps> = ({ app, onOpen, x, y, onPosition
       }}
     >
       <div className={`flex items-center justify-center drop-shadow-lg ${currentSizeClasses.iconContainer}`}>
-        {React.cloneElement(app.icon as React.ReactElement<any>, { className: `text-white ${currentSizeClasses.icon}` })}
+        {themeStyle === 'mac' ? (
+            <div className={`flex items-center justify-center rounded-[22%] w-full h-full shadow-inner border border-white/20 ${app.bgColorClass || 'bg-slate-800'}`}>
+                {React.cloneElement(app.icon as React.ReactElement<any>, { className: `text-white w-3/5 h-3/5 drop-shadow-md` })}
+            </div>
+        ) : (
+            React.cloneElement(app.icon as React.ReactElement<any>, { className: `text-white ${currentSizeClasses.icon} drop-shadow-md` })
+        )}
       </div>
       <span
         className={`text-xs font-medium mt-1 text-center break-words leading-tight px-1 

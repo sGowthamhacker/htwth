@@ -7,7 +7,7 @@ import CheckCircleIcon from '../components/icons/CheckCircleIcon';
 import XCircleIcon from '../components/icons/XCircleIcon';
 import ActivityLogIcon from '../components/icons/ActivityLogIcon';
 import { getCloudinaryUrl } from '../utils/imageService';
-import { updateUser, getActivityLog, addActivityLog, deleteActivityLog, clearActivityLog, sendGlobalNotifications, getGlobalSettings, updateGlobalSettings, subscribeToGlobalSettings, subscribeToActivityLog, subscribeToUsers, getPosts, getContactRequests, updateContactRequestStatus } from '../services/database';
+import { updateUser, getActivityLog, addActivityLog, deleteActivityLog, clearActivityLog, sendGlobalNotifications, getGlobalSettings, updateGlobalSettings, subscribeToGlobalSettings, subscribeToActivityLog, subscribeToUsers, getPosts, getContactRequests, updateContactRequestStatus, deleteUser } from '../services/database';
 import { getIncidents, addIncident, updateIncident, deleteIncident, type SystemIncident } from '../services/incidents';
 import MailIcon from '../components/icons/MailIcon';
 import UsersIcon from '../components/icons/UsersIcon';
@@ -230,8 +230,8 @@ const BroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({ adm
             const filteredUsers = allUsers.filter(user =>
                 user.role !== 'admin' &&
                 !selectedUsers.some(selected => selected.id === user.id) &&
-                (user.name.toLowerCase().includes(value.toLowerCase()) ||
-                 user.email.toLowerCase().includes(value.toLowerCase()))
+                ((user.name && user.name.toLowerCase().includes(value.toLowerCase())) ||
+                 (user.email && user.email.toLowerCase().includes(value.toLowerCase())))
             );
             setSuggestions(filteredUsers.slice(0, 5));
             setShowSuggestions(true);
@@ -574,7 +574,7 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
             const filtered = allUsers.filter(u => 
                 u.role !== 'admin' && 
                 !selectedUsers.some(s => s.id === u.id) &&
-                (u.name.toLowerCase().includes(value.toLowerCase()) || u.email.toLowerCase().includes(value.toLowerCase()))
+                ((u.name && u.name.toLowerCase().includes(value.toLowerCase())) || (u.email && u.email.toLowerCase().includes(value.toLowerCase())))
             );
             setSuggestions(filtered.slice(0, 5));
             setShowSuggestions(true);
@@ -963,6 +963,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
     const { addNotification } = useNotificationState();
     
     const [resetUser, setResetUser] = useState<User | null>(null);
+    const [userToDelete, setUserToDelete] = useState<User | null>(null);
     const [contactRequests, setContactRequests] = useState<ContactRequest[]>([]);
     const [isWelcomeAnimationEnabled, setIsWelcomeAnimationEnabled] = useState(true);
     const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
@@ -1193,16 +1194,16 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
 
 
     const stats = useMemo(() => ({
-        pending: allUsers.filter(u => u.status === 'pending' && !u.email.startsWith('deleted-user-')).length,
-        verified: allUsers.filter(u => u.status === 'verified' && !u.email.startsWith('deleted-user-')).length,
-        unverified: allUsers.filter(u => u.status === 'unverified' && !u.email.startsWith('deleted-user-')).length,
+        pending: allUsers.filter(u => u.status === 'pending' && !u.email?.startsWith('deleted-user-')).length,
+        verified: allUsers.filter(u => u.status === 'verified' && !u.email?.startsWith('deleted-user-')).length,
+        unverified: allUsers.filter(u => u.status === 'unverified' && !u.email?.startsWith('deleted-user-')).length,
     }), [allUsers]);
 
     const filteredAndSortedUsers = useMemo(() => {
         let users = [...allUsers].filter(u => 
             u.email !== 'system@local' && 
             u.role !== 'admin' &&
-            !u.email.startsWith('deleted-user-')
+            !u.email?.startsWith('deleted-user-')
         );
 
         if (activeFilter) {
@@ -1211,7 +1212,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
         
         if (searchQuery) {
             const lowercasedQuery = searchQuery.toLowerCase();
-            users = users.filter(u => u.name.toLowerCase().includes(lowercasedQuery) || u.email.toLowerCase().includes(lowercasedQuery));
+            users = users.filter(u => 
+                (u.name && u.name.toLowerCase().includes(lowercasedQuery)) || 
+                (u.email && u.email.toLowerCase().includes(lowercasedQuery))
+            );
         }
         
         users.sort((a, b) => {
@@ -1262,6 +1266,24 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
         } else {
             addNotification({ title: 'Error', message: 'Could not revoke access.', type: 'error' });
         }
+    };
+
+    const handleDeleteUnverifiedUser = (targetUser: User) => {
+        setUserToDelete(targetUser);
+    };
+
+    const handleConfirmDeleteUser = async () => {
+        if (!userToDelete) return;
+        
+        const success = await deleteUser(userToDelete.id);
+        if (success) {
+            setAllUsers(prev => prev.filter(u => u.id !== userToDelete.id));
+            addNotification({ title: 'User Deleted', message: `${userToDelete.email} has been permanently deleted.`, type: 'success' });
+            logAdminActivity('deleted user', userToDelete.name);
+        } else {
+            addNotification({ title: 'Error', message: 'Could not delete user.', type: 'error' });
+        }
+        setUserToDelete(null);
     };
 
     const handleWriteupAccessChange = async (targetUser: User, access: 'none' | 'read' | 'write') => {
@@ -1389,6 +1411,17 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
     return (
         <div className="h-full flex flex-col overflow-hidden relative">
             <ParticlesBackground />
+            <ConfirmationModal
+                isOpen={userToDelete !== null}
+                onClose={() => setUserToDelete(null)}
+                onConfirm={handleConfirmDeleteUser}
+                title="Delete User"
+                confirmText="Yes, Delete"
+                confirmButtonClass="bg-red-600 hover:bg-red-700"
+            >
+                <p>Are you sure you want to completely delete <strong className="text-slate-800 dark:text-slate-100">{userToDelete?.email}</strong>?</p>
+                <p className="mt-2 text-sm text-red-500 font-medium">This action is permanent and cannot be undone.</p>
+            </ConfirmationModal>
             <ConfirmationModal
                 isOpen={resetUser !== null}
                 onClose={() => setResetUser(null)}
@@ -1681,12 +1714,20 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
                                                         </button>
                                                      )}
                                                      {u.status === 'unverified' && (
-                                                        <button 
-                                                            onClick={() => handleApprove(u)} 
-                                                            className="w-full md:w-auto px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg shadow-lg shadow-indigo-500/30 transition-all transform active:scale-95 text-xs font-bold"
-                                                        >
-                                                            Verify User
-                                                        </button>
+                                                        <div className="flex gap-2 w-full md:w-auto">
+                                                            <button 
+                                                                onClick={() => handleApprove(u)} 
+                                                                className="flex-1 md:flex-none px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg shadow-lg shadow-indigo-500/30 transition-all transform active:scale-95 text-xs font-bold"
+                                                            >
+                                                                Verify User
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleDeleteUnverifiedUser(u)} 
+                                                                className="flex-1 md:flex-none px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg shadow-lg shadow-red-500/30 transition-all transform active:scale-95 text-xs font-bold"
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </div>
                                                      )}
                                                 </div>
                                             </div>

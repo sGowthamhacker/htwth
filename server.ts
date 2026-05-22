@@ -70,11 +70,14 @@ async function startServer() {
     }
 
     try {
+      const user = (process.env.SMTP_USER || '').trim();
+      const pass = (process.env.SMTP_PASS || '').replace(/\s+/g, '');
+
       const transporter = nodemailer.createTransport({
         service: "gmail",
         auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
+          user: user,
+          pass: pass,
         },
       });
 
@@ -122,7 +125,7 @@ async function startServer() {
         const selectedPortalUrl = portalUrls[Math.floor(Math.random() * portalUrls.length)];
         
         const mailOptions = {
-          from: `"${process.env.SMTP_FROM_NAME || 'HTWTH System'}" <${process.env.SMTP_USER}>`,
+          from: `"${process.env.SMTP_FROM_NAME || 'HTWTH System'}" <${user}>`,
           to: recipient,
           subject: subject,
           text: body,
@@ -170,7 +173,7 @@ async function startServer() {
                     <a href="https://wa.me/919346082957" style="text-decoration: none; margin-right: 12px;" target="_blank">
                       <img src="https://img.icons8.com/color/96/whatsapp.png" width="24" height="24" alt="WA" style="display:inline-block;">
                     </a>
-                    <a href="mailto:${process.env.SMTP_USER}" style="text-decoration: none; margin-right: 12px;">
+                    <a href="mailto:${user}" style="text-decoration: none; margin-right: 12px;">
                       <img src="https://img.icons8.com/color/96/gmail-new.png" width="24" height="24" alt="Mail" style="display:inline-block;">
                     </a>
                   </div>

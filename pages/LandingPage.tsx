@@ -1102,23 +1102,44 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
                     </div>
                     {/* Mobile Menu Toggle */}
                     <button 
-                        className="md:hidden p-2 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                        className="md:hidden p-2 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors focus:outline-none"
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        aria-label="Toggle Menu"
                     >
-                        {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                        <div className="w-6 h-6 relative flex items-center justify-center">
+                            <span className={`absolute h-0.5 w-6 bg-current rounded-full transition-all duration-300 ease-in-out ${mobileMenuOpen ? 'rotate-45' : '-translate-y-1.5'}`}></span>
+                            <span className={`absolute h-0.5 w-6 bg-current rounded-full transition-all duration-300 ease-in-out ${mobileMenuOpen ? 'opacity-0' : 'opacity-100'}`}></span>
+                            <span className={`absolute h-0.5 w-6 bg-current rounded-full transition-all duration-300 ease-in-out ${mobileMenuOpen ? '-rotate-45' : 'translate-y-1.5'}`}></span>
+                        </div>
                     </button>
                 </div>
             </div>
             
             {/* Mobile Menu Dropdown */}
-            <div className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${mobileMenuOpen ? 'max-h-96 opacity-100 border-t border-slate-200/60 dark:border-white/5' : 'max-h-0 opacity-0'}`}>
-                <div className="flex flex-col py-4 gap-4 px-2">
-                    <button onClick={() => handleTabChange('features')} className={`text-left text-sm font-bold transition-colors ${activeTab === 'features' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>Features</button>
-                    <button onClick={() => handleTabChange('community')} className={`text-left text-sm font-bold transition-colors ${activeTab === 'community' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>Community</button>
-                    <button onClick={() => handleTabChange('resources')} className={`text-left text-sm font-bold transition-colors ${activeTab === 'resources' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>Resources</button>
-                    <button onClick={() => handleTabChange('pricing')} className={`text-left text-sm font-bold transition-colors ${activeTab === 'pricing' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>Pricing</button>
-                    <button onClick={() => handleTabChange('blog')} className={`text-left text-sm font-bold transition-colors ${activeTab === 'blog' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'}`}>Blog</button>
-                    <div className="pt-4 border-t border-slate-200/60 dark:border-white/5">
+            <div className={`md:hidden overflow-hidden transition-all duration-500 ease-in-out ${mobileMenuOpen ? 'max-h-[500px] opacity-100 border-t border-slate-200/60 dark:border-white/5' : 'max-h-0 opacity-0'}`}>
+                <div className="flex flex-col p-4 gap-2">
+                    {['features', 'community', 'resources', 'pricing', 'blog'].map((tab, index) => (
+                        <button 
+                            key={tab}
+                            onClick={() => handleTabChange(tab as typeof activeTab)} 
+                            style={{ 
+                                transitionDelay: mobileMenuOpen ? `${index * 75}ms` : '0ms',
+                                transform: mobileMenuOpen ? 'translateY(0)' : 'translateY(24px)',
+                                opacity: mobileMenuOpen ? 1 : 0,
+                            }}
+                            className={`text-left px-4 py-3 rounded-xl text-sm font-bold transition-all duration-500 ease-out ${activeTab === tab ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'}`}
+                        >
+                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        </button>
+                    ))}
+                    <div 
+                        style={{ 
+                            transitionDelay: mobileMenuOpen ? `${5 * 75}ms` : '0ms',
+                            transform: mobileMenuOpen ? 'translateY(0)' : 'translateY(24px)',
+                            opacity: mobileMenuOpen ? 1 : 0,
+                        }}
+                        className="pt-4 mt-2 border-t border-slate-200/60 dark:border-white/5 flex justify-center transition-all duration-500 ease-out"
+                    >
                         <SignInButton onClick={() => { onSignIn(); setMobileMenuOpen(false); }} />
                     </div>
                 </div>
@@ -1352,71 +1373,84 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
         )}
 
         {activeTab === 'home' && (
-        <div className="animate-fade-in">
-        <div className="text-center max-w-7xl mx-auto px-4">
-          <RevealOnScroll animation="fade-down" duration={1000}>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-sm font-medium mb-8 border border-indigo-100 dark:border-indigo-500/20">
-              <span className="flex h-2 w-2 rounded-full bg-indigo-600 dark:bg-indigo-400"></span>
-              The Ultimate Workspace for Hackers
-            </div>
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-8 leading-[1.1]">
-                Elevate Your <br className="hidden sm:block" />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
-                  Security Research
-                </span>
-            </h1>
-          </RevealOnScroll>
-
-          <RevealOnScroll animation="fade-up" delay={200} duration={1000}>
-            <p className="mt-6 text-lg sm:text-xl text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl mx-auto">
-                Streamline your bug bounty workflow. Write professional reports with AI assistance, collaborate in real-time, and showcase your achievements in a stunning portfolio.
-            </p>
-          </RevealOnScroll>
+        <div className="animate-fade-in relative">
+          {/* Ultra-premium background effects */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80vw] h-[500px] bg-gradient-to-b from-indigo-500/20 via-purple-500/10 to-transparent blur-[100px] rounded-full pointer-events-none -mr-[20vw]"></div>
           
-          <RevealOnScroll animation="zoom-in" delay={400} duration={800}>
-            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-                <button 
-                  onClick={onGetStarted}
-                  className="w-full sm:w-auto px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-bold text-lg hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2"
-                >
-                  Start Hacking Free
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                </button>
-                <button 
-                  onClick={() => setShowAdminProfile(true)}
-                  className="w-full sm:w-auto px-8 py-4 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 rounded-xl font-bold text-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
-                >
-                  View Creator Profile
-                </button>
-            </div>
-            <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">No credit card required • Free community access</p>
-          </RevealOnScroll>
-        </div>
-
-        {/* Dashboard Preview Mockup */}
-        <RevealOnScroll animation="fade-up" delay={600} duration={1200} className="mt-20 relative max-w-7xl mx-auto px-4">
-          <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-[2rem] blur-2xl opacity-20 transition duration-1000"></div>
-          <div className="relative rounded-2xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-2xl bg-white dark:bg-slate-900">
-            {/* Mockup Header */}
-            <div className="h-12 border-b border-slate-200 dark:border-slate-800 flex items-center px-4 gap-2 bg-slate-50 dark:bg-slate-950/50">
-              <div className="flex gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-rose-500"></div>
-                <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-                <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+          <div className="text-center max-w-7xl mx-auto px-4 pt-10 sm:pt-20 relative z-10">
+            <RevealOnScroll animation="fade-down" duration={1200}>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900/5 dark:bg-white/5 backdrop-blur-xl border border-slate-900/10 dark:border-white/10 text-slate-800 dark:text-slate-200 text-xs sm:text-sm font-semibold tracking-wide uppercase mb-10 shadow-sm relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-20 transition-opacity duration-500"></div>
+                <span className="flex h-2 w-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 animate-pulse shadow-[0_0_10px_rgba(99,102,241,0.5)]"></span>
+                The Next Generation Security Workspace
               </div>
-              <div className="mx-auto px-4 py-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 font-mono flex items-center gap-2 shadow-sm">
-                <LockIcon className="w-3 h-3" /> app.htwth.com
+              <h1 className="text-5xl sm:text-7xl lg:text-[5.5rem] font-extrabold tracking-tighter text-slate-900 dark:text-white mb-8 leading-[1.05] drop-shadow-sm">
+                  Elevate Your <br className="hidden sm:block" />
+                  <span className="relative inline-block mt-2">
+                    <span className="absolute -inset-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 blur-xl opacity-20 dark:opacity-40 animate-pulse"></span>
+                    <span className="relative text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-500 dark:from-indigo-400 dark:to-purple-400">
+                      Security Research
+                    </span>
+                  </span>
+              </h1>
+            </RevealOnScroll>
+  
+            <RevealOnScroll animation="fade-up" delay={200} duration={1000}>
+              <p className="mt-8 text-lg sm:text-xl text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl mx-auto font-medium">
+                  Streamline your bug bounty workflow. Write professional reports with AI assistance, collaborate in real-time, and showcase your achievements in a stunning portfolio.
+              </p>
+            </RevealOnScroll>
+            
+            <RevealOnScroll animation="zoom-in" delay={400} duration={800}>
+              <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-6">
+                  <button 
+                    onClick={onGetStarted}
+                    className="w-full sm:w-auto px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-bold text-lg hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-[0_10px_30px_-10px_rgba(0,0,0,0.3)] dark:shadow-[0_10px_30px_-10px_rgba(255,255,255,0.3)] hover:-translate-y-1 flex items-center justify-center gap-2 group relative overflow-hidden"
+                  >
+                    <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 dark:via-black/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out"></div>
+                    Start Learnup
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                  <button 
+                    onClick={() => setShowAdminProfile(true)}
+                    className="w-full sm:w-auto px-8 py-4 bg-transparent text-slate-900 dark:text-white border-2 border-indigo-500/30 dark:border-indigo-400/30 hover:border-indigo-500 dark:hover:border-indigo-400 rounded-2xl font-bold text-lg transition-all flex items-center justify-center gap-3 relative shadow-[0_0_20px_-5px_rgba(99,102,241,0.2)] hover:shadow-[0_0_30px_-5px_rgba(99,102,241,0.4)] group overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-indigo-500/5 dark:bg-indigo-400/5 group-hover:bg-indigo-500/10 dark:group-hover:bg-indigo-400/10 transition-colors"></div>
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-500 to-purple-500"></div>
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                       <Sparkles className="w-4 h-4" />
+                    </div>
+                    <span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-300 dark:to-purple-300">View Creator Profile</span>
+                  </button>
               </div>
-            </div>
-            <img 
-              src="https://images.unsplash.com/photo-1555949963-aa79dcee981c?q=80&w=2070&auto=format&fit=crop" 
-              alt="HTWTH Ethical Hacking Platform Interface Preview" 
-              title="Dashboard Workspace Preview"
-              className="w-full aspect-[16/10] sm:aspect-[16/9] object-cover opacity-90"
-              loading="lazy"
-            />
+              <p className="mt-8 text-sm text-slate-500 dark:text-slate-400 font-medium tracking-wide uppercase">No credit card required <span className="mx-2 opacity-50">•</span> Community Access Free</p>
+            </RevealOnScroll>
           </div>
-        </RevealOnScroll>
+  
+          {/* Dashboard Preview Mockup */}
+          <RevealOnScroll animation="fade-up" delay={600} duration={1200} className="mt-28 relative max-w-[90rem] mx-auto px-4 sm:px-6 z-20">
+            <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-[3rem] blur-3xl opacity-20 dark:opacity-30 transition duration-1000 -z-10"></div>
+            <div className="relative rounded-3xl overflow-hidden border border-slate-200/50 dark:border-white/10 shadow-[0_20px_50px_-10px_rgba(0,0,0,0.2)] dark:shadow-[0_20px_50px_-10px_rgba(0,0,0,0.5)] bg-slate-100 dark:bg-[#0c0c0e]">
+              {/* Ultra-Premium Glass Mockup Header */}
+              <div className="h-14 border-b border-slate-200/50 dark:border-white/5 flex items-center px-6 gap-4 bg-white/50 dark:bg-black/20 backdrop-blur-md">
+                <div className="flex gap-2">
+                  <div className="w-3.5 h-3.5 rounded-full bg-rose-500/80 shadow-[0_0_10px_rgba(244,63,94,0.5)]"></div>
+                  <div className="w-3.5 h-3.5 rounded-full bg-amber-500/80 shadow-[0_0_10px_rgba(245,158,11,0.5)]"></div>
+                  <div className="w-3.5 h-3.5 rounded-full bg-emerald-500/80 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+                </div>
+                <div className="mx-auto px-6 py-1.5 rounded-full bg-slate-200/50 dark:bg-white/5 border border-slate-300/50 dark:border-white/10 text-xs text-slate-600 dark:text-slate-300 font-mono flex items-center gap-3 shadow-inner">
+                  <LockIcon className="w-3.5 h-3.5 text-indigo-500" /> <span className="opacity-80">workspace.htwth.com</span>
+                </div>
+              </div>
+              <img 
+                src="https://images.unsplash.com/photo-1555949963-aa79dcee981c?q=80&w=2070&auto=format&fit=crop" 
+                alt="HTWTH Application Interface" 
+                title="Premium Dashboard Workspace"
+                className="w-full aspect-[16/10] lg:aspect-[21/9] object-cover opacity-95 transition-transform duration-1000 hover:scale-[1.02]"
+                loading="lazy"
+              />
+            </div>
+          </RevealOnScroll>
         </div>
         )}
 

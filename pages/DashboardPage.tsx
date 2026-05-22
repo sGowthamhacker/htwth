@@ -138,12 +138,14 @@ const StartMenuContent: React.FC<{
     
     const handleAppClick = (appId: string, e: React.MouseEvent<HTMLButtonElement>) => {
         onOpenApp(appId, e);
+        onClose();
     };
 
     const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (query.trim()) {
             onSearch(query);
+            onClose();
         }
     };
     
@@ -511,7 +513,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
 
     const [urlState, setUrlState] = useState(parseHash(window.location.hash));
 
-    const isStartMenuOpen = urlState.appId === 'start';
+    const isStartMenuOpen = windows.some(w => w.appId === 'start' && !w.isMinimized && !w.isClosing);
     
     const activeWindow = useMemo(() => {
         const topWindow = windows
@@ -828,14 +830,14 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
 
             let defaultWidth = isStartMenu
                 ? isMobileSize ? Math.min(availableWidth * 0.95, 450) : 550
-                : isMobileSize ? availableWidth : Math.min(800, availableWidth * 0.825);
+                : isMobileSize ? Math.min(availableWidth * 0.9, 350) : Math.min(800, availableWidth * 0.825);
 
             let defaultHeight = isStartMenu
                 ? isMobileSize ? Math.min(availableHeight * 0.85, 600) : 650
-                : isMobileSize ? (availableHeight - 60) : Math.min(600, availableHeight * 0.825);
+                : isMobileSize ? Math.min(availableHeight * 0.75, 550) : Math.min(600, availableHeight * 0.825);
 
-            let defaultX = isMobileSize && !isStartMenu ? 0 : Math.max(0, (availableWidth - defaultWidth) / 2);
-            let defaultY = isMobileSize && !isStartMenu ? 0 : Math.max(0, (availableHeight - defaultHeight) / 2);
+            let defaultX = Math.max(0, (availableWidth - defaultWidth) / 2);
+            let defaultY = Math.max(0, (availableHeight - defaultHeight) / 2);
 
             // Anchor Start Menu to bottom if taskbar is at bottom
             if (isStartMenu && taskbarPosition === 'bottom') {
@@ -862,7 +864,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                 y: defaultY,
                 zIndex: nextZIndex.current++,
                 isMinimized: false, 
-                isMaximized: isMobileSize && !isStartMenu, // Auto-maximize on mobile
+                isMaximized: false, // Auto-maximize on mobile removed
                 isClosing: false,
                 props: { deepLinkInfo },
                 refreshKey: 0,
@@ -1319,7 +1321,15 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
     };
     
     const toggleStartMenu = () => {
-        handleNavigate(urlState.appId === 'start' ? '' : 'start');
+        const startMenuWin = windows.find(w => w.appId === 'start');
+        if (startMenuWin) {
+            closeWindow(startMenuWin.id);
+            if (urlState.appId === 'start') {
+                handleNavigate('');
+            }
+        } else {
+            handleNavigate('start');
+        }
     };
 
     const focusWindow = useCallback((id: string) => {
@@ -1721,7 +1731,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                     if (app.id === 'home') props = { ...props, writeups, blogPosts, isPending };
                     if (app.id === 'settings') props = { ...props, allUsers, setAllUsers, taskbarPosition, setTaskbarPosition, pinnedAppIds, setPinnedAppIds: handleSetPinnedApps, allApps: userApps, desktopIconSize, setDesktopIconSize, onAcceptFriendRequest, onRejectFriendRequest, onRemoveFriend, onSendFriendRequest, onLogout: handleRequestLogout, onProfileUpdate: handleSettingsProfileUpdate, onDeleteAccount, onVerifyPassword, onEmailChange };
                     if (app.id === 'search') props = { ...props, allApps: userApps, allPosts: [...writeups, ...blogPosts], query: (win.props as any)?.deepLinkInfo };
-                    if (app.id === 'start') props = { ...props, onSearch: handleSearch, pinnedAppIds, setPinnedAppIds: handleSetPinnedApps, allApps: userApps, onLogout: handleRequestLogout, searchablePosts: [...writeups, ...blogPosts], addNotification, onClose: () => handleNavigate(''), isWorkMode, onToggleWorkMode: () => setIsWorkMode(prev => !prev), onRestart: handleRequestRestart }; 
+                    if (app.id === 'start') props = { ...props, onSearch: handleSearch, pinnedAppIds, setPinnedAppIds: handleSetPinnedApps, allApps: userApps, onLogout: handleRequestLogout, searchablePosts: [...writeups, ...blogPosts], addNotification, isWorkMode, onToggleWorkMode: () => setIsWorkMode(prev => !prev), onRestart: handleRequestRestart }; 
                     if (app.id === 'chat') props = { ...props, messages: chatMessages, onSendMessage: handleSendMessage, onEditMessage: handleEditMessage, onDeleteMessage: handleDeleteMessage, onReaction: handleReaction, allUsers, onClearChat: handleClearChatMessages };
                     if (app.id === 'admin') props = { ...props, allUsers, setAllUsers, user: currentUser, onApproveWriteupAccess, onRejectWriteupAccess, liveUsers };
                     if (app.id === 'writeup') props = { ...props, posts: writeups, onSavePost: handleSaveWriteup, onDeletePost, onLikePost, onAddCommentToPost, onDeleteCommentFromPost, onRequestAccess: onRequestWriteupAccess };

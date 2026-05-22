@@ -279,21 +279,32 @@ const Taskbar: React.FC<TaskbarProps> = ({
             <>
                 <div className={`fixed bottom-2 left-1/2 -translate-x-1/2 z-[9999] transition-transform duration-300 ease-in-out ${isAnyWindowMaximized ? 'translate-y-[calc(100%+8px)]' : 'translate-y-0'}`}>
                     <div ref={macDockRef} className={`flex items-end h-16 md:h-20 bg-white/20 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-black/30 rounded-2xl shadow-lg p-2 gap-2 max-w-[95vw] overflow-x-auto hide-scrollbar`}>
-                        <button ref={startButtonRef} onClick={onStartClick} className={`relative w-12 h-12 md:w-14 md:h-14 p-2 flex items-center justify-center rounded-lg transition-all duration-200 flex-shrink-0 ${isStartMenuOpen ? 'bg-black/20 dark:bg-white/20' : 'hover:bg-black/10 dark:hover:bg-white/10'}`} title="Launchpad">
-                            <AppsIcon className={`w-8 h-8 md:w-10 md:h-10`} />
+                        <button ref={startButtonRef} onClick={onStartClick} className={`relative w-12 h-12 md:w-14 md:h-14 p-1.5 flex items-center justify-center rounded-lg transition-all duration-200 flex-shrink-0 group`} title="Launchpad">
+                            <div className={`w-full h-full flex items-center justify-center rounded-[22%] shadow-sm border border-white/20 group-hover:scale-110 group-hover:-translate-y-1 transition-all duration-200 ${isStartMenuOpen ? 'bg-slate-700' : 'bg-slate-800'}`}>
+                                <AppsIcon className={`w-3/5 h-3/5 text-white`} />
+                            </div>
                         </button>
                         <div className="h-full w-px bg-white/20 dark:bg-black/20 mx-1"></div>
                         {apps.map(app => {
                             const running = openWindows.some(win => win.appId === app.id);
                             return (
-                                <button key={app.id} onClick={(e) => onAppClick(app.id, e)} className={`relative w-12 h-12 md:w-14 md:h-14 p-2 flex items-center justify-center group flex-shrink-0`} title={app.name}>
+                                <button key={app.id} onClick={(e) => onAppClick(app.id, e)} className={`relative w-12 h-12 md:w-14 md:h-14 p-1.5 flex items-center justify-center group flex-shrink-0`} title={app.name}>
                                     <div className="absolute -top-8 bg-slate-800 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">{app.name}</div>
-                                    {React.cloneElement(app.icon as any, {className: `w-10 h-10 md:w-12 md:h-12 group-hover:scale-125 transition-transform duration-200 drop-shadow-lg`})}
-                                    {running && <div className="absolute bottom-0 w-1.5 h-1.5 bg-white rounded-full"></div>}
+                                    <div className={`w-full h-full flex items-center justify-center rounded-[22%] shadow-sm border border-white/20 group-hover:scale-110 group-hover:-translate-y-1 transition-all duration-200 ${app.bgColorClass || 'bg-slate-800'}`}>
+                                        {React.cloneElement(app.icon as any, {className: `w-3/5 h-3/5 text-white drop-shadow-md`})}
+                                    </div>
+                                    {running && <div className="absolute -bottom-1 w-1 h-1 bg-black/50 dark:bg-white/80 rounded-full"></div>}
                                 </button>
                             );
                         })}
                         <div className="h-full w-px bg-white/20 dark:bg-black/20 mx-1"></div>
+                        <button onClick={() => setMobileSearchActive(true)} className={`relative w-12 h-12 md:w-14 md:h-14 p-2 flex items-center justify-center rounded-lg transition-all duration-200 flex-shrink-0 hover:bg-black/10 dark:hover:bg-white/10`} title="Search">
+                            <SearchIcon className="w-6 h-6 md:w-8 md:h-8 text-black/70 dark:text-white/80" />
+                        </button>
+                        <button onClick={(e) => onOpenNotifications(e)} className={`relative w-12 h-12 md:w-14 md:h-14 p-2 flex items-center justify-center rounded-lg transition-all duration-200 flex-shrink-0 hover:bg-black/10 dark:hover:bg-white/10`} title="Notifications">
+                            <NotificationBellIcon className="w-6 h-6 md:w-8 md:h-8 text-black/70 dark:text-white/80" />
+                            {unreadNotificationCount > 0 && <div className="absolute top-2 right-2 md:top-3 md:right-3 w-3 h-3 bg-red-500 rounded-full border-2 border-slate-200 dark:border-slate-900"></div>}
+                        </button>
                         <button ref={userButtonRef} onClick={handleToggleUserMenu} className={`relative w-12 h-12 md:w-14 md:h-14 p-2 flex items-center justify-center rounded-lg transition-all duration-200 flex-shrink-0 ${isUserMenuOpen ? 'bg-black/20 dark:bg-white/20' : 'hover:bg-black/10 dark:hover:bg-white/10'}`} title="User Menu">
                             <img src={user.avatar} alt={user.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full" />
                         </button>
