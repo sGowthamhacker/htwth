@@ -14,8 +14,9 @@ import MailIcon from '../components/icons/MailIcon';
 import WhatsAppIcon from '../components/icons/WhatsAppIcon';
 import SpinnerIcon from '../components/icons/SpinnerIcon';
 import CheckIcon from '../components/icons/CheckIcon';
-import { GlobalNotification, User, Post } from '../types';
+import { GlobalNotification, User, Post, Bounty, BountyComment } from '../types';
 import PostCard from '../components/PostCard';
+import { getBounties, updateBounty, isUsingMockData } from '../services/database';
 
 // Lazy load complex sections/components
 const BlogPostViewer = lazy(() => import('./BlogPostViewer'));
@@ -733,7 +734,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
   const [showInnovation, setShowInnovation] = useState(false);
   const [activeIdeaIndex, setActiveIdeaIndex] = useState<number | null>(null);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const [activeTab, setActiveTab] = useState<'home' | 'features' | 'community' | 'resources' | 'pricing' | 'blog' | 'resumeai'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'features' | 'community' | 'resources' | 'pricing' | 'blog' | 'resumeai' | 'bounty'>('home');
+  const [bounties, setBounties] = useState<Bounty[]>([]);
+  const [bountiesLoading, setBountiesLoading] = useState(false);
+  const [selectedBounty, setSelectedBounty] = useState<Bounty | null>(null);
+  const [selectedBountyId, setSelectedBountyId] = useState<string | null>(null);
+  const [landingCommentText, setLandingCommentText] = useState('');
+  const [activeBountyCommentsId, setActiveBountyCommentsId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedBlogPost, setSelectedBlogPost] = useState<Post | null>(null);
 
@@ -744,7 +751,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
       const section = currentHash[0] as any;
       const subId = currentHash[1];
 
-      const validTabs = ['home', 'features', 'community', 'resources', 'pricing', 'blog', 'writeup'];
+      const validTabs = ['home', 'features', 'community', 'resources', 'pricing', 'blog', 'writeup', 'bounty'];
       if (validTabs.includes(section)) {
         if (section === 'writeup') {
             setActiveTab('blog'); // Writeups are viewed in blog tab on landing page
@@ -817,6 +824,94 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  useEffect(() => {
+    const loadBountiesData = async () => {
+      setBountiesLoading(true);
+      try {
+        const result = await getBounties();
+        if (result) {
+          const uniqueBounties = (result as Bounty[]).filter(
+            (b, index, self) => self.findIndex(ub => ub.id === b.id) === index
+          );
+          uniqueBounties.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setBounties(uniqueBounties);
+          if (uniqueBounties.length > 0) {
+            setSelectedBountyId(prev => prev || uniqueBounties[0].id);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load bounties on landing page:', err);
+      } finally {
+        setBountiesLoading(false);
+      }
+    };
+    
+    loadBountiesData();
+  }, [activeTab]);
+
+  const handleBountyLike = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const bounty = bounties.find(b => b.id === id);
+    if (!bounty) return;
+
+    const currentLikes = bounty.likes || 0;
+    const currentlyLiked = bounty.isLiked || false;
+    const newLikes = currentlyLiked ? currentLikes - 1 : currentLikes + 1;
+    const newLikedState = !currentlyLiked;
+
+    setBounties(prev => prev.map(b => b.id === id ? { ...b, likes: newLikes, isLiked: newLikedState } : b));
+
+    try {
+      await updateBounty(id, { likes: newLikes, isLiked: newLikedState });
+    } catch (err) {
+      console.error('Failed to update bounty like', err);
+    }
+  };
+
+  const handleBountyComment = async (e: React.FormEvent, id: string) => {
+    e.preventDefault();
+    if (!landingCommentText.trim()) return;
+
+    const bounty = bounties.find(b => b.id === id);
+    if (!bounty) return;
+
+    const newComment: BountyComment = {
+      id: crypto.randomUUID(),
+      text: landingCommentText,
+      authorName: GUEST_VIEWER.name,
+      createdAt: new Date().toISOString()
+    };
+
+    const updatedComments = [...(bounty.comments || []), newComment];
+    setBounties(prev => prev.map(b => b.id === id ? { ...b, comments: updatedComments } : b));
+
+    setLandingCommentText('');
+
+    try {
+      await updateBounty(id, { comments: updatedComments });
+    } catch (err) {
+      console.error('Failed to add comment to bounty', err);
+    }
+  };
+
+  const handlePrevBounty = () => {
+    const currentActiveId = selectedBountyId || bounties[0]?.id;
+    const activeIdx = bounties.findIndex(b => b.id === currentActiveId);
+    if (activeIdx > 0) {
+      setSelectedBountyId(bounties[activeIdx - 1].id);
+      setActiveBountyCommentsId(null);
+    }
+  };
+
+  const handleNextBounty = () => {
+    const currentActiveId = selectedBountyId || bounties[0]?.id;
+    const activeIdx = bounties.findIndex(b => b.id === currentActiveId);
+    if (activeIdx < bounties.length - 1 && activeIdx !== -1) {
+      setSelectedBountyId(bounties[activeIdx + 1].id);
+      setActiveBountyCommentsId(null);
+    }
+  };
   
   // State for Innovation Fade Open
   const [expandedFeatureId, setExpandedFeatureId] = useState<string | null>(null);
@@ -1093,6 +1188,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
                     <button onClick={() => handleTabChange('resources')} className={`text-sm font-bold transition-colors ${activeTab === 'resources' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>Resources</button>
                     <button onClick={() => handleTabChange('pricing')} className={`text-sm font-bold transition-colors ${activeTab === 'pricing' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>Pricing</button>
                     <button onClick={() => handleTabChange('blog')} className={`text-sm font-bold transition-colors ${activeTab === 'blog' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>Blog</button>
+                    <button onClick={() => handleTabChange('bounty')} className={`text-sm font-bold transition-colors ${activeTab === 'bounty' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>Bounties</button>
                 </div>
 
                 {/* Actions Area */}
@@ -1118,7 +1214,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
             {/* Mobile Menu Dropdown */}
             <div className={`md:hidden overflow-hidden transition-all duration-500 ease-in-out ${mobileMenuOpen ? 'max-h-[500px] opacity-100 border-t border-slate-200/60 dark:border-white/5' : 'max-h-0 opacity-0'}`}>
                 <div className="flex flex-col p-4 gap-2">
-                    {['features', 'community', 'resources', 'pricing', 'blog'].map((tab, index) => (
+                    {['features', 'community', 'resources', 'pricing', 'blog', 'bounty'].map((tab, index) => (
                         <button 
                             key={tab}
                             onClick={() => handleTabChange(tab as typeof activeTab)} 
@@ -1129,7 +1225,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
                             }}
                             className={`text-left px-4 py-3 rounded-xl text-sm font-bold transition-all duration-500 ease-out ${activeTab === tab ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'}`}
                         >
-                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                            {tab === 'bounty' ? 'Bounties' : tab.charAt(0).toUpperCase() + tab.slice(1)}
                         </button>
                     ))}
                     <div 
@@ -1780,6 +1876,301 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
                         </div>
                     </div>
                 </RevealOnScroll>
+            </div>
+        )}
+
+        {activeTab === 'bounty' && (
+            <div className="animate-fade-in max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                <div className="text-center md:text-left mb-12 flex flex-col md:flex-row md:justify-between md:items-end gap-6 border-b border-slate-200 dark:border-slate-800 pb-8">
+                    <div>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-sm font-semibold mb-3 border border-emerald-100 dark:border-emerald-900/40">
+                            <span className="flex h-2 w-2 relative">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                            </span>
+                            Security Bulletin
+                        </div>
+                        <h2 className="text-4xl sm:text-5xl font-extrabold text-slate-900 dark:text-white mb-4 tracking-tight">
+                            Bounties & Achievements
+                        </h2>
+                        <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl">
+                            An immutable public registry of authenticated security patch validations, vulnerability reports, and successfully resolved hacker bounties.
+                        </p>
+                    </div>
+                </div>
+
+                {bountiesLoading ? (
+                    <div className="flex flex-col items-center justify-center py-20">
+                        <SpinnerIcon className="w-12 h-12 text-indigo-500 mb-4 animate-spin" />
+                        <span className="text-slate-500 font-medium">Synchronizing bounty achievements from main ledger...</span>
+                    </div>
+                ) : bounties.length === 0 ? (
+                    <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-16 text-center max-w-2xl mx-auto shadow-sm">
+                        <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6 text-slate-400 dark:text-slate-500">
+                            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Immutable Board Pristine</h3>
+                        <p className="text-slate-500 dark:text-slate-400 mb-6 font-medium">
+                            No external security bounty reports have been published yet or the ledger is empty. Check back soon for new patches.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="w-full space-y-8 pb-10">
+                        {/* Interactive Horizontal Timeline Switcher */}
+                        <div className="relative bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/60 rounded-2xl p-4 sm:p-5 overflow-hidden shadow-inner flex items-center justify-between gap-3">
+                            {/* Decorative background glow for timeline */}
+                            <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-48 h-8 bg-indigo-500/10 dark:bg-indigo-500/5 blur-3xl pointer-events-none"></div>
+                            
+                            {/* Previous Button */}
+                            <button
+                                type="button"
+                                onClick={handlePrevBounty}
+                                disabled={bounties.findIndex(b => b.id === (selectedBountyId || bounties[0]?.id)) <= 0}
+                                className="relative z-10 p-2 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-400/50 disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer shadow-sm flex items-center justify-center shrink-0"
+                                title="Previous report in timeline"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+
+                            {/* Horizontal timeline track line */}
+                            <div className="absolute top-[40px] left-[10%] right-[10%] h-0.5 bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-slate-800/85 -z-0"></div>
+                            
+                            <div className="flex overflow-x-auto gap-6 py-2 pb-4 px-2 snap-x relative z-10 justify-start max-w-full mx-auto flex-grow scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent scrollbar-thumb-rounded">
+                                {bounties.map((bounty) => {
+                                    const isSelected = (selectedBountyId || bounties[0]?.id) === bounty.id;
+                                    return (
+                                        <button
+                                            key={bounty.id}
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedBountyId(bounty.id);
+                                                setActiveBountyCommentsId(null); // Reset local comment drawer
+                                            }}
+                                            className="snap-center flex-shrink-0 flex flex-col items-center group cursor-pointer focus:outline-none transition-all duration-300 min-w-[125px] max-w-[160px] px-2"
+                                        >
+                                            {/* Micro Date */}
+                                            <span className={`text-[10px] font-mono font-bold uppercase tracking-wider mb-1.5 transition-colors duration-300 ${
+                                                isSelected 
+                                                    ? 'text-indigo-600 dark:text-indigo-400 font-extrabold' 
+                                                    : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'
+                                            }`}>
+                                                {new Date(bounty.createdAt).toLocaleDateString(undefined, { 
+                                                    month: 'short', 
+                                                    day: 'numeric',
+                                                    year: '2-digit'
+                                                })}
+                                            </span>
+
+                                            {/* Glowing timeline node point */}
+                                            <div className="relative flex items-center justify-center my-0.5">
+                                                {isSelected && (
+                                                    <span className="absolute animate-ping inline-flex h-5 w-5 rounded-full bg-indigo-400/30 opacity-75"></span>
+                                                )}
+                                                <div className={`h-5 w-5 rounded-full flex items-center justify-center transition-all duration-300 border-2 z-10 ${
+                                                    isSelected
+                                                        ? 'bg-gradient-to-br from-indigo-500 to-purple-600 border-indigo-400 text-white shadow-md shadow-indigo-500/25 scale-110'
+                                                        : 'bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-400 dark:text-slate-500 group-hover:border-indigo-400 group-hover:scale-105'
+                                                }`}>
+                                                    {isSelected ? (
+                                                        <span className="h-1.5 w-1.5 rounded-full bg-white"></span>
+                                                    ) : (
+                                                        <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700 transition-colors duration-300 group-hover:bg-indigo-400"></span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Micro details */}
+                                            <div className="text-center mt-1.5 space-y-0.5">
+                                                <span className={`block text-[11px] font-semibold leading-tight transition-colors duration-300 ${
+                                                    isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600'
+                                                }`}>
+                                                    {bounty.company}
+                                                </span>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Next Button */}
+                            <button
+                                type="button"
+                                onClick={handleNextBounty}
+                                disabled={bounties.findIndex(b => b.id === (selectedBountyId || bounties[0]?.id)) >= bounties.length - 1}
+                                className="relative z-10 p-2 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-400/50 disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer shadow-sm flex items-center justify-center shrink-0"
+                                title="Next report in timeline"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Selected Bounty Focus details card */}
+                        {(() => {
+                            const activeId = selectedBountyId || bounties[0]?.id;
+                            const bounty = bounties.find(b => b.id === activeId);
+                            if (!bounty) return null;
+                            const isCommentsExpanded = activeBountyCommentsId === bounty.id;
+
+                            return (
+                                <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 dark:hover:shadow-indigo-500/2 transition-all duration-300 animate-fade-in">
+                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
+                                        
+                                        {/* Left Side elements: Info Description & Image Evidence (Width 7) */}
+                                        <div className="lg:col-span-7 space-y-6">
+                                            <div>
+                                                <div className="flex flex-wrap items-center gap-3 mb-3">
+                                                    <span className="text-xs font-bold tracking-wider text-indigo-600 dark:text-indigo-400 uppercase bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-md border border-indigo-100/60 dark:border-indigo-900/40">
+                                                        {bounty.company}
+                                                    </span>
+                                                    <span className="text-xs text-slate-400 dark:text-slate-400 font-mono">
+                                                        <span className="hidden sm:inline">Authenticated validation at </span>{new Date(bounty.createdAt).toLocaleDateString(undefined, {
+                                                            month: 'long', day: 'numeric', year: 'numeric'
+                                                        })}
+                                                    </span>
+                                                </div>
+
+                                                <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-snug">
+                                                    {bounty.title}
+                                                </h3>
+                                            </div>
+
+                                            <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed font-normal">
+                                                {bounty.summary}
+                                            </p>
+
+                                            {bounty.message && (
+                                                <div className="bg-slate-50 dark:bg-slate-950/30 border border-slate-100 dark:border-slate-900/60 rounded-2xl p-4 text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed italic relative">
+                                                    <span className="absolute -top-3 left-4 bg-white dark:bg-slate-900 px-2 py-0.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Message Evidence</span>
+                                                    "{bounty.message}"
+                                                </div>
+                                            )}
+
+                                            {bounty.image && (
+                                                <div 
+                                                    className="relative aspect-[16/9] w-full rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-950/40 border border-slate-200/50 dark:border-slate-800/80 font-semibold cursor-zoom-in group/img shadow-inner"
+                                                    onClick={(e) => { e.stopPropagation(); setLightboxImage(bounty.image); }}
+                                                    title="Click to zoom image evidence"
+                                                >
+                                                    <img 
+                                                        src={getCloudinaryUrl(bounty.image) || bounty.image} 
+                                                        alt={bounty.title}
+                                                        referrerPolicy="no-referrer"
+                                                        className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-[1.02]"
+                                                    />
+                                                    <div className="absolute inset-0 bg-slate-950/0 group-hover/img:bg-slate-950/20 transition-colors flex items-center justify-center">
+                                                        <span className="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-950/80 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg backdrop-blur-sm">
+                                                            Zoom PoC Evidence Artifact
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Right Side: Upvotes, Comments, Realtime congrats feed (Width 5) */}
+                                        <div className="lg:col-span-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800/60 pt-6 lg:pt-0 lg:pl-8 space-y-6">
+                                            
+                                            {/* Action metrics summary */}
+                                            <div className="space-y-4">
+                                                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                                                    <span>Verified Ledger Board</span>
+                                                    <span className="text-xs text-indigo-600 dark:text-indigo-400 font-mono">Bounty #{bounty.id.substring(0,6)}</span>
+                                                </h4>
+                                                
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <button 
+                                                        type="button"
+                                                        onClick={(e) => handleBountyLike(e, bounty.id)}
+                                                        className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl border transition-all cursor-pointer ${
+                                                            bounty.isLiked 
+                                                                ? 'bg-rose-50/50 dark:bg-rose-950/10 border-rose-200 dark:border-rose-900/30 text-rose-500' 
+                                                                : 'bg-slate-50/50 dark:bg-slate-950/20 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-rose-300 dark:hover:border-rose-900/20 hover:text-rose-500'
+                                                        }`}
+                                                    >
+                                                        <svg className={`w-5 h-5 mb-1.5 transition-transform ${bounty.isLiked ? 'fill-rose-500 text-rose-500 scale-110' : 'text-slate-400 dark:text-slate-500'}`} fill={bounty.isLiked ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                                        </svg>
+                                                        <span className="text-xs font-bold">{bounty.likes || 0} Likes</span>
+                                                    </button>
+
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => setActiveBountyCommentsId(isCommentsExpanded ? null : bounty.id)}
+                                                        className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl border transition-all cursor-pointer ${
+                                                            isCommentsExpanded 
+                                                                ? 'bg-indigo-50/50 dark:bg-indigo-950/10 border-indigo-200 dark:border-indigo-900/30 text-indigo-500' 
+                                                                : 'bg-slate-50/50 dark:bg-slate-950/20 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-indigo-300 dark:hover:border-indigo-900/20 hover:text-indigo-600'
+                                                        }`}
+                                                    >
+                                                        <svg className="w-5 h-5 mb-1.5 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                                        </svg>
+                                                        <span className="text-xs font-bold">{bounty.comments?.length || 0} Comments</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Discussion Section directly inside panel */}
+                                            <div className="flex-grow flex flex-col min-h-[180px]">
+                                                <div className="flex-grow overflow-y-auto mb-4 space-y-3 max-h-[220px] pr-1 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-800">
+                                                    {(bounty.comments && bounty.comments.length > 0) ? (
+                                                        bounty.comments.map(comment => (
+                                                            <div key={comment.id} className="bg-slate-50 dark:bg-slate-950/40 rounded-xl p-3 border border-slate-100 dark:border-slate-900/50">
+                                                                <div className="flex justify-between items-center mb-1">
+                                                                    <span className="font-bold text-[11px] text-slate-700 dark:text-slate-300">{comment.authorName}</span>
+                                                                    <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">
+                                                                        {new Date(comment.createdAt).toLocaleDateString(undefined, { 
+                                                                            month: 'short', 
+                                                                            day: 'numeric',
+                                                                            hour: '2-digit',
+                                                                            minute: '2-digit'
+                                                                        })}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-xs text-slate-600 dark:text-slate-400 leading-normal">{comment.text}</p>
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <div className="h-full flex flex-col items-center justify-center text-center py-6 border border-dashed border-slate-200/80 dark:border-slate-800/85 rounded-2xl bg-slate-50/20 dark:bg-slate-950/10 min-h-[140px]">
+                                                                <p className="text-xs font-medium text-slate-400">No verified comments yet.</p>
+                                                                <p className="text-[10px] text-slate-400/80 mt-0.5 font-sans">Be the first to post congrats or ask a signature question!</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Add Comment form inside panel */}
+                                                <form onSubmit={(e) => handleBountyComment(e, bounty.id)} className="flex gap-2">
+                                                    <input 
+                                                        type="text" 
+                                                        value={landingCommentText}
+                                                        onChange={(e) => setLandingCommentText(e.target.value)}
+                                                        placeholder="Add congrats or check-signature query..."
+                                                        className="flex-grow text-xs px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950/50 border border-slate-200/80 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/10 transition-all font-sans"
+                                                        required
+                                                    />
+                                                    <button 
+                                                        type="submit"
+                                                        className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center cursor-pointer"
+                                                    >
+                                                        Post
+                                                    </button>
+                                                </form>
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
+                    </div>
+                )}
+
+
             </div>
         )}
 

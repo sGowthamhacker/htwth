@@ -294,6 +294,26 @@ export interface ContactRequest {
   handled: boolean;
 }
 
+export interface BountyComment {
+  id: string;
+  text: string;
+  authorName: string;
+  createdAt: string;
+}
+
+export interface Bounty {
+  id: string;
+  title: string;
+  company: string;
+  summary: string;
+  image: string;
+  message: string;
+  createdAt: string;
+  likes?: number;
+  isLiked?: boolean;
+  comments?: BountyComment[];
+}
+
 export interface Payload {
   id: string;
   title: string;

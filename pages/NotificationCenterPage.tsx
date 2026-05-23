@@ -95,7 +95,7 @@ const NotificationItem = React.memo<{
         
         const Icon = style.icon;
         if (React.isValidElement(Icon)) {
-            return React.cloneElement(Icon, { className: `w-5 h-5 ${style.iconColor}` });
+            return React.cloneElement(Icon as React.ReactElement<any>, { className: `w-5 h-5 ${style.iconColor}` });
         }
         
         return <InfoIcon className={`w-5 h-5 ${style.iconColor}`} />;
@@ -215,7 +215,7 @@ const NotificationCenterPage: React.FC<{ onNavigateWithinApp?: (path: string) =>
                                     : 'text-slate-500 hover:bg-slate-200/60 dark:text-slate-400 dark:hover:bg-slate-700/50'
                             }`}
                         >
-                            {React.cloneElement(tab.icon, { className: 'w-5 h-5' })}
+                            {React.cloneElement(tab.icon as React.ReactElement<any>, { className: 'w-5 h-5' })}
                             <span className="hidden sm:inline">{tab.label}</span>
                             {tab.unreadCount > 0 && (
                                 <span className={`absolute top-1 right-1 h-4 min-w-[1rem] rounded-full text-white text-[10px] font-bold flex items-center justify-center px-1 ${categoryStyles[tab.id as keyof typeof categoryStyles].dotColor}`}>

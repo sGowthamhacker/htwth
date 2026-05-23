@@ -352,7 +352,7 @@ const App: React.FC = () => {
         const cleanHash = hash.replace(/^#\/?/, ''); 
         const validRoots = ['', '#', '#/', '#/sitemap', '#/helpcenter', '#/privacy', '#/terms', '#/security', '#/status'];
         
-        const validProtectedApps = ['home', 'writeup', 'blog', 'chat', 'notes', 'todolist', 'settings', 'search', 'start', 'admin', 'notifications', 'mywork', 'resources', 'kali', 'docs', 'resumeai', 'features', 'community', 'pricing', 'browser', 'consistency', 'copyright', 'about', 'gowthamprofile'];
+        const validProtectedApps = ['home', 'writeup', 'blog', 'chat', 'notes', 'todolist', 'settings', 'search', 'start', 'admin', 'notifications', 'mywork', 'resources', 'kali', 'docs', 'resumeai', 'features', 'community', 'pricing', 'browser', 'consistency', 'copyright', 'about', 'gowthamprofile', 'bountymanager', 'bounty'];
         
         const currentApp = cleanHash.split('/')[0];
         
@@ -817,7 +817,7 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
                 const isRoot = currentPath === '' || currentPath === '#' || currentPath === '#/' || 
                               ['#/sitemap', '#/helpcenter', '#/privacy', '#/terms', '#/security', '#/status'].includes(currentPath);
                 
-                const validProtectedApps = ['home', 'writeup', 'blog', 'chat', 'notes', 'todolist', 'settings', 'search', 'start', 'admin', 'notifications', 'mywork', 'resources', 'kali', 'docs', 'resumeai', 'features', 'community', 'pricing', 'browser', 'consistency', 'copyright', 'about', 'gowthamprofile'];
+                const validProtectedApps = ['home', 'writeup', 'blog', 'chat', 'notes', 'todolist', 'settings', 'search', 'start', 'admin', 'notifications', 'mywork', 'resources', 'kali', 'docs', 'resumeai', 'features', 'community', 'pricing', 'browser', 'consistency', 'copyright', 'about', 'gowthamprofile', 'bountymanager', 'bounty'];
                 const currentApp = cleanPath.split('/')[0];
                 const isProtectedAppRoute = validProtectedApps.includes(currentApp);
 

@@ -357,7 +357,7 @@ const WriteupEditor: React.FC<{
                                     : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                             }`}
                         >
-                            {React.cloneElement(opt.icon, { className: 'w-5 h-5' })}
+                            {React.cloneElement(opt.icon as React.ReactElement<any>, { className: 'w-5 h-5' })}
                             <span>{opt.label}</span>
                         </button>
                         )
@@ -469,7 +469,7 @@ const ListPanel: React.FC<ListPanelProps> = ({
                 {filteredAndSortedPosts.map(post => (
                     <button key={post.id} onClick={() => onSelectPost(post.id)} className={`w-full text-left p-4 border-b border-slate-100 dark:border-slate-800 transition-colors relative ${selectedPostId === post.id ? 'bg-white dark:bg-slate-800 shadow-sm' : 'hover:bg-white/50 dark:hover:bg-slate-800/50'}`}>
                         {selectedPostId === post.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 rounded-r-full animate-fade-in"></div>}
-                        <div className={`font-semibold ${severityClasses[post.severity as Severity].text}`}>{post.severity}</div>
+                        <div className={`font-semibold ${severityClasses[post.severity as Severity]?.text || 'text-gray-500'}`}>{post.severity || 'Medium'}</div>
                         <h3 className="font-semibold text-base leading-tight truncate text-slate-800 dark:text-slate-100 mt-1">{post.title}</h3>
                         <div className="flex items-center justify-between mt-2 text-xs text-slate-500 dark:text-slate-400">
                             <div className="flex items-center gap-1">

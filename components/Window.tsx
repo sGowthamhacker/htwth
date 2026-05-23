@@ -133,7 +133,7 @@ const Window: React.FC<WindowProps> = ({
         onBoundsChangeRef.current(id, finalBounds);
     };
 
-    const handleInteractionStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>, type: 'drag' | `resize-${ResizeDirection}`) => {
+    const handleInteractionStart = (e: React.MouseEvent<any> | React.TouchEvent<any>, type: 'drag' | `resize-${ResizeDirection}`) => {
         if (isMaximized || ('button' in e && e.button !== 0)) return;
         e.stopPropagation();
         onFocus(id);
@@ -221,7 +221,7 @@ const Window: React.FC<WindowProps> = ({
                 {themeToRender === 'windows' ? (
                   <>
                     <div className="flex items-center gap-2 overflow-hidden pointer-events-none">
-                        {React.cloneElement(icon, { className: `w-4 h-4 flex-shrink-0 ${isActive ? 'text-slate-800 dark:text-white' : 'text-slate-700 dark:text-slate-200'}` })}
+                        {React.cloneElement(icon as React.ReactElement<any>, { className: `w-4 h-4 flex-shrink-0 ${isActive ? 'text-slate-800 dark:text-white' : 'text-slate-700 dark:text-slate-200'}` })}
                         <span className={`text-sm font-semibold truncate ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-800 dark:text-slate-100'}`}>{title}</span>
                     </div>
                     <div className={`flex items-center ${isActive ? 'text-slate-800 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`} onMouseDown={stopPropagation} onTouchStart={stopPropagation}>

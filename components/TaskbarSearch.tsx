@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { AppDefinition, Post, TaskbarPosition } from '../types';
 
 interface TaskbarSearchProps {
@@ -13,16 +14,66 @@ const TaskbarSearch: React.FC<TaskbarSearchProps> = ({ allApps, searchablePosts,
   const [query, setQuery] = useState('');
   const [isPanelOpen, setPanelOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+
+  const updatePosition = () => {
+    if (searchRef.current) {
+      const rect = searchRef.current.getBoundingClientRect();
+      let style: React.CSSProperties = {
+          position: 'fixed',
+      };
+      
+      const dropdownWidth = dropdownRef.current?.offsetWidth || Math.min(320, window.innerWidth - 32);
+      
+      switch (position) {
+          case 'top':
+              style.top = rect.bottom + 8;
+              style.left = Math.min(rect.left, window.innerWidth - dropdownWidth - 16);
+              break;
+          case 'left':
+              style.left = rect.right + 8;
+              style.top = Math.min(rect.top, window.innerHeight - (dropdownRef.current?.offsetHeight || 300) - 16);
+              break;
+          case 'right':
+              style.right = window.innerWidth - rect.left + 8;
+              style.top = Math.min(rect.top, window.innerHeight - (dropdownRef.current?.offsetHeight || 300) - 16);
+              break;
+          case 'bottom':
+          default:
+              style.bottom = window.innerHeight - rect.top + 8;
+              style.left = Math.min(rect.left, window.innerWidth - dropdownWidth - 16);
+              break;
+      }
+      
+      // Ensure it doesn't go off the left edge either
+      if (typeof style.left === 'number' && style.left < 16) {
+          style.left = 16;
+      }
+      
+      setDropdownStyle(style);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+      const isOutsideSearch = searchRef.current && !searchRef.current.contains(event.target as Node);
+      const isOutsideDropdown = dropdownRef.current && !dropdownRef.current.contains(event.target as Node);
+      if (isOutsideSearch && isOutsideDropdown) {
         setPanelOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (isPanelOpen) {
+      updatePosition();
+      window.addEventListener('resize', updatePosition);
+      return () => window.removeEventListener('resize', updatePosition);
+    }
+  }, [isPanelOpen, position, query]);
 
   const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newQuery = e.target.value;
@@ -65,15 +116,50 @@ const TaskbarSearch: React.FC<TaskbarSearchProps> = ({ allApps, searchablePosts,
     post.tags.some(tag => tag.toLowerCase().includes(normalizedQuery))
   ) : [];
   const hasResults = filteredApps.length > 0 || filteredPosts.length > 0;
-  
-  const panelPositionClasses = () => {
-      switch (position) {
-          case 'top': return 'top-full mt-2 left-0';
-          case 'left': return 'left-full ml-2 top-0';
-          case 'right': return 'right-full mr-2 top-0';
-          case 'bottom':
-          default: return 'bottom-full mb-2 left-0';
-      }
+
+  const renderDropdown = () => {
+      if (!isPanelOpen || !query.trim()) return null;
+      return createPortal(
+          <div ref={dropdownRef} style={dropdownStyle} className={`w-[320px] max-w-[calc(100vw-32px)] max-h-96 overflow-y-auto bg-slate-200/90 dark:bg-slate-900/90 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-xl shadow-lg p-2 animate-slide-up z-[99999]`}>
+             {hasResults ? (
+                 <div className="space-y-4">
+                   {filteredApps.length > 0 && (
+                       <section>
+                           <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 px-2 uppercase">Applications</h3>
+                           <ul>
+                              {filteredApps.map(app => (
+                                  <li key={app.id}>
+                                      <button onClick={(e) => handleResultClick(app.id, e)} className="w-full flex items-center gap-3 p-2 rounded-md text-left hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                                          {React.cloneElement(app.icon as React.ReactElement<any>, { className: 'w-6 h-6' })}
+                                          <span className="text-sm font-medium text-slate-800 dark:text-slate-100">{app.name}</span>
+                                      </button>
+                                  </li>
+                              ))}
+                           </ul>
+                       </section>
+                   )}
+                   {filteredPosts.length > 0 && (
+                        <section>
+                           <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 px-2 uppercase">Writeups</h3>
+                           <ul>
+                              {filteredPosts.slice(0, 5).map(post => (
+                                  <li key={post.id}>
+                                      <button onClick={(e) => handleResultClick('writeup', e)} className="w-full text-left p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                                          <div className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate">{post.title}</div>
+                                          <div className="text-xs text-slate-500 dark:text-slate-400">By {post.author.name}</div>
+                                      </button>
+                                  </li>
+                              ))}
+                           </ul>
+                       </section>
+                   )}
+                 </div>
+             ) : (
+                  <div className="text-center p-4 text-sm text-slate-500 dark:text-slate-400">No results for "{query}"</div>
+             )}
+          </div>,
+          document.body
+      );
   };
 
   return (
@@ -91,11 +177,13 @@ const TaskbarSearch: React.FC<TaskbarSearchProps> = ({ allApps, searchablePosts,
           border-radius: 10px;
           border: none;
           outline: none;
-          padding: 18px 16px;
+          padding: 0 16px;
           background-color: transparent;
           cursor: pointer;
           transition: all .5s ease-in-out;
           color: #333;
+          position: relative;
+          z-index: 2;
         }
         .dark .search-input {
             color: #fff;
@@ -117,7 +205,13 @@ const TaskbarSearch: React.FC<TaskbarSearchProps> = ({ allApps, searchablePosts,
           border: 1px solid rgb(98, 0, 255);
           width: 290px;
           cursor: text;
-          padding: 18px 16px 18px 40px;
+          padding: 0 16px 0 46px !important;
+        }
+        @media (max-width: 768px) {
+          .search-input:focus, .search-input:not(:placeholder-shown) {
+            width: 160px;
+            padding: 0 16px 0 46px !important;
+          }
         }
         .dark .search-input:focus, .dark .search-input:not(:placeholder-shown) {
             background-color: #1e293b; /* Slate 800 */
@@ -132,9 +226,10 @@ const TaskbarSearch: React.FC<TaskbarSearchProps> = ({ allApps, searchablePosts,
           width: 40px;
           background-color: #fff;
           border-radius: 10px;
-          z-index: -1;
+          z-index: 3;
           fill: rgb(98, 0, 255);
           border: 1px solid rgb(98, 0, 255);
+          pointer-events: none;
         }
         .dark .search-icon {
             background-color: #1e293b;
@@ -148,52 +243,16 @@ const TaskbarSearch: React.FC<TaskbarSearchProps> = ({ allApps, searchablePosts,
         }
 
         .search-input:focus + .search-icon, .search-input:not(:placeholder-shown) + .search-icon {
-          z-index: 0;
+          background-color: transparent;
+          border: none;
+        }
+        .dark .search-input:focus + .search-icon, .dark .search-input:not(:placeholder-shown) + .search-icon {
           background-color: transparent;
           border: none;
         }
       `}</style>
-
-      {isPanelOpen && query.trim() && (
-        <div className={`absolute ${panelPositionClasses()} w-full min-w-[290px] sm:w-80 max-h-96 overflow-y-auto bg-slate-200/90 dark:bg-slate-900/90 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-xl shadow-lg p-2 animate-slide-up z-[9998]`}>
-           {hasResults ? (
-               <div className="space-y-4">
-                 {filteredApps.length > 0 && (
-                     <section>
-                         <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 px-2 uppercase">Applications</h3>
-                         <ul>
-                            {filteredApps.map(app => (
-                                <li key={app.id}>
-                                    <button onClick={(e) => handleResultClick(app.id, e)} className="w-full flex items-center gap-3 p-2 rounded-md text-left hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                                        {React.cloneElement(app.icon, { className: 'w-6 h-6' })}
-                                        <span className="text-sm font-medium text-slate-800 dark:text-slate-100">{app.name}</span>
-                                    </button>
-                                </li>
-                            ))}
-                         </ul>
-                     </section>
-                 )}
-                 {filteredPosts.length > 0 && (
-                      <section>
-                         <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 px-2 uppercase">Writeups</h3>
-                         <ul>
-                            {filteredPosts.slice(0, 5).map(post => (
-                                <li key={post.id}>
-                                    <button onClick={(e) => handleResultClick('writeup', e)} className="w-full text-left p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                                        <div className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate">{post.title}</div>
-                                        <div className="text-xs text-slate-500 dark:text-slate-400">By {post.author.name}</div>
-                                    </button>
-                                </li>
-                            ))}
-                         </ul>
-                     </section>
-                 )}
-               </div>
-           ) : (
-                <div className="text-center p-4 text-sm text-slate-500 dark:text-slate-400">No results for "{query}"</div>
-           )}
-        </div>
-      )}
+      
+      {renderDropdown()}
       
       <div className="input-container">
         <input 
@@ -220,3 +279,4 @@ const TaskbarSearch: React.FC<TaskbarSearchProps> = ({ allApps, searchablePosts,
 };
 
 export default TaskbarSearch;
+

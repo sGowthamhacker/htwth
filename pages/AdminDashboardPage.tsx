@@ -63,11 +63,11 @@ const StatCard: React.FC<{ title: string; value: string | number; color: string;
         }`}
     >
         <div className={`absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity ${color.replace('bg-', 'text-')}`}>
-            {React.cloneElement(icon as React.ReactElement, { className: 'w-16 h-16' })}
+            {React.cloneElement(icon as React.ReactElement<any>, { className: 'w-16 h-16' })}
         </div>
         <div className="relative z-10">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-3 ${color} bg-opacity-20 text-current shadow-sm`}>
-                {React.cloneElement(icon as React.ReactElement, { className: 'w-5 h-5' })}
+                {React.cloneElement(icon as React.ReactElement<any>, { className: 'w-5 h-5' })}
             </div>
             <p className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">{value}</p>
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wide">{title}</p>

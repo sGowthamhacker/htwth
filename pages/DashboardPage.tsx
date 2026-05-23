@@ -58,6 +58,8 @@ import DocPage from './DocPage';
 import ScaleIcon from '../components/icons/ScaleIcon';
 import CopyrightPage from './CopyrightPage';
 import UserCircleIcon from '../components/icons/UserCircleIcon';
+import BountyManagerPage from './BountyManagerPage';
+import MoneyIcon from '../components/icons/MoneyIcon';
 import HabitTrackerIcon from '../components/icons/HabitTrackerIcon';
 import HabitTrackerPage from './HabitTrackerPage';
 import ResumeAIPage from './ResumeAIPage';
@@ -186,7 +188,7 @@ const StartMenuContent: React.FC<{
                                             {filteredApps.map(app => (
                                                 <button key={app.id} onClick={(e) => handleAppClick(app.id, e)} className="flex items-center gap-4 p-3 rounded-lg text-left hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                                                     <div className="w-8 h-8 rounded-md flex items-center justify-center bg-slate-300 dark:bg-slate-700">
-                                                        {React.cloneElement(app.icon, {className: 'w-5 h-5'})}
+                                                        {React.cloneElement(app.icon as React.ReactElement<any>, {className: 'w-5 h-5'})}
                                                     </div>
                                                     <span className="text-sm font-medium text-slate-800 dark:text-slate-100">{app.name}</span>
                                                 </button>
@@ -232,7 +234,7 @@ const StartMenuContent: React.FC<{
                                             className={`flex flex-col items-center justify-start text-center p-2 rounded-lg transition-colors group aspect-square w-full ${isEditMode ? 'cursor-default' : 'hover:bg-black/5 dark:hover:bg-white/5'}`}
                                         >
                                             <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-slate-300 to-slate-400 dark:from-slate-700 dark:to-slate-800 shadow-md mb-2">
-                                                {React.cloneElement(app.icon, {className: 'w-7 h-7'})}
+                                                {React.cloneElement(app.icon as React.ReactElement<any>, {className: 'w-7 h-7'})}
                                             </div>
                                             <span className="text-xs font-medium text-slate-700 dark:text-slate-200 mt-1 break-words leading-tight">{app.name}</span>
                                         </button>
@@ -264,7 +266,7 @@ const StartMenuContent: React.FC<{
                                                 className={`w-full flex items-center gap-4 p-3 rounded-lg text-left transition-colors ${isEditMode ? 'cursor-default' : 'hover:bg-black/5 dark:hover:bg-white/5'}`}
                                             >
                                                 <div className="w-8 h-8 rounded-md flex items-center justify-center bg-slate-300 dark:bg-slate-700">
-                                                    {React.cloneElement(app.icon, {className: 'w-5 h-5'})}
+                                                    {React.cloneElement(app.icon as React.ReactElement<any>, {className: 'w-5 h-5'})}
                                                 </div>
                                                 <span className="text-sm font-medium text-slate-800 dark:text-slate-100">{app.name}</span>
                                             </button>
@@ -274,8 +276,8 @@ const StartMenuContent: React.FC<{
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                if (pinnedAppIds.length >= 12) {
-                                                                    addNotification({ title: 'Limit Reached', message: 'You can pin a maximum of 12 apps.', type: 'warning' });
+                                                                if (pinnedAppIds.length >= 20) {
+                                                                    addNotification({ title: 'Limit Reached', message: 'You can pin a maximum of 20 apps.', type: 'warning' });
                                                                     return;
                                                                 }
                                                                 setPinnedAppIds(ids => [...ids, app.id]);
@@ -394,6 +396,7 @@ const internalApps: AppDefinition[] = [
     { id: 'search', name: 'Search', icon: <SearchIcon className="text-gray-500"/>, component: SearchPage, bgColorClass: 'bg-slate-500', accentColor: '#64748b' },
     { id: 'start', name: 'Start Menu', icon: <SparklesIcon />, component: StartMenuContent, bgColorClass: 'bg-slate-800', accentColor: '#1e293b' },
     { id: 'admin', name: 'Admin Panel', icon: <AdminIcon />, component: AdminDashboardPage, bgColorClass: 'bg-amber-500', accentColor: '#f59e0b' },
+    { id: 'bountymanager', name: 'Bounty Manager', icon: <MoneyIcon className="text-white"/>, component: BountyManagerPage, bgColorClass: 'bg-green-500', accentColor: '#22c55e' },
     { id: 'notifications', name: 'Notifications', icon: <NotificationBellIcon />, component: NotificationCenterPage, bgColorClass: 'bg-blue-500', accentColor: '#3b82f6' },
     { id: 'copyright', name: 'Legal', icon: <ScaleIcon />, component: CopyrightPage, bgColorClass: 'bg-slate-200', accentColor: '#475569' },
     { id: 'about', name: 'Profile', icon: <UserCircleIcon />, component: MyWorkPage, bgColorClass: 'bg-indigo-500', accentColor: '#6366f1' },
@@ -447,10 +450,14 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
     
     // Ensure resumeai is pinned for existing users who might have saved their layout before it was added
     useEffect(() => {
-        if (!pinnedAppIds.includes('resumeai')) {
-            setPinnedAppIds(prev => [...prev, 'resumeai']);
+        const hasMigratedResumeAI = localStorage.getItem(`migrated-resumeai-${currentUser.id}`);
+        if (!hasMigratedResumeAI) {
+            if (!pinnedAppIds.includes('resumeai')) {
+                setPinnedAppIds(prev => [...prev, 'resumeai']);
+            }
+            localStorage.setItem(`migrated-resumeai-${currentUser.id}`, 'true');
         }
-    }, [pinnedAppIds, setPinnedAppIds]);
+    }, [currentUser.id]);
 
     const [desktopIconSize, setDesktopIconSize] = useLocalStorage<DesktopIconSize>('desktopIconSize', 'medium');
     
@@ -533,7 +540,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
         let allAvailableApps = [...baseApps, ...internalApps];
 
         if (currentUser.role !== 'admin') {
-            allAvailableApps = allAvailableApps.filter(app => app.id !== 'admin');
+            allAvailableApps = allAvailableApps.filter(app => app.id !== 'admin' && app.id !== 'bountymanager');
         } else {
             allAvailableApps = allAvailableApps.filter(app => app.id !== 'gowthamprofile');
         }
@@ -718,12 +725,10 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
     };
     
     const handleSetPinnedApps = useCallback((newIds: string[] | ((val: string[]) => string[])) => {
-        setPinnedAppIds(prev => {
-            const resolvedIds = typeof newIds === 'function' ? newIds(prev) : newIds;
-            saveDesktopPreferences({ pinned: resolvedIds });
-            return resolvedIds;
-        });
-    }, [setPinnedAppIds, saveDesktopPreferences]);
+        const resolvedIds = typeof newIds === 'function' ? newIds(pinnedAppIds) : newIds;
+        setPinnedAppIds(resolvedIds);
+        saveDesktopPreferences({ pinned: resolvedIds });
+    }, [pinnedAppIds, setPinnedAppIds, saveDesktopPreferences]);
 
     // --------------------------------------------------------------------------------
 
@@ -1806,7 +1811,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                     if (app.id === 'kali') props = { ...props };
                     if (app.id === 'consistency') props = { ...props };
 
-                    // @ts-expect-error Types for different apps are complex, we safely inject refreshKey here
+                    // Types for different apps are complex, we safely inject refreshKey here
                     const childrenWithProps = React.cloneElement(baseComponent as any, { ...props, key: `${win.id}-${win.refreshKey}`, refreshKey: win.refreshKey });
                     
                     return (

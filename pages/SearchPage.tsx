@@ -48,11 +48,11 @@ const SearchPage: React.FC<SearchPageProps> = ({ user, query = '', allApps = [],
       <div className="relative flex-shrink-0">
         <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500 pointer-events-none" />
         <input 
-          type="search"
+          type="text"
           value={searchQuery}
           onChange={handleSearchChange}
           placeholder="Search for apps, writeups, and more..."
-          className="modern-input w-full text-lg pl-12 pr-4"
+          className="modern-input w-full text-lg !pl-12 pr-4"
           autoFocus
         />
       </div>
@@ -73,7 +73,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ user, query = '', allApps = [],
                           className="flex items-center gap-4 p-4 rounded-lg text-left bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors border border-slate-200 dark:border-slate-700/50"
                         >
                           <div className="w-8 h-8 rounded-md flex items-center justify-center bg-slate-300 dark:bg-slate-700 flex-shrink-0">
-                              {React.cloneElement(app.icon, {className: 'w-5 h-5'})}
+                              {React.cloneElement(app.icon as React.ReactElement<any>, {className: 'w-5 h-5'})}
                           </div>
                           <span className="text-sm font-medium text-slate-800 dark:text-slate-100">{app.name}</span>
                         </button>

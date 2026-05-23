@@ -14,7 +14,7 @@ import AnimatedHeartCheckbox from './AnimatedHeartCheckbox';
 interface PostCardProps {
   post: Post;
   currentUser: User;
-  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  onClick?: (e: React.MouseEvent<HTMLElement>) => void;
   onUpdatePost?: (post: Post) => Promise<void>;
 }
 

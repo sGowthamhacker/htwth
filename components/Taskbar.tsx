@@ -210,7 +210,7 @@ const Taskbar: React.FC<TaskbarProps> = ({
                         <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-400 pointer-events-none" />
                         <input
                             ref={mobileSearchInputRef}
-                            type="search"
+                            type="text"
                             value={mobileSearchQuery}
                             onChange={(e) => setMobileSearchQuery(e.target.value)}
                             placeholder={t('start_menu_search_placeholder')}
@@ -284,23 +284,23 @@ const Taskbar: React.FC<TaskbarProps> = ({
                                 <AppsIcon className={`w-3/5 h-3/5 text-white`} />
                             </div>
                         </button>
+                        <div className="px-2 flex items-center h-full">
+                          <TaskbarSearch allApps={apps} searchablePosts={searchablePosts} onOpenApp={(appId, e) => onAppClick(appId, e as any)} position={'bottom'} />
+                        </div>
                         <div className="h-full w-px bg-white/20 dark:bg-black/20 mx-1"></div>
                         {apps.map(app => {
                             const running = openWindows.some(win => win.appId === app.id);
                             return (
                                 <button key={app.id} onClick={(e) => onAppClick(app.id, e)} className={`relative w-12 h-12 md:w-14 md:h-14 p-1.5 flex items-center justify-center group flex-shrink-0`} title={app.name}>
-                                    <div className="absolute -top-8 bg-slate-800 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">{app.name}</div>
+                                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-800/90 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-[10000]">{app.name}</div>
                                     <div className={`w-full h-full flex items-center justify-center rounded-[22%] shadow-sm border border-white/20 group-hover:scale-110 group-hover:-translate-y-1 transition-all duration-200 ${app.bgColorClass || 'bg-slate-800'}`}>
                                         {React.cloneElement(app.icon as any, {className: `w-3/5 h-3/5 text-white drop-shadow-md`})}
                                     </div>
-                                    {running && <div className="absolute -bottom-1 w-1 h-1 bg-black/50 dark:bg-white/80 rounded-full"></div>}
+                                    {running && <div className="absolute -bottom-2 w-1 h-1 bg-black/50 dark:bg-white/80 rounded-full"></div>}
                                 </button>
                             );
                         })}
                         <div className="h-full w-px bg-white/20 dark:bg-black/20 mx-1"></div>
-                        <button onClick={() => setMobileSearchActive(true)} className={`relative w-12 h-12 md:w-14 md:h-14 p-2 flex items-center justify-center rounded-lg transition-all duration-200 flex-shrink-0 hover:bg-black/10 dark:hover:bg-white/10`} title="Search">
-                            <SearchIcon className="w-6 h-6 md:w-8 md:h-8 text-black/70 dark:text-white/80" />
-                        </button>
                         <button onClick={(e) => onOpenNotifications(e)} className={`relative w-12 h-12 md:w-14 md:h-14 p-2 flex items-center justify-center rounded-lg transition-all duration-200 flex-shrink-0 hover:bg-black/10 dark:hover:bg-white/10`} title="Notifications">
                             <NotificationBellIcon className="w-6 h-6 md:w-8 md:h-8 text-black/70 dark:text-white/80" />
                             {unreadNotificationCount > 0 && <div className="absolute top-2 right-2 md:top-3 md:right-3 w-3 h-3 bg-red-500 rounded-full border-2 border-slate-200 dark:border-slate-900"></div>}
