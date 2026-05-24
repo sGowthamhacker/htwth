@@ -160,13 +160,13 @@ const SettingsNavItem: React.FC<{
   isActive: boolean;
   onClick: () => void;
 }> = ({ label, icon, isActive, onClick }) => (
-  <li className="flex-shrink-0">
+    <li className="flex-shrink-0">
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors rounded-md ${
+      className={`w-full flex items-center gap-4 px-4 py-3 text-sm font-semibold transition-all duration-200 rounded-xl ${
         isActive
-          ? 'bg-slate-200 dark:bg-slate-700 text-indigo-600 dark:text-indigo-400'
-          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800/60'
+          ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+          : 'text-slate-600 dark:text-slate-300 hover:bg-indigo-50/50 dark:hover:bg-slate-800'
       }`}
     >
       {React.cloneElement(icon as React.ReactElement<any>, { className: 'w-5 h-5 flex-shrink-0' })}
@@ -204,29 +204,29 @@ const FieldSection: React.FC<{
     children: React.ReactNode;
 }> = ({ title, description, icon, isEditing, onEdit, onCancel, onSave, saveState, children }) => {
     return (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm transition-all duration-200 hover:shadow-md">
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
-                <div className="flex items-start gap-4">
-                    <div className="p-2.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl">
+        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-[2rem] border border-slate-200 dark:border-slate-800 p-10 shadow-xl shadow-indigo-500/5 transition-all duration-300">
+            <div className="mb-8 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                <div className="flex items-start gap-5">
+                    <div className="p-3 bg-indigo-500/10 rounded-2xl text-indigo-600 dark:text-indigo-400">
                         {icon}
                     </div>
                     <div>
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">{title}</h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{description}</p>
+                        <h3 className="text-2xl font-extrabold text-slate-900 dark:text-white leading-tight">{title}</h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5">{description}</p>
                     </div>
                 </div>
                 {!isEditing ? (
-                    <button onClick={onEdit} className="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors flex items-center justify-center gap-2 flex-shrink-0">
+                    <button onClick={onEdit} className="px-5 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 flex-shrink-0 hover:shadow-lg">
                         <PencilIcon className="w-4 h-4" /> Edit
                     </button>
                 ) : (
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                        <button onClick={onCancel} disabled={saveState !== 'idle'} className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                        <button onClick={onCancel} disabled={saveState !== 'idle'} className="px-5 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
                             Cancel
                         </button>
-                        <button onClick={onSave} disabled={saveState !== 'idle'} className={`px-4 py-2 text-sm font-bold text-white rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 min-w-[100px] ${saveState === 'saved' ? 'bg-emerald-500' : 'bg-slate-900 dark:bg-white dark:text-slate-900 hover:opacity-90'}`}>
+                        <button onClick={onSave} disabled={saveState !== 'idle'} className={`px-6 py-2.5 text-sm font-bold text-white rounded-xl shadow-lg transition-all duration-200 flex items-center justify-center gap-2 min-w-[120px] ${saveState === 'saved' ? 'bg-emerald-500' : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-indigo-500/30'}`}>
                             {saveState === 'idle' && 'Save'}
-                            {saveState === 'saving' && <SpinnerIcon className="w-4 h-4" />}
+                            {saveState === 'saving' && <SpinnerIcon className="w-4 h-4 animate-spin" />}
                             {saveState === 'saved' && <CheckIcon className="w-4 h-4" />}
                         </button>
                     </div>
@@ -539,7 +539,7 @@ const ProfileSettings: React.FC<{user: User, onSave: (updatedUser: Partial<User>
 
 const ToolsSettings: React.FC<{
     user: User;
-    onProfileUpdate: (data: Partial<User>) => Promise<void>;
+    onProfileUpdate: (data: Partial<User>, silent?: boolean) => Promise<void>;
 }> = ({ user, onProfileUpdate }) => {
     const { selectedFont, setSelectedFont, triggerTransition } = useTheme();
     const { t, i18n } = useTranslation();
@@ -670,7 +670,7 @@ const AppearanceSettings: React.FC<{
     setTaskbarPosition: (position: TaskbarPosition) => void;
     desktopIconSize: DesktopIconSize;
     setDesktopIconSize: (size: DesktopIconSize) => void;
-    onProfileUpdate: (updatedData: Partial<User>) => Promise<void>;
+    onProfileUpdate: (updatedData: Partial<User>, silent?: boolean) => Promise<void>;
 }> = ({ user, taskbarPosition, setTaskbarPosition, desktopIconSize, setDesktopIconSize, onProfileUpdate }) => {
     const { themeStyle, setThemeStyle, themeMode, setThemeMode, selectedBackground, setSelectedBackground, backgroundCategories, triggerTransition } = useTheme();
     const { timeFormat, setTimeFormat, visibleTimezones, setVisibleTimezones } = useTime();
@@ -698,17 +698,15 @@ const AppearanceSettings: React.FC<{
     };
 
     const handleTimezoneChange = (tzId: Timezone) => {
-        setVisibleTimezones(current => {
-            let next: Timezone[];
-            if (current.includes(tzId)) {
-                if (current.length === 1) return current; // Prevent removing the last one
-                next = current.filter(id => id !== tzId);
-            } else {
-                next = [...current, tzId];
-            }
-            onProfileUpdate({ desktop_preferences: { visibleTimezones: next } });
-            return next;
-        });
+        let next: Timezone[];
+        if (visibleTimezones.includes(tzId)) {
+            if (visibleTimezones.length === 1) return; // Prevent removing the last one
+            next = visibleTimezones.filter(id => id !== tzId);
+        } else {
+            next = [...visibleTimezones, tzId];
+        }
+        setVisibleTimezones(next);
+        onProfileUpdate({ desktop_preferences: { visibleTimezones: next } });
     };
 
     const handleWallpaperChange = (url: string) => {
@@ -734,20 +732,22 @@ const AppearanceSettings: React.FC<{
             </div>
 
             {/* Core Theme Bento Box */}
-            <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-sm border border-slate-200/60 dark:border-slate-800 p-8">
-                <div className="mb-6 flex items-center justify-between">
+            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-[2rem] border border-slate-200 dark:border-slate-800 p-10 shadow-xl shadow-indigo-500/5">
+                <div className="mb-8 flex items-center justify-between">
                     <div>
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">Theme & Interface</h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Select the operational style and lighting.</p>
+                        <h3 className="text-2xl font-extrabold text-slate-900 dark:text-white">Theme & Interface</h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5">Select the operational style and lighting.</p>
                     </div>
-                    <Palette className="w-8 h-8 text-indigo-500 opacity-20" />
+                    <div className="p-3 bg-indigo-500/10 rounded-2xl">
+                        <Palette className="w-8 h-8 text-indigo-500" />
+                    </div>
                 </div>
                 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* OS Style */}
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                         <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Interface Layout</label>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-4">
                             <button
                                 onClick={() => handleThemeStyleChange('windows')}
                                 className={`relative p-5 rounded-2xl border-2 text-left transition-all duration-300 isolate overflow-hidden group ${themeStyle === 'windows' ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-500/10' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600'}`}

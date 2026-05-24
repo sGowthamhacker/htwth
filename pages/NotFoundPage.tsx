@@ -6,7 +6,15 @@ const NotFoundPage = () => {
   const handleGoHome = () => {
     // Navigate directly to the home route. 
     // The main App component listener will detect this change and render the dashboard/landing page.
-    window.location.hash = '#/home';
+    window.location.hash = '#/';
+  };
+
+  const handleGoBack = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.hash = '#/';
+    }
   };
 
   return (
@@ -26,7 +34,13 @@ const NotFoundPage = () => {
         <div className="text_4043">4</div>
       </TvAntenna>
       
-      <div className="mt-12 z-10">
+      <div className="mt-12 z-10 flex gap-4">
+        <button 
+            onClick={handleGoBack}
+            className="px-6 py-3 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-full shadow-lg hover:scale-105 transition-transform duration-200"
+        >
+            Go Back
+        </button>
         <button 
             onClick={handleGoHome}
             className="px-6 py-3 text-white bg-slate-900 dark:bg-white dark:text-slate-900 font-bold rounded-full shadow-lg hover:scale-105 transition-transform duration-200"
@@ -36,6 +50,6 @@ const NotFoundPage = () => {
       </div>
     </div>
   );
-}
+};
 
 export default NotFoundPage;

@@ -410,7 +410,7 @@ const CopyrightPage: React.FC<CopyrightPageProps> = ({ onClose }) => {
                                           "routes": [
                                             { "path": "/", "name": "Landing Page", "type": "public" },
                                             { "path": "#/auth", "name": "Authentication", "type": "public" },
-                                            { "path": "#/home", "name": "Dashboard Home", "type": "protected" },
+                                            { "path": "#/dashboard", "name": "Dashboard Home", "type": "protected" },
                                             { "path": "#/writeup", "name": "Writeups", "type": "protected" },
                                             { "path": "#/blog", "name": "Blog", "type": "protected" },
                                             { "path": "#/chat", "name": "Community Chat", "type": "protected" },

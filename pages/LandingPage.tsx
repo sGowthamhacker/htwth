@@ -37,6 +37,7 @@ import XCircleIcon from '../components/icons/XCircleIcon';
 import ChevronDownIcon from '../components/icons/ChevronDownIcon';
 import AnimatedSendButton from '../components/AnimatedSendButton';
 import Footer from '../components/Footer';
+import LegalSupport from '../components/LegalSupport';
 import MicrochipLoader from '../components/MicrochipLoader';
 import RevealOnScroll, { AnimationType } from '../components/RevealOnScroll';
 import { Menu, X, Cloud, CircleHelp, Rocket, Send, Search, Command, Terminal, Zap, Cpu, Sparkles, ArrowRight } from 'lucide-react';
@@ -736,6 +737,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [activeTab, setActiveTab] = useState<'home' | 'features' | 'community' | 'resources' | 'pricing' | 'blog' | 'resumeai' | 'bounty'>('home');
   const [bounties, setBounties] = useState<Bounty[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [bountiesLoading, setBountiesLoading] = useState(false);
   const [selectedBounty, setSelectedBounty] = useState<Bounty | null>(null);
   const [selectedBountyId, setSelectedBountyId] = useState<string | null>(null);
@@ -825,6 +827,28 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // ... existing effects
+
+  const [isPaused, setIsPaused] = useState(false);
+  const resumeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-scroll effect - Marquee like disabled in favor of CSS marquee
+
+  useEffect(() => {
+    if (bounties.length > 0) {
+        setSelectedBountyId(bounties[currentIndex].id);
+    }
+  }, [currentIndex, bounties]);
+  
+  const handleInteraction = () => {
+    setIsPaused(true);
+    if (resumeTimerRef.current) {
+        clearTimeout(resumeTimerRef.current);
+    }
+    resumeTimerRef.current = setTimeout(() => {
+        setIsPaused(false);
+    }, 6000);
+  };
   useEffect(() => {
     const loadBountiesData = async () => {
       setBountiesLoading(true);
@@ -836,9 +860,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
           );
           uniqueBounties.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
           setBounties(uniqueBounties);
-          if (uniqueBounties.length > 0) {
-            setSelectedBountyId(prev => prev || uniqueBounties[0].id);
-          }
         }
       } catch (err) {
         console.error('Failed to load bounties on landing page:', err);
@@ -896,19 +917,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
   };
 
   const handlePrevBounty = () => {
-    const currentActiveId = selectedBountyId || bounties[0]?.id;
-    const activeIdx = bounties.findIndex(b => b.id === currentActiveId);
+    const activeIdx = currentIndex;
     if (activeIdx > 0) {
-      setSelectedBountyId(bounties[activeIdx - 1].id);
+      setCurrentIndex(activeIdx - 1);
       setActiveBountyCommentsId(null);
     }
   };
 
   const handleNextBounty = () => {
-    const currentActiveId = selectedBountyId || bounties[0]?.id;
-    const activeIdx = bounties.findIndex(b => b.id === currentActiveId);
+    const activeIdx = currentIndex;
     if (activeIdx < bounties.length - 1 && activeIdx !== -1) {
-      setSelectedBountyId(bounties[activeIdx + 1].id);
+      setCurrentIndex(activeIdx + 1);
       setActiveBountyCommentsId(null);
     }
   };
@@ -1918,95 +1937,68 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
                     </div>
                 ) : (
                     <div className="w-full space-y-8 pb-10">
-                        {/* Interactive Horizontal Timeline Switcher */}
-                        <div className="relative bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/60 rounded-2xl p-4 sm:p-5 overflow-hidden shadow-inner flex items-center justify-between gap-3">
-                            {/* Decorative background glow for timeline */}
-                            <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-48 h-8 bg-indigo-500/10 dark:bg-indigo-500/5 blur-3xl pointer-events-none"></div>
-                            
-                            {/* Previous Button */}
+                        {/* Interactive Multicolor Timeline Design */}
+                        <div className="relative group">
                             <button
                                 type="button"
-                                onClick={handlePrevBounty}
-                                disabled={bounties.findIndex(b => b.id === (selectedBountyId || bounties[0]?.id)) <= 0}
-                                className="relative z-10 p-2 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-400/50 disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer shadow-sm flex items-center justify-center shrink-0"
-                                title="Previous report in timeline"
+                                onClick={() => { handleInteraction(); handlePrevBounty(); }}
+                                className="absolute left-0 top-1/2 -translate-y-1/2 z-20 p-2 ml-2 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity"
                             >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                                </svg>
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
                             </button>
 
-                            {/* Horizontal timeline track line */}
-                            <div className="absolute top-[40px] left-[10%] right-[10%] h-0.5 bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-slate-800/85 -z-0"></div>
-                            
-                            <div className="flex overflow-x-auto gap-6 py-2 pb-4 px-2 snap-x relative z-10 justify-start max-w-full mx-auto flex-grow scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent scrollbar-thumb-rounded">
-                                {bounties.map((bounty) => {
-                                    const isSelected = (selectedBountyId || bounties[0]?.id) === bounty.id;
-                                    return (
-                                        <button
-                                            key={bounty.id}
-                                            type="button"
-                                            onClick={() => {
-                                                setSelectedBountyId(bounty.id);
-                                                setActiveBountyCommentsId(null); // Reset local comment drawer
-                                            }}
-                                            className="snap-center flex-shrink-0 flex flex-col items-center group cursor-pointer focus:outline-none transition-all duration-300 min-w-[125px] max-w-[160px] px-2"
-                                        >
-                                            {/* Micro Date */}
-                                            <span className={`text-[10px] font-mono font-bold uppercase tracking-wider mb-1.5 transition-colors duration-300 ${
-                                                isSelected 
-                                                    ? 'text-indigo-600 dark:text-indigo-400 font-extrabold' 
-                                                    : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'
-                                            }`}>
-                                                {new Date(bounty.createdAt).toLocaleDateString(undefined, { 
-                                                    month: 'short', 
-                                                    day: 'numeric',
-                                                    year: '2-digit'
-                                                })}
-                                            </span>
-
-                                            {/* Glowing timeline node point */}
-                                            <div className="relative flex items-center justify-center my-0.5">
-                                                {isSelected && (
-                                                    <span className="absolute animate-ping inline-flex h-5 w-5 rounded-full bg-indigo-400/30 opacity-75"></span>
-                                                )}
-                                                <div className={`h-5 w-5 rounded-full flex items-center justify-center transition-all duration-300 border-2 z-10 ${
-                                                    isSelected
-                                                        ? 'bg-gradient-to-br from-indigo-500 to-purple-600 border-indigo-400 text-white shadow-md shadow-indigo-500/25 scale-110'
-                                                        : 'bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-400 dark:text-slate-500 group-hover:border-indigo-400 group-hover:scale-105'
-                                                }`}>
-                                                    {isSelected ? (
-                                                        <span className="h-1.5 w-1.5 rounded-full bg-white"></span>
-                                                    ) : (
-                                                        <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700 transition-colors duration-300 group-hover:bg-indigo-400"></span>
-                                                    )}
+                            <div className="relative overflow-hidden bg-white dark:bg-slate-950 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
+                                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent opacity-50"></div>
+                                
+                            <div 
+                                className="relative flex items-center gap-6 pb-4 marquee-animation"
+                                style={{ animationPlayState: isPaused ? 'paused' : 'running' }}
+                                onMouseEnter={() => setIsPaused(true)}
+                                onMouseLeave={() => {
+                                    if(resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+                                    resumeTimerRef.current = setTimeout(() => setIsPaused(false), 2000);
+                                }}
+                            >
+                                    {[...bounties, ...bounties].map((bounty, index) => {
+                                        const isSelected = (selectedBountyId || bounties[0]?.id) === bounty.id;
+                                        const colorClass = ['bg-indigo-500', 'bg-emerald-500', 'bg-orange-500', 'bg-cyan-500', 'bg-pink-500', 'bg-amber-500'][index % 6];
+                                        
+                                        return (
+                                            <button
+                                                key={`${bounty.id}-${index}`}
+                                                onClick={() => {
+                                                    handleInteraction();
+                                                    setSelectedBountyId(bounty.id);
+                                                    setActiveBountyCommentsId(null);
+                                                }}
+                                                onMouseEnter={handleInteraction}
+                                                className={`relative flex-shrink-0 flex flex-col items-center group cursor-pointer w-32 pb-4 ${isSelected ? 'opacity-100' : 'opacity-60 hover:opacity-100'}`}
+                                            >
+                                                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 truncate max-w-full">
+                                                                                                    <span className="text-indigo-500 font-black text-[11px] mr-1">{new Date(bounty.createdAt).getFullYear()}</span>
+                                                {new Date(bounty.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                                                 </div>
-                                            </div>
-
-                                            {/* Micro details */}
-                                            <div className="text-center mt-1.5 space-y-0.5">
-                                                <span className={`block text-[11px] font-semibold leading-tight transition-colors duration-300 ${
-                                                    isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600'
-                                                }`}>
-                                                    {bounty.company}
-                                                </span>
-                                            </div>
-                                        </button>
-                                    );
-                                })}
+                                                
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${colorClass} transition-all duration-300 ${isSelected ? 'ring-4 ring-slate-100 dark:ring-slate-900 shadow-lg shadow-current' : ''}`}>
+                                                    <div className="w-2 h-2 rounded-full bg-white"></div>
+                                                </div>
+                                                
+                                                <div className="absolute top-12 w-full text-center mt-2">
+                                                    <div className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate px-1">{bounty.company}</div>
+                                                    {isSelected && <motion.div layoutId="activeInd" className={`h-1 w-8 mx-auto mt-2 rounded-full ${colorClass}`} />}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
 
-                            {/* Next Button */}
                             <button
                                 type="button"
-                                onClick={handleNextBounty}
-                                disabled={bounties.findIndex(b => b.id === (selectedBountyId || bounties[0]?.id)) >= bounties.length - 1}
-                                className="relative z-10 p-2 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-400/50 disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer shadow-sm flex items-center justify-center shrink-0"
-                                title="Next report in timeline"
+                                onClick={() => { handleInteraction(); handleNextBounty(); }}
+                                className="absolute right-0 top-1/2 -translate-y-1/2 z-20 p-2 mr-2 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity"
                             >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                                </svg>
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                             </button>
                         </div>
 
@@ -2061,7 +2053,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
                                                         src={getCloudinaryUrl(bounty.image) || bounty.image} 
                                                         alt={bounty.title}
                                                         referrerPolicy="no-referrer"
-                                                        className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-[1.02]"
+                                                        className="w-full h-full object-contain transition-transform duration-500 group-hover/img:scale-[1.02]"
                                                     />
                                                     <div className="absolute inset-0 bg-slate-950/0 group-hover/img:bg-slate-950/20 transition-colors flex items-center justify-center">
                                                         <span className="opacity-0 group-hover/img:opacity-100 transition-opacity bg-slate-950/80 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg backdrop-blur-sm">
@@ -2175,6 +2167,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
         )}
 
       </main>
+
+      <LegalSupport />
 
       <Footer 
         onAction={onSignIn} 

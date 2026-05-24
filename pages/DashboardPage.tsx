@@ -396,7 +396,7 @@ const internalApps: AppDefinition[] = [
     { id: 'search', name: 'Search', icon: <SearchIcon className="text-gray-500"/>, component: SearchPage, bgColorClass: 'bg-slate-500', accentColor: '#64748b' },
     { id: 'start', name: 'Start Menu', icon: <SparklesIcon />, component: StartMenuContent, bgColorClass: 'bg-slate-800', accentColor: '#1e293b' },
     { id: 'admin', name: 'Admin Panel', icon: <AdminIcon />, component: AdminDashboardPage, bgColorClass: 'bg-amber-500', accentColor: '#f59e0b' },
-    { id: 'bountymanager', name: 'Bounty Manager', icon: <MoneyIcon className="text-white"/>, component: BountyManagerPage, bgColorClass: 'bg-green-500', accentColor: '#22c55e' },
+    { id: 'bounty', name: 'Bounty Manager', icon: <MoneyIcon className="text-white"/>, component: BountyManagerPage, bgColorClass: 'bg-green-500', accentColor: '#22c55e' },
     { id: 'notifications', name: 'Notifications', icon: <NotificationBellIcon />, component: NotificationCenterPage, bgColorClass: 'bg-blue-500', accentColor: '#3b82f6' },
     { id: 'copyright', name: 'Legal', icon: <ScaleIcon />, component: CopyrightPage, bgColorClass: 'bg-slate-200', accentColor: '#475569' },
     { id: 'about', name: 'Profile', icon: <UserCircleIcon />, component: MyWorkPage, bgColorClass: 'bg-indigo-500', accentColor: '#6366f1' },
@@ -540,7 +540,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
         let allAvailableApps = [...baseApps, ...internalApps];
 
         if (currentUser.role !== 'admin') {
-            allAvailableApps = allAvailableApps.filter(app => app.id !== 'admin' && app.id !== 'bountymanager');
+            allAvailableApps = allAvailableApps.filter(app => app.id !== 'admin' && app.id !== 'bounty');
         } else {
             allAvailableApps = allAvailableApps.filter(app => app.id !== 'gowthamprofile');
         }
@@ -814,8 +814,8 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
         if (!isRestored) return;
 
         const { appId: targetAppIdFromUrl, deepLinkInfo } = urlState;
-        const targetAppId = targetAppIdFromUrl === 'dashboard' ? 'home' : targetAppIdFromUrl;
-        const appDef = apps.find(app => app.id === targetAppId);
+        const targetAppId = targetAppIdFromUrl === 'dashboard' ? null : targetAppIdFromUrl;
+        const appDef = apps.find(app => (targetAppId && app.id === targetAppId));
 
         if (targetAppId && !appDef) {
             return;
@@ -1571,9 +1571,8 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
     }
 
     const { appId: targetAppIdFromUrl } = urlState;
-    const targetAppId = targetAppIdFromUrl === 'dashboard' ? 'home' : targetAppIdFromUrl;
     
-    if (targetAppId && !apps.find(app => app.id === targetAppId)) {
+    if (targetAppIdFromUrl && targetAppIdFromUrl !== 'dashboard' && !apps.find(app => app.id === targetAppIdFromUrl)) {
         return <NotFoundPage />;
     }
 
@@ -1750,7 +1749,19 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                 <p>Are you sure you want to restart the system?</p>
             </ConfirmationModal>
 
-            <div ref={boundsRef} className="h-full w-full relative z-10 overflow-hidden" onClick={() => setActiveIconId(null)} onMouseDown={(e) => { if (e.target === e.currentTarget) handleNavigate(''); }}>
+            <div 
+                ref={boundsRef} 
+                className={`h-full w-full relative z-10 overflow-hidden transition-all duration-300 ${
+                    !isAnyWindowMaximized ? (
+                        (desktopDimensions.width < 640 || taskbarPosition === 'bottom') ? 'pb-[56px]' : 
+                        (taskbarPosition === 'top' ? 'pt-[56px]' : 
+                        (taskbarPosition === 'left' ? 'pl-[64px]' : 
+                        (taskbarPosition === 'right' ? 'pr-[64px]' : 'pb-[56px]')))
+                    ) : ''
+                }`}
+                onClick={() => setActiveIconId(null)} 
+                onMouseDown={(e) => { if (e.target === e.currentTarget) handleNavigate(''); }}
+            >
                 {isPending && isPendingBannerVisible && (
                     <div className={`absolute top-4 left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-full max-w-lg z-[1000] bg-amber-100 dark:bg-amber-900/50 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 text-sm font-semibold p-3 rounded-lg shadow-lg flex items-center gap-3 transition-all duration-300 ease-in-out ${isBannerClosing ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
                         <ClockIcon className="w-5 h-5 flex-shrink-0" />

@@ -64,8 +64,8 @@ const handleAuthAndLoadApp = async () => {
           if (token) {
               await signInWithCustomToken(auth, token);
               sessionStorage.setItem('isNewLogin', 'true');
-              console.log("✅ 2FA login successful. Setting hash to home.");
-              window.location.hash = '#/home';
+              console.log("✅ 2FA login successful. Setting hash to dashboard.");
+              window.location.hash = '#/dashboard';
           } else {
               console.warn("⚠️ Path is for verify-link, but no token found.");
               window.location.hash = "/#/auth";
@@ -89,8 +89,8 @@ const handleAuthAndLoadApp = async () => {
               await signInWithEmailLink(auth, email, currentUrl);
               window.localStorage.removeItem("magic_email");
               sessionStorage.setItem('isNewLogin', 'true');
-              console.log("✅ Firebase Email link login successful. Setting hash to home.");
-              window.location.hash = '#/home';
+              console.log("✅ Firebase Email link login successful. Setting hash to dashboard.");
+              window.location.hash = '#/dashboard';
           } catch (err) {
               console.error("❌ Firebase Email link error:", err);
               alert("Login failed. The link may be invalid or expired. Please request a new one.");

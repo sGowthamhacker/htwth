@@ -117,6 +117,7 @@ const AnimatedBackground = () => (
 
 const ADMIN_SECRET = import.meta.env.VITE_ADMIN_SECRET_PATH || 'admin-login';
 const ADMIN_LOGIN_PATH = `#/${ADMIN_SECRET}`;
+const VALID_PROTECTED_APPS = ['dashboard', 'home', 'writeup', 'blog', 'chat', 'notes', 'todolist', 'settings', 'search', 'start', 'admin', 'notifications', 'mywork', 'resources', 'kali', 'docs', 'resumeai', 'features', 'community', 'pricing', 'browser', 'consistency', 'copyright', 'about', 'gowthamprofile', 'bounty', 'tools', 'live', 'portfolio', 'youtube', 'github'];
 
 const App: React.FC = () => {
   const { themeStyle, setThemeStyle, themeMode, setThemeMode, selectedBackground, setSelectedBackground, selectedFont, setSelectedFont } = useTheme();
@@ -243,13 +244,25 @@ const App: React.FC = () => {
   const allUsersRef = useRef(allUsers);
   allUsersRef.current = allUsers;
 
-  // Force loading to finish after 2 seconds to provide a consistent visual experience
+  // Force loading to finish after 3 seconds as a safety fallback, but only for DB.
+  // Auth loading is managed strictly by the auth listener.
   useEffect(() => {
     const timer = setTimeout(() => {
       setDbLoading(false);
-      setIsInitialAuthLoading(false);
-    }, 2000);
+      // Removed setIsInitialAuthLoading(false) from here
+    }, 3000);
     return () => clearTimeout(timer);
+  }, []);
+
+  // Pathname to Hash Redirector 
+  useEffect(() => {
+    const pathname = window.location.pathname;
+    if (pathname !== '/' && pathname !== '') {
+        const pathApp = pathname.replace(/^\//, '').split('/')[0];
+        if (VALID_PROTECTED_APPS.includes(pathApp) || pathApp === 'auth') {
+            window.location.href = `/#/${pathname.replace(/^\//, '')}${window.location.search}${window.location.hash}`;
+        }
+    }
   }, []);
 
   // Sync wallpaper and theme preferences from user profile to ThemeContext
@@ -315,7 +328,7 @@ const App: React.FC = () => {
         if (timeFormat !== '12hr') setTimeFormat('12hr');
         if (JSON.stringify(visibleTimezones) !== JSON.stringify(['local'])) setVisibleTimezones(['local']);
     }
-  }, [appUser, isInitialAuthLoading, selectedBackground, themeStyle, themeMode, selectedFont, timeFormat, visibleTimezones, setSelectedBackground, setThemeStyle, setThemeMode, setSelectedFont, setTimeFormat, setVisibleTimezones]);
+  }, [appUser, isInitialAuthLoading, setSelectedBackground, setThemeStyle, setThemeMode, setSelectedFont, setTimeFormat, setVisibleTimezones]);
 
   // 404 and Maintenance Route Checker
   useEffect(() => {
@@ -349,17 +362,15 @@ const App: React.FC = () => {
         // Remove the early return for logged-in users to allow them to view and dismiss legal/status pages
         // if (appUser) return; 
         
-        const cleanHash = hash.replace(/^#\/?/, ''); 
-        const validRoots = ['', '#', '#/', '#/sitemap', '#/helpcenter', '#/privacy', '#/terms', '#/security', '#/status'];
-        
-        const validProtectedApps = ['home', 'writeup', 'blog', 'chat', 'notes', 'todolist', 'settings', 'search', 'start', 'admin', 'notifications', 'mywork', 'resources', 'kali', 'docs', 'resumeai', 'features', 'community', 'pricing', 'browser', 'consistency', 'copyright', 'about', 'gowthamprofile', 'bountymanager', 'bounty'];
+        const cleanHash = hash.replace(/^#\/?/, '').split('?')[0]; 
+        const validRoots = ['', '#', '#/', '#/sitemap', '#/helpcenter', '#/privacy', '#/terms', '#/security', '#/status', '#/dashboard'];
         
         const currentApp = cleanHash.split('/')[0];
         
         const isAuthRoute = cleanHash.startsWith('auth');
-        const isRootRoute = validRoots.includes(hash) || cleanHash === '';
+        const isRootRoute = validRoots.includes(hash) || cleanHash === '' || cleanHash === 'dashboard';
         // 'writeup' is also a valid root for landing page deep links
-        const isProtectedAppRoute = validProtectedApps.includes(currentApp) && currentApp !== '';
+        const isProtectedAppRoute = VALID_PROTECTED_APPS.includes(currentApp) && currentApp !== '';
 
         if (!isAuthRoute && !isRootRoute && !isProtectedAppRoute) {
             setIs404(true);
@@ -805,21 +816,28 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
                 const redirectPath = localStorage.getItem('redirectAfterLogin');
                 localStorage.removeItem('redirectAfterLogin'); 
 
+                // Determine if the current hash is a valid root or protected app route to prevent lingering on 404/invalid URLs after login
+                const currentHash = window.location.hash;
+                const cleanHash = currentHash.replace(/^#\/?/, '');
+                const currentApp = cleanHash.split('/')[0];
+                const isRootRoute = ['', '#', '#/', '#/sitemap', '#/helpcenter', '#/privacy', '#/terms', '#/security', '#/status', '#/dashboard'].includes(currentHash) || cleanHash === '' || cleanHash === 'dashboard';
+                const isProtectedAppRoute = VALID_PROTECTED_APPS.includes(currentApp) && currentApp !== '';
+                const isCurrentHashValid = isRootRoute || isProtectedAppRoute || currentHash.startsWith('#/auth');
+
                 if (redirectPath && redirectPath !== '#' && !redirectPath.startsWith('#/auth')) {
                     window.location.hash = redirectPath;
-                } else if (window.location.hash.startsWith('#/auth') || window.location.hash === '' || window.location.hash === '#') {
-                    window.location.hash = '#/home';
+                } else if (!isCurrentHashValid || window.location.hash.startsWith('#/auth') || window.location.hash === '' || window.location.hash === '#') {
+                    window.location.hash = '#/dashboard';
                 }
             } else {
                 const currentPath = window.location.hash;
                 const cleanPath = currentPath.replace(/^#\/?/, '');
                 const isPublicPage = currentPath.startsWith("#/auth");
                 const isRoot = currentPath === '' || currentPath === '#' || currentPath === '#/' || 
-                              ['#/sitemap', '#/helpcenter', '#/privacy', '#/terms', '#/security', '#/status'].includes(currentPath);
+                              ['#/sitemap', '#/helpcenter', '#/privacy', '#/terms', '#/security', '#/status', '#/dashboard'].includes(currentPath) || cleanPath === 'dashboard';
                 
-                const validProtectedApps = ['home', 'writeup', 'blog', 'chat', 'notes', 'todolist', 'settings', 'search', 'start', 'admin', 'notifications', 'mywork', 'resources', 'kali', 'docs', 'resumeai', 'features', 'community', 'pricing', 'browser', 'consistency', 'copyright', 'about', 'gowthamprofile', 'bountymanager', 'bounty'];
                 const currentApp = cleanPath.split('/')[0];
-                const isProtectedAppRoute = validProtectedApps.includes(currentApp);
+                const isProtectedAppRoute = VALID_PROTECTED_APPS.includes(currentApp);
 
                 if (!isPublicPage && !isRoot && !isProtectedAppRoute) {
                     setIs404(true);
@@ -907,7 +925,8 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
                     return;
                 }
         
-                const profileFromDb = await getUserByFirebaseUid(freshUser.uid);
+                try {
+                    const profileFromDb = await getUserByFirebaseUid(freshUser.uid);
 
                 if (profileFromDb && freshUser.email && profileFromDb.email.toLowerCase() !== freshUser.email.toLowerCase()) {
                     console.log(`Email mismatch found. Auth: ${freshUser.email}, DB: ${profileFromDb.email}. Syncing...`);
@@ -1044,13 +1063,15 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
                                 await performLogin(addedUser, freshUser);
                             }
                         } else {
-                            addNotification({ title: 'Profile Creation Failed', message: 'Could not create your user profile.', type: 'error' });
-                            signOut(auth);
+                            // Don't sign out automatically on DB failure. 
+                            // Just notify and let them retry or stay on landing.
+                            addNotification({ title: 'Database Connection Issue', message: 'We couldn\'t load your profile. Please check your connection or try again later.', type: 'error' });
                         }
-                    } else {
-                        addNotification({ title: 'Login Error', message: 'User profile not found and could not be created (missing email).', type: 'error' });
-                        signOut(auth);
                     }
+                }
+            } catch (err: any) {
+                    console.error("Auth Listener DB Error:", err);
+                    addNotification({ title: 'Database Error', message: 'A connection error occurred while loading your profile.', type: 'error' });
                 }
             } else {
                 if (appUserRef.current && !is2FASignOutRef.current) {
@@ -1218,9 +1239,7 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
         });
         
         if (appUserRef.current && appUserRef.current.email === email) {
-            if (!silent) {
-                setAppUser(updatedUserFromDb);
-            }
+            setAppUser(updatedUserFromDb);
         }
             
         if (!silent) {
@@ -2189,7 +2208,7 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
                         twoFAAttemptFailed={twoFAAttemptFailed}
                         onClear2FAError={() => setTwoFAError(null)}
                         onContactAdmin={handleContactAdmin}
-                        onBackToHome={handleBackToLanding} 
+                        onBackToHome={handleGoBack} 
                       />
                     </div>
                   )}

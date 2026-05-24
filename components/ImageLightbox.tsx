@@ -30,9 +30,9 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({ imageUrl, onClose }) => {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative max-w-4xl max-h-[90vh] transition-transform duration-300 ${isClosing ? 'scale-95' : 'scale-100'}`}
+        className={`relative flex items-center justify-center max-w-[90vw] max-h-[90vh] transition-transform duration-300 ${isClosing ? 'scale-95' : 'scale-100'}`}
       >
-        <img src={imageUrl} alt="Certification" className="object-contain w-full h-full rounded-lg shadow-2xl" />
+        <img src={imageUrl} alt="Certification" className="object-contain max-w-full max-h-[90vh] rounded-lg shadow-2xl" />
         <button
           onClick={handleClose}
           className="absolute -top-3 -right-3 bg-white/20 text-white rounded-full p-2 hover:bg-white/40"

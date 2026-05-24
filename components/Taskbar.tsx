@@ -7,6 +7,7 @@ import UserMenu from './UserMenu';
 import TaskbarSearch from './TaskbarSearch';
 import SearchIcon from './icons/SearchIcon';
 import { useTheme } from '../contexts/ThemeContext';
+import { useTime } from '../contexts/TimeContext';
 import NotificationBellIcon from './icons/NotificationBellIcon';
 import AppsIcon from './icons/AppsIcon';
 
@@ -32,16 +33,46 @@ interface TaskbarProps {
 }
 
 const Clock: React.FC<{isVertical: boolean}> = ({ isVertical }) => {
+    const { timeFormat, visibleTimezones } = useTime();
     const [time, setTime] = useState(new Date());
+
     useEffect(() => {
         const timerId = setInterval(() => setTime(new Date()), 1000);
         return () => clearInterval(timerId);
     }, []);
 
+    const formatTime = (date: Date, tz: string) => {
+        const options: Intl.DateTimeFormatOptions = {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: timeFormat === '12hr',
+        };
+
+        if (tz === 'IST') options.timeZone = 'Asia/Kolkata';
+        if (tz === 'UTC') options.timeZone = 'UTC';
+        // 'local' uses system default
+
+        return date.toLocaleTimeString([], options);
+    };
+
     return (
-        <div className="text-xs text-center px-2">
-            <div>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-            <div className={isVertical ? 'hidden' : 'hidden sm:block'}>{time.toLocaleDateString([], { month: 'short', day: 'numeric' })}</div>
+        <div className={`flex ${isVertical ? 'flex-col gap-2' : 'flex-row items-center gap-3'} px-2 overflow-hidden`}>
+            {visibleTimezones.map(tz => (
+                <div key={tz} className="text-center group relative cursor-default">
+                    <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 scale-75 origin-center leading-tight">
+                        {tz === 'local' ? 'LOC' : tz}
+                    </div>
+                    <div className="text-xs font-bold text-slate-700 dark:text-slate-200 tabular-nums">
+                        {formatTime(time, tz)}
+                    </div>
+                    {/* Tooltip for date */}
+                    {!isVertical && (
+                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[10000]">
+                            {time.toLocaleDateString([], { month: 'short', day: 'numeric', weekday: 'short', timeZone: tz === 'IST' ? 'Asia/Kolkata' : (tz === 'UTC' ? 'UTC' : undefined) })}
+                         </div>
+                    )}
+                </div>
+            ))}
         </div>
     );
 };
@@ -121,20 +152,34 @@ const Taskbar: React.FC<TaskbarProps> = ({
         if (isUserMenuOpen && themeStyle === 'mac' && userButtonRef.current && macDockRef.current) {
              const updatePosition = () => {
                  const dockRect = macDockRef.current!.getBoundingClientRect();
+                 const effectivePosition = window.innerWidth < 640 ? 'bottom' : position;
                  
-                 setUserMenuMacStyle({
-                     left: 'auto',
-                     right: window.innerWidth - dockRect.right,
-                     bottom: window.innerHeight - dockRect.top + 16,
-                     transform: 'none' // No longer centering, doing right alignment
-                 });
+                 const style: React.CSSProperties = {
+                     transform: 'none',
+                     zIndex: 10001
+                 };
+
+                 if (effectivePosition === 'left') {
+                     style.left = dockRect.right + 16;
+                     style.bottom = window.innerHeight - dockRect.bottom;
+                 } else if (effectivePosition === 'right') {
+                     style.right = (window.innerWidth - dockRect.left) + 16;
+                 } else if (effectivePosition === 'top') {
+                     style.top = dockRect.bottom + 16;
+                     style.right = window.innerWidth - dockRect.right;
+                 } else { // bottom
+                     style.right = window.innerWidth - dockRect.right;
+                     style.bottom = window.innerHeight - dockRect.top + 16;
+                 }
+                 
+                 setUserMenuMacStyle(style);
              };
              // Use requestAnimationFrame to ensure layout has updated
              requestAnimationFrame(updatePosition);
              window.addEventListener('resize', updatePosition);
              return () => window.removeEventListener('resize', updatePosition);
         }
-    }, [isUserMenuOpen, themeStyle, openWindows.length, apps.length]);
+    }, [isUserMenuOpen, themeStyle, openWindows.length, apps.length, position]);
 
     const getTaskbarClasses = (): string => {
         const base = "absolute bg-slate-200/70 dark:bg-slate-900/80 backdrop-blur-xl border-black/10 dark:border-white/10 shadow-lg z-[9999] transition-transform duration-300 ease-in-out";
@@ -144,7 +189,10 @@ const Taskbar: React.FC<TaskbarProps> = ({
         const shouldHide = isAnyWindowMaximized;
         const mobileHide = isUserMenuOpen;
 
-        switch (position) {
+        // Force to bottom on mobile for Windows theme as well
+        const effectivePosition = window.innerWidth < 640 ? 'bottom' : position;
+
+        switch (effectivePosition) {
             case 'top':
                 positionClasses = `top-0 left-0 right-0 h-[56px] border-b`;
                 transformClass = shouldHide ? '-translate-y-full' : (mobileHide ? '-translate-y-full sm:translate-y-0' : 'translate-y-0');
@@ -274,33 +322,56 @@ const Taskbar: React.FC<TaskbarProps> = ({
         </div>
     );
 
+    const getMacDockClasses = (): string => {
+        const base = "fixed z-[9999] transition-all duration-300 ease-in-out";
+        const hideTranslate = isAnyWindowMaximized;
+        
+        // On very small screens (mobile), always force to bottom for best UX
+        const effectivePosition = window.innerWidth < 640 ? 'bottom' : position;
+
+        switch (effectivePosition) {
+            case 'top':
+                return `${base} top-2 left-1/2 -translate-x-1/2 ${hideTranslate ? '-translate-y-[calc(100%+16px)]' : 'translate-y-0'}`;
+            case 'left':
+                return `${base} left-2 top-1/2 -translate-y-1/2 ${hideTranslate ? '-translate-x-[calc(100%+16px)]' : 'translate-x-0'} flex-col`;
+            case 'right':
+                return `${base} right-2 top-1/2 -translate-y-1/2 ${hideTranslate ? 'translate-x-[calc(100%+16px)]' : 'translate-x-0'} flex-col`;
+            case 'bottom':
+            default:
+                return `${base} bottom-2 left-1/2 -translate-x-1/2 ${hideTranslate ? 'translate-y-[calc(100%+16px)]' : 'translate-y-0'}`;
+        }
+    };
+
     if (themeStyle === 'mac') {
+        const effectivePosition = window.innerWidth < 640 ? 'bottom' : position;
+        const macIsVertical = effectivePosition === 'left' || effectivePosition === 'right';
+
         return (
             <>
-                <div className={`fixed bottom-2 left-1/2 -translate-x-1/2 z-[9999] transition-transform duration-300 ease-in-out ${isAnyWindowMaximized ? 'translate-y-[calc(100%+8px)]' : 'translate-y-0'}`}>
-                    <div ref={macDockRef} className={`flex items-end h-16 md:h-20 bg-white/20 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-black/30 rounded-2xl shadow-lg p-2 gap-2 max-w-[95vw] overflow-x-auto hide-scrollbar`}>
+                <div className={getMacDockClasses()}>
+                    <div ref={macDockRef} className={`flex ${macIsVertical ? 'flex-col' : 'items-end'} bg-white/20 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-black/30 rounded-2xl shadow-lg p-2 gap-2 max-w-[95vw] max-h-[95vh] overflow-auto hide-scrollbar`}>
                         <button ref={startButtonRef} onClick={onStartClick} className={`relative w-12 h-12 md:w-14 md:h-14 p-1.5 flex items-center justify-center rounded-lg transition-all duration-200 flex-shrink-0 group`} title="Launchpad">
-                            <div className={`w-full h-full flex items-center justify-center rounded-[22%] shadow-sm border border-white/20 group-hover:scale-110 group-hover:-translate-y-1 transition-all duration-200 ${isStartMenuOpen ? 'bg-slate-700' : 'bg-slate-800'}`}>
+                            <div className={`w-full h-full flex items-center justify-center rounded-[22%] shadow-sm border border-white/20 group-hover:scale-110 ${macIsVertical ? 'group-hover:translate-x-1' : 'group-hover:-translate-y-1'} transition-all duration-200 ${isStartMenuOpen ? 'bg-slate-700' : 'bg-slate-800'}`}>
                                 <AppsIcon className={`w-3/5 h-3/5 text-white`} />
                             </div>
                         </button>
-                        <div className="px-2 flex items-center h-full">
-                          <TaskbarSearch allApps={apps} searchablePosts={searchablePosts} onOpenApp={(appId, e) => onAppClick(appId, e as any)} position={'bottom'} />
+                        <div className={`px-2 flex items-center ${macIsVertical ? 'w-full justify-center' : 'h-full'}`}>
+                          <TaskbarSearch allApps={allAppsForSearch} searchablePosts={searchablePosts} onOpenApp={(appId, e) => onAppClick(appId, e as any)} position={effectivePosition} />
                         </div>
-                        <div className="h-full w-px bg-white/20 dark:bg-black/20 mx-1"></div>
+                        <div className={macIsVertical ? 'w-full h-px bg-white/20 dark:bg-black/20 my-1' : 'h-full w-px bg-white/20 dark:bg-black/20 mx-1'}></div>
                         {apps.map(app => {
                             const running = openWindows.some(win => win.appId === app.id);
                             return (
                                 <button key={app.id} onClick={(e) => onAppClick(app.id, e)} className={`relative w-12 h-12 md:w-14 md:h-14 p-1.5 flex items-center justify-center group flex-shrink-0`} title={app.name}>
-                                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-800/90 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-[10000]">{app.name}</div>
-                                    <div className={`w-full h-full flex items-center justify-center rounded-[22%] shadow-sm border border-white/20 group-hover:scale-110 group-hover:-translate-y-1 transition-all duration-200 ${app.bgColorClass || 'bg-slate-800'}`}>
+                                    <div className={`absolute ${macIsVertical ? (effectivePosition === 'left' ? 'left-full ml-2' : 'right-full mr-2') : '-top-12'} left-1/2 -translate-x-1/2 bg-slate-800/90 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-[10000]`} style={macIsVertical ? { top: '50%', transform: 'translateY(-50%)' } : {}}>{app.name}</div>
+                                    <div className={`w-full h-full flex items-center justify-center rounded-[22%] shadow-sm border border-white/20 group-hover:scale-110 ${macIsVertical ? (effectivePosition === 'left' ? 'group-hover:translate-x-1' : 'group-hover:-translate-x-1') : 'group-hover:-translate-y-1'} transition-all duration-200 ${app.bgColorClass || 'bg-slate-800'}`}>
                                         {React.cloneElement(app.icon as any, {className: `w-3/5 h-3/5 text-white drop-shadow-md`})}
                                     </div>
-                                    {running && <div className="absolute -bottom-2 w-1 h-1 bg-black/50 dark:bg-white/80 rounded-full"></div>}
+                                    {running && <div className={`absolute ${macIsVertical ? (effectivePosition === 'left' ? '-left-1' : '-right-1') : '-bottom-2'} w-1 h-1 bg-black/50 dark:bg-white/80 rounded-full`}></div>}
                                 </button>
                             );
                         })}
-                        <div className="h-full w-px bg-white/20 dark:bg-black/20 mx-1"></div>
+                        <div className={macIsVertical ? 'w-full h-px bg-white/20 dark:bg-black/20 my-1' : 'h-full w-px bg-white/20 dark:bg-black/20 mx-1'}></div>
                         <button onClick={(e) => onOpenNotifications(e)} className={`relative w-12 h-12 md:w-14 md:h-14 p-2 flex items-center justify-center rounded-lg transition-all duration-200 flex-shrink-0 hover:bg-black/10 dark:hover:bg-white/10`} title="Notifications">
                             <NotificationBellIcon className="w-6 h-6 md:w-8 md:h-8 text-black/70 dark:text-white/80" />
                             {unreadNotificationCount > 0 && <div className="absolute top-2 right-2 md:top-3 md:right-3 w-3 h-3 bg-red-500 rounded-full border-2 border-slate-200 dark:border-slate-900"></div>}
@@ -314,7 +385,7 @@ const Taskbar: React.FC<TaskbarProps> = ({
                 <div className="z-[10000]" ref={userMenuRef}>
                     {isUserMenuOpen && (
                         <div style={userMenuMacStyle} className="fixed z-[10001] origin-bottom-right">
-                            <UserMenu user={user} onLogout={() => { handleCloseUserMenu(); onLogout(); }} onRestart={() => { handleCloseUserMenu(); onRestart(); }} onOpenSettings={(e) => { handleCloseUserMenu(); onOpenSettings(e); }} position={position} isClosing={isUserMenuClosing} themeStyle={themeStyle} />
+                            <UserMenu user={user} onLogout={() => { handleCloseUserMenu(); onLogout(); }} onRestart={() => { handleCloseUserMenu(); onRestart(); }} onOpenSettings={(e) => { handleCloseUserMenu(); onOpenSettings(e); }} position={effectivePosition} isClosing={isUserMenuClosing} themeStyle={themeStyle} />
                         </div>
                     )}
                 </div>

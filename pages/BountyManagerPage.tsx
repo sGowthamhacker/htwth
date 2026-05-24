@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Bounty, BountyComment } from '../types';
-import { Plus, X, Search } from 'lucide-react';
+import { Plus, X, Search, MoreVertical, Edit2, Trash2 } from 'lucide-react';
 import { getBounties, addBounty, deleteBountyDb, updateBounty } from '../services/database';
 
 interface BountyManagerPageProps {
@@ -13,6 +13,7 @@ const BountyManagerPage: React.FC<BountyManagerPageProps> = ({ user }) => {
     const [selectedBounty, setSelectedBounty] = useState<Bounty | null>(null);
     const [commentText, setCommentText] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+    const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
     
     const [title, setTitle] = useState('');
     const [company, setCompany] = useState('');
@@ -22,9 +23,15 @@ const BountyManagerPage: React.FC<BountyManagerPageProps> = ({ user }) => {
     const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [editingBountyId, setEditingBountyId] = useState<string | null>(null);
 
     useEffect(() => {
         loadBounties();
+        const handleDocumentClick = () => {
+            setActiveMenuId(null);
+        };
+        document.addEventListener('click', handleDocumentClick);
+        return () => document.removeEventListener('click', handleDocumentClick);
     }, []);
 
     const loadBounties = async () => {
@@ -61,25 +68,33 @@ const BountyManagerPage: React.FC<BountyManagerPageProps> = ({ user }) => {
         if (isSubmitting) return;
         setIsSubmitting(true);
         try {
-            const newBounty = {
+            const bountyData = {
                 title,
                 company,
                 summary,
                 image,
                 message,
                 createdAt: new Date(reportDate).toISOString(),
-                likes: 0,
-                isLiked: false,
-                comments: []
             };
-            const added = await addBounty(newBounty);
-            if (added) {
-                setBounties(prev => {
-                    const merged = [added, ...prev];
-                    const unique = merged.filter((b, index, self) => self.findIndex(ub => ub.id === b.id) === index);
-                    unique.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-                    return unique;
+
+            if (editingBountyId) {
+                await updateBounty(editingBountyId, bountyData);
+                setBounties(prev => prev.map(b => b.id === editingBountyId ? { ...b, ...bountyData } : b));
+            } else {
+                const added = await addBounty({
+                    ...bountyData,
+                    likes: 0,
+                    isLiked: false,
+                    comments: []
                 });
+                if (added) {
+                    setBounties(prev => {
+                        const merged = [added, ...prev];
+                        const unique = merged.filter((b, index, self) => self.findIndex(ub => ub.id === b.id) === index);
+                        unique.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                        return unique;
+                    });
+                }
             }
             setTitle('');
             setCompany('');
@@ -88,11 +103,23 @@ const BountyManagerPage: React.FC<BountyManagerPageProps> = ({ user }) => {
             setMessage('');
             setReportDate(new Date().toISOString().split('T')[0]);
             setIsAdding(false);
+            setEditingBountyId(null);
         } catch (error) {
             console.error('Failed to post bounty', error);
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleEdit = (bounty: Bounty) => {
+        setIsAdding(true);
+        setEditingBountyId(bounty.id);
+        setTitle(bounty.title);
+        setCompany(bounty.company);
+        setSummary(bounty.summary);
+        setImage(bounty.image);
+        setMessage(bounty.message);
+        setReportDate(new Date(bounty.createdAt).toISOString().split('T')[0]);
     };
 
     const handleDelete = async (id: string) => {
@@ -257,9 +284,24 @@ const BountyManagerPage: React.FC<BountyManagerPageProps> = ({ user }) => {
                             onClick={() => setSelectedBounty(bounty)}
                             className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col relative cursor-pointer hover:shadow-md transition-shadow group"
                         >
-                            <button onClick={e => { e.stopPropagation(); handleDelete(bounty.id); }} className="absolute top-4 right-4 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 p-1 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded z-10 transition-all">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            </button>
+                            <div className="absolute top-4 right-4 z-10">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === bounty.id ? null : bounty.id); }}
+                                    className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors bg-white/80 dark:bg-slate-800/80 backdrop-blur"
+                                >
+                                    <MoreVertical className="w-5 h-5" />
+                                </button>
+                                {activeMenuId === bounty.id && (
+                                    <div className="absolute right-0 top-8 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 p-1 w-32 animate-fade-in z-20">
+                                        <button onClick={(e) => { e.stopPropagation(); handleEdit(bounty); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded flex items-center gap-2">
+                                            <Edit2 className="w-4 h-4" /> Edit
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleDelete(bounty.id); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded flex items-center gap-2">
+                                            <Trash2 className="w-4 h-4" /> Delete
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                             {bounty.image && (
                                 <div className="w-full h-48 bg-slate-100 dark:bg-slate-900 flex items-center justify-center p-2 border-b border-slate-200 dark:border-slate-700 overflow-hidden">
                                     <img src={bounty.image} alt={bounty.title} className="w-full h-full object-contain rounded" />
