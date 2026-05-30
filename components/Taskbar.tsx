@@ -10,6 +10,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useTime } from '../contexts/TimeContext';
 import NotificationBellIcon from './icons/NotificationBellIcon';
 import AppsIcon from './icons/AppsIcon';
+import { motion } from 'framer-motion';
 
 interface TaskbarProps {
     position: TaskbarPosition;
@@ -104,6 +105,16 @@ const Taskbar: React.FC<TaskbarProps> = ({
 
     const isVertical = (position === 'left' || position === 'right');
 
+    const [isMobileDevice, setIsMobileDevice] = useState(typeof window !== 'undefined' && window.innerWidth <= 768);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobileDevice(window.innerWidth <= 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     const handleCloseUserMenu = useCallback(() => {
         if (isUserMenuClosing || !isUserMenuOpen) return;
         setUserMenuClosing(true);
@@ -152,7 +163,7 @@ const Taskbar: React.FC<TaskbarProps> = ({
         if (isUserMenuOpen && themeStyle === 'mac' && userButtonRef.current && macDockRef.current) {
              const updatePosition = () => {
                  const dockRect = macDockRef.current!.getBoundingClientRect();
-                 const effectivePosition = window.innerWidth < 640 ? 'bottom' : position;
+                 const effectivePosition = position;
                  
                  const style: React.CSSProperties = {
                      transform: 'none',
@@ -186,29 +197,29 @@ const Taskbar: React.FC<TaskbarProps> = ({
         
         let positionClasses = '';
         let transformClass = '';
-        const shouldHide = isAnyWindowMaximized;
-        const mobileHide = isUserMenuOpen;
+        const hasOpenWindow = openWindows.length > 0;
+        const shouldHide = isAnyWindowMaximized || isMobileSearchActive;
 
-        // Force to bottom on mobile for Windows theme as well
-        const effectivePosition = window.innerWidth < 640 ? 'bottom' : position;
+        // Use standard position
+        const effectivePosition = position;
 
         switch (effectivePosition) {
             case 'top':
                 positionClasses = `top-0 left-0 right-0 h-[56px] border-b`;
-                transformClass = shouldHide ? '-translate-y-full' : (mobileHide ? '-translate-y-full sm:translate-y-0' : 'translate-y-0');
+                transformClass = shouldHide ? '-translate-y-full' : 'translate-y-0';
                 break;
             case 'left':
-                positionClasses = `left-0 top-0 bottom-0 w-[64px] border-r`;
-                transformClass = shouldHide ? '-translate-x-full' : (mobileHide ? '-translate-x-full sm:translate-x-0' : 'translate-x-0');
+                positionClasses = isMobileDevice ? `left-0 top-1/2 -translate-y-1/2 border-y border-r rounded-r-2xl max-h-[90vh]` : `left-0 top-0 bottom-0 w-[64px] border-r`;
+                transformClass = shouldHide ? '-translate-x-full' : 'translate-x-0';
                 break;
             case 'right':
-                positionClasses = `right-0 top-0 bottom-0 w-[64px] border-l`;
-                transformClass = shouldHide ? 'translate-x-full' : (mobileHide ? 'translate-x-full sm:translate-x-0' : 'translate-x-0');
+                positionClasses = isMobileDevice ? `right-0 top-1/2 -translate-y-1/2 border-y border-l rounded-l-2xl max-h-[90vh]` : `right-0 top-0 bottom-0 w-[64px] border-l`;
+                transformClass = shouldHide ? 'translate-x-full' : 'translate-x-0';
                 break;
             case 'bottom':
             default:
                  positionClasses = `bottom-0 left-0 right-0 h-[56px] border-t`;
-                 transformClass = shouldHide ? 'translate-y-full' : (mobileHide ? 'translate-y-full sm:translate-y-0' : 'translate-y-0');
+                 transformClass = shouldHide ? 'translate-y-full' : 'translate-y-0';
                 break;
         }
         
@@ -324,10 +335,11 @@ const Taskbar: React.FC<TaskbarProps> = ({
 
     const getMacDockClasses = (): string => {
         const base = "fixed z-[9999] transition-all duration-300 ease-in-out";
-        const hideTranslate = isAnyWindowMaximized;
+        const hasOpenWindow = openWindows.length > 0;
+        const hideTranslate = isAnyWindowMaximized || isMobileSearchActive;
         
-        // On very small screens (mobile), always force to bottom for best UX
-        const effectivePosition = window.innerWidth < 640 ? 'bottom' : position;
+        // Apply standard position
+        const effectivePosition = position;
 
         switch (effectivePosition) {
             case 'top':
@@ -343,21 +355,29 @@ const Taskbar: React.FC<TaskbarProps> = ({
     };
 
     if (themeStyle === 'mac') {
-        const effectivePosition = window.innerWidth < 640 ? 'bottom' : position;
+        const effectivePosition = position;
         const macIsVertical = effectivePosition === 'left' || effectivePosition === 'right';
 
         return (
             <>
-                <div className={getMacDockClasses()}>
+                <motion.div 
+                    className={getMacDockClasses()}
+                    drag={isMobileDevice && macIsVertical ? 'y' : false}
+                    dragConstraints={{ top: -200, bottom: 200 }}
+                    dragElastic={0.2}
+                >
                     <div ref={macDockRef} className={`flex ${macIsVertical ? 'flex-col' : 'items-end'} bg-white/20 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-black/30 rounded-2xl shadow-lg p-2 gap-2 max-w-[95vw] max-h-[95vh] overflow-auto hide-scrollbar`}>
                         <button ref={startButtonRef} onClick={onStartClick} className={`relative w-12 h-12 md:w-14 md:h-14 p-1.5 flex items-center justify-center rounded-lg transition-all duration-200 flex-shrink-0 group`} title="Launchpad">
                             <div className={`w-full h-full flex items-center justify-center rounded-[22%] shadow-sm border border-white/20 group-hover:scale-110 ${macIsVertical ? 'group-hover:translate-x-1' : 'group-hover:-translate-y-1'} transition-all duration-200 ${isStartMenuOpen ? 'bg-slate-700' : 'bg-slate-800'}`}>
                                 <AppsIcon className={`w-3/5 h-3/5 text-white`} />
                             </div>
                         </button>
-                        <div className={`px-2 flex items-center ${macIsVertical ? 'w-full justify-center' : 'h-full'}`}>
+                        <div className={`px-2 hidden md:flex items-center ${macIsVertical ? 'w-full justify-center' : 'h-full'}`}>
                           <TaskbarSearch allApps={allAppsForSearch} searchablePosts={searchablePosts} onOpenApp={(appId, e) => onAppClick(appId, e as any)} position={effectivePosition} />
                         </div>
+                        <button onClick={() => setMobileSearchActive(true)} className="w-12 h-12 p-2 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 flex items-center justify-center md:hidden flex-shrink-0" title="Search">
+                            <SearchIcon className="w-5 h-5 text-black/70 dark:text-white/80" />
+                        </button>
                         <div className={macIsVertical ? 'w-full h-px bg-white/20 dark:bg-black/20 my-1' : 'h-full w-px bg-white/20 dark:bg-black/20 mx-1'}></div>
                         {apps.map(app => {
                             const running = openWindows.some(win => win.appId === app.id);
@@ -380,7 +400,7 @@ const Taskbar: React.FC<TaskbarProps> = ({
                             <img src={user.avatar} alt={user.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full" />
                         </button>
                     </div>
-                </div>
+                </motion.div>
                 {/* User Menu - Rendered outside taskbar so taskbar can hide without hiding the menu */}
                 <div className="z-[10000]" ref={userMenuRef}>
                     {isUserMenuOpen && (
@@ -397,7 +417,12 @@ const Taskbar: React.FC<TaskbarProps> = ({
     // Windows Theme Render
     return (
         <>
-            <div className={getTaskbarClasses()}>
+            <motion.div 
+                className={getTaskbarClasses()}
+                drag={isMobileDevice && isVertical ? 'y' : false}
+                dragConstraints={{ top: -200, bottom: 200 }}
+                dragElastic={0.2}
+            >
                 <div className={`flex ${isVertical ? 'flex-col justify-between' : 'flex-row items-center'} w-full h-full`}>
                     
                     {/* Left Section */}
@@ -447,7 +472,7 @@ const Taskbar: React.FC<TaskbarProps> = ({
                         </div>
                     </div>
                 </div>
-            </div>
+            </motion.div>
             
             {/* User Menu - Rendered outside taskbar so taskbar can hide without hiding the menu */}
             <div className="z-[10000]" ref={userMenuRef}>

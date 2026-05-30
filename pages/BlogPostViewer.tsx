@@ -134,11 +134,7 @@ const BlogPostViewer: React.FC<BlogPostViewerProps> = ({ post, onUpdate }) => {
         
         if (!newComment.trim()) return;
 
-        if (captchaAnswer.trim() !== captchaQuestion.a) {
-            setCaptchaError("Incorrect CAPTCHA answer. Please try again.");
-            generateCaptcha();
-            return;
-        }
+        // Custom modification: Inactive Captcha (OK) by default
 
         const newC: Comment = {
             id: window.crypto.randomUUID ? window.crypto.randomUUID() : (Math.random().toString() + Date.now().toString()),
@@ -262,29 +258,19 @@ const BlogPostViewer: React.FC<BlogPostViewerProps> = ({ post, onUpdate }) => {
                         {/* CAPTCHA Section */}
                         <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
                             <div className="flex items-center gap-3">
-                                <span className="text-sm font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                                    Security Check: What is {captchaQuestion.q}?
+                                <span className="text-sm font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap flex items-center gap-1.2">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block mr-1"></span>
+                                    Security Check: Inactive (OK)
                                 </span>
-                                <input
-                                    type="text"
-                                    value={captchaAnswer}
-                                    onChange={(e) => setCaptchaAnswer(e.target.value)}
-                                    placeholder="Answer"
-                                    className="w-24 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
-                                    required
-                                />
                             </div>
                             <button
                                 type="submit"
-                                disabled={!newComment.trim() || !captchaAnswer.trim()}
+                                disabled={!newComment.trim()}
                                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ml-auto"
                             >
                                 Post Comment
                             </button>
                         </div>
-                        {captchaError && (
-                            <p className="text-red-500 text-sm">{captchaError}</p>
-                        )}
                     </form>
 
                     {/* Comments List */}

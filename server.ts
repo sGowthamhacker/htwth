@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import QRCode from "qrcode";
 
 // Force load from .env, overriding any sticky/stuck platform secrets
 dotenv.config({ override: true });
@@ -53,6 +54,148 @@ async function startServer() {
   app.get("/api/get-api-key", (req, res) => {
     const apiKey = process.env.API_KEY || "AIzaSyBujCiuNzlUvP1q561-I5TboqtCzJhZc3Y";
     res.json({ apiKey });
+  });
+
+  // Contact Form Auto-responder SMTP Integration
+  app.post("/api/contact", async (req, res) => {
+    const { name, email, message } = req.body;
+
+    if (!name || !email || !message) {
+      return res.status(400).json({ error: "Missing required fields: name, email, message." });
+    }
+
+    // Default response status
+    let autoReplySent = false;
+    let notifySent = false;
+    let mailError = null;
+
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+      try {
+        const user = (process.env.SMTP_USER || '').trim();
+        const pass = (process.env.SMTP_PASS || '').replace(/\s+/g, '');
+
+        const transporter = nodemailer.createTransport({
+          service: "gmail",
+          auth: {
+            user,
+            pass,
+          },
+        });
+
+        // Generate QR/barcode buffer containing friendly textual details
+        const qrText = `Contact Name: ${name}\nContact Email: ${email}\nMessage:\n${message}`;
+        const qrBuffer = await QRCode.toBuffer(qrText, {
+          margin: 1,
+          width: 250,
+          color: {
+            dark: '#1e1b4b', // deep indigo
+            light: '#ffffff'
+          }
+        });
+
+        // 1. Send polished Auto-Response "Thank you for contacting us" to the sender with friendly normal words + barcode QR
+        const autoReplyHtml = `
+          <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #1e293b; max-width: 600px; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; margin: 0 auto;">
+            <div style="text-align: center; margin-bottom: 24px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 16px;">
+              <span style="font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -1px;">HTWTH</span>
+            </div>
+
+            <p style="font-size: 16px; font-weight: bold; color: #0f172a; margin-bottom: 12px;">Hello ${name},</p>
+            
+            <p style="margin-bottom: 16px; color: #334155;">
+              Thank you so much for reaching out to me! I have received your message and will review it as soon as possible. I usually reply within 24 hours.
+            </p>
+
+            <div style="background-color: #f8fafc; border-left: 4px solid #6366f1; padding: 16px; border-radius: 0 8px 8px 0; margin-bottom: 24px;">
+              <div style="font-size: 11px; font-weight: 800; color: #4f46e5; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">Message Details</div>
+              <div style="font-size: 13px; color: #475569; margin-bottom: 4px;"><b>Your Name:</b> ${name}</div>
+              <div style="font-size: 13px; color: #475569; margin-bottom: 4px;"><b>Your Email:</b> ${email}</div>
+              <div style="font-size: 13px; color: #475569; white-space: pre-wrap; margin-top: 8px; font-style: italic; background: #ffffff; padding: 10px; border-radius: 4px; border: 1px solid #e2e8f0;">"${message}"</div>
+            </div>
+
+            <!-- Beautiful Scanable Barcode / QR Code visual -->
+            <div style="text-align: center; margin: 24px 0; padding: 16px; border: 1px dashed #cbd5e1; border-radius: 8px; background-color: #f8fafc;">
+              <p style="font-size: 12px; font-weight: bold; color: #4f46e5; margin-bottom: 8px; margin-top: 0;">Message QR Code Check</p>
+              <img src="cid:messagescanqr" alt="Message QR Code" width="140" height="140" style="display: block; margin: 0 auto; outline: none; border: none; image-rendering: pixelated;" />
+              <p style="font-size: 10px; color: #64748b; margin-top: 8px; margin-bottom: 0;">Scan with your device camera to view your original message details anytime.</p>
+            </div>
+
+            <div style="margin-top: 35px; border-top: 1px dashed #e2e8f0; padding-top: 20px;">
+              <div style="font-size: 13px; color: #64748b; margin-bottom: 2px;">Best regards,</div>
+              <div style="font-weight: bold; color: #0f172a; font-size: 14px; margin-bottom: 2px;">
+                ${process.env.SMTP_FROM_NAME || 'Gowtham S'}
+              </div>
+              <div style="color: #64748b; font-size: 12px; margin-bottom: 16px;">
+                Security Researcher
+              </div>
+
+              <!-- Social Links -->
+              <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 20px;">
+                <tr>
+                  <td style="padding-right: 12px;">
+                    <a href="https://www.instagram.com/gow.tham__rk" target="_blank">
+                      <img src="https://img.icons8.com/color/96/instagram-new.png" width="22" height="22" alt="IG">
+                    </a>
+                  </td>
+                  <td style="padding-right: 12px;">
+                    <a href="https://x.com/hackers_00" target="_blank">
+                      <img src="https://img.icons8.com/color/96/twitterx--v1.png" width="22" height="22" alt="X">
+                    </a>
+                  </td>
+                  <td style="padding-right: 12px;">
+                    <a href="https://in.linkedin.com/in/gowtham-s-528631249" target="_blank">
+                      <img src="https://img.icons8.com/color/96/linkedin.png" width="22" height="22" alt="LI">
+                    </a>
+                  </td>
+                  <td style="padding-right: 12px;">
+                    <a href="https://wa.me/919346082957" target="_blank">
+                      <img src="https://img.icons8.com/color/96/whatsapp.png" width="22" height="22" alt="WA">
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <div style="background-color: #eef2ff; padding: 12px; border-radius: 6px; border: 1px solid #e0e7ff; font-size: 11px; line-height: 1.5; color: #4338ca;">
+                <b>Confirmation details:</b> This is an automated confirmation email to let you know your message was safely received. No further steps are needed.
+              </div>
+
+              <div style="color: #cbd5e1; font-size: 9px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 15px; text-align: center;">
+                &copy; ${new Date().getFullYear()} Gowtham S | All rights reserved
+              </div>
+            </div>
+          </div>
+        `;
+
+        await transporter.sendMail({
+          from: `"${process.env.SMTP_FROM_NAME || 'Gowtham S'}" <${user}>`,
+          to: email,
+          subject: `${name}, thank you for reaching out!`,
+          text: `Hello ${name},\n\nThank you for reaching out to me. I have received your message and will get back to you within 24 hours.\n\nYour message summary:\n"${message}"\n\nBest regards,\nGowtham S`,
+          html: autoReplyHtml,
+          attachments: [
+            {
+              filename: 'qrcode.png',
+              content: qrBuffer,
+              cid: 'messagescanqr'
+            }
+          ]
+        });
+        autoReplySent = true;
+
+      } catch (err: any) {
+        console.error("Auto-responder / notify SMTP error:", err);
+        mailError = err.message || err;
+      }
+    } else {
+      console.warn("SMTP_USER or SMTP_PASS environment variables are not configured correctly. Skipped actual email transmission.");
+    }
+
+    return res.json({ 
+      success: true, 
+      autoReplySent,
+      notifySent,
+      mailError
+    });
   });
 
   // New API Route for 2FA Magic Link (Local Sync)

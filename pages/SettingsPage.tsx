@@ -89,6 +89,8 @@ interface SettingsPageProps {
   setAllUsers: (users: User[] | ((currentUsers: User[]) => User[])) => void;
   taskbarPosition: TaskbarPosition;
   setTaskbarPosition: (position: TaskbarPosition) => void;
+  mobileTaskbarPosition: TaskbarPosition;
+  setMobileTaskbarPosition: (position: TaskbarPosition) => void;
   desktopIconSize: DesktopIconSize;
   setDesktopIconSize: (size: DesktopIconSize) => void;
   onAcceptFriendRequest: (requestor: { email: string; name: string; }) => void;
@@ -668,10 +670,12 @@ const AppearanceSettings: React.FC<{
     user: User;
     taskbarPosition: TaskbarPosition;
     setTaskbarPosition: (position: TaskbarPosition) => void;
+    mobileTaskbarPosition: TaskbarPosition;
+    setMobileTaskbarPosition: (position: TaskbarPosition) => void;
     desktopIconSize: DesktopIconSize;
     setDesktopIconSize: (size: DesktopIconSize) => void;
     onProfileUpdate: (updatedData: Partial<User>, silent?: boolean) => Promise<void>;
-}> = ({ user, taskbarPosition, setTaskbarPosition, desktopIconSize, setDesktopIconSize, onProfileUpdate }) => {
+}> = ({ user, taskbarPosition, setTaskbarPosition, mobileTaskbarPosition, setMobileTaskbarPosition, desktopIconSize, setDesktopIconSize, onProfileUpdate }) => {
     const { themeStyle, setThemeStyle, themeMode, setThemeMode, selectedBackground, setSelectedBackground, backgroundCategories, triggerTransition } = useTheme();
     const { timeFormat, setTimeFormat, visibleTimezones, setVisibleTimezones } = useTime();
     const [activeCategory, setActiveCategory] = useState<BackgroundCategory | null>(null);
@@ -685,6 +689,11 @@ const AppearanceSettings: React.FC<{
     const handleTaskbarPositionChange = (pos: TaskbarPosition) => {
         setTaskbarPosition(pos);
         onProfileUpdate({ desktop_preferences: { taskbarPosition: pos } });
+    };
+
+    const handleMobileTaskbarPositionChange = (pos: TaskbarPosition) => {
+        setMobileTaskbarPosition(pos);
+        onProfileUpdate({ desktop_preferences: { mobileTaskbarPosition: pos } });
     };
 
     const handleDesktopIconSizeChange = (size: DesktopIconSize) => {
@@ -815,21 +824,46 @@ const AppearanceSettings: React.FC<{
                         </div>
                     </div>
                         
-                    <div className="grid grid-cols-2 gap-3 relative">
-                        {/* Monitor mock */}
-                        <div className="absolute inset-0 m-auto w-16 h-12 border-2 border-slate-300 dark:border-slate-600 rounded-md pointer-events-none z-10 flex items-center justify-center">
-                            <span className="text-[8px] font-bold text-slate-400">SCREEN</span>
+                    <div className="space-y-6">
+                        <div>
+                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">Desktop Layout</p>
+                            <div className="grid grid-cols-2 gap-3 relative">
+                                {/* Monitor mock */}
+                                <div className="absolute inset-0 m-auto w-16 h-12 border-2 border-slate-300 dark:border-slate-600 rounded-md pointer-events-none z-10 flex items-center justify-center">
+                                    <span className="text-[8px] font-bold text-slate-400">DESKTOP</span>
+                                </div>
+
+                                {(['top', 'left', 'right', 'bottom'] as TaskbarPosition[]).map(pos => (
+                                    <button 
+                                        key={pos} 
+                                        onClick={() => handleTaskbarPositionChange(pos)} 
+                                        className={`relative p-3 h-12 rounded-xl border-2 flex items-center justify-center gap-2 transition-all group ${taskbarPosition === pos ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}
+                                    >
+                                        <span className={`font-bold capitalize text-xs transition-colors ${taskbarPosition === pos ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500'}`}>{pos}</span>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
 
-                        {(['top', 'left', 'right', 'bottom'] as TaskbarPosition[]).map(pos => (
-                            <button 
-                                key={pos} 
-                                onClick={() => handleTaskbarPositionChange(pos)} 
-                                className={`relative p-3 h-16 rounded-xl border-2 flex items-center justify-center gap-2 transition-all group ${taskbarPosition === pos ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}
-                            >
-                                <span className={`font-bold capitalize text-xs transition-colors ${taskbarPosition === pos ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500'}`}>{pos}</span>
-                            </button>
-                        ))}
+                        <div>
+                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">Mobile Layout</p>
+                            <div className="grid grid-cols-2 gap-3 relative">
+                                {/* Mobile mock */}
+                                <div className="absolute inset-0 m-auto w-10 h-14 border-2 border-slate-300 dark:border-slate-600 rounded-md pointer-events-none z-10 flex items-center justify-center">
+                                    <span className="text-[8px] font-bold text-slate-400">PHONE</span>
+                                </div>
+
+                                {(['top', 'left', 'right', 'bottom'] as TaskbarPosition[]).map(pos => (
+                                    <button 
+                                        key={pos} 
+                                        onClick={() => handleMobileTaskbarPositionChange(pos)} 
+                                        className={`relative p-3 h-12 rounded-xl border-2 flex items-center justify-center gap-2 transition-all group ${mobileTaskbarPosition === pos ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}
+                                    >
+                                        <span className={`font-bold capitalize text-xs transition-colors ${mobileTaskbarPosition === pos ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500'}`}>{pos}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -2128,6 +2162,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   setAllUsers,
   taskbarPosition,
   setTaskbarPosition,
+  mobileTaskbarPosition,
+  setMobileTaskbarPosition,
   desktopIconSize,
   setDesktopIconSize,
   onAcceptFriendRequest,
@@ -2172,7 +2208,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
     switch (activeSection) {
       case 'profile': return <ProfileSettings user={user} onSave={onProfileUpdate} onOpenApp={onOpenApp || (() => {})} />;
-      case 'appearance': return <AppearanceSettings user={user} taskbarPosition={taskbarPosition} setTaskbarPosition={setTaskbarPosition} desktopIconSize={desktopIconSize} setDesktopIconSize={setDesktopIconSize} onProfileUpdate={onProfileUpdate} />;
+      case 'appearance': return <AppearanceSettings user={user} taskbarPosition={taskbarPosition} setTaskbarPosition={setTaskbarPosition} mobileTaskbarPosition={mobileTaskbarPosition} setMobileTaskbarPosition={setMobileTaskbarPosition} desktopIconSize={desktopIconSize} setDesktopIconSize={setDesktopIconSize} onProfileUpdate={onProfileUpdate} />;
       case 'tools': return <ToolsSettings user={user} onProfileUpdate={onProfileUpdate} />;
       case 'friends': return <FriendManagement user={user} allUsers={allUsers} onAccept={onAcceptFriendRequest} onReject={onRejectFriendRequest} onRemoveFriend={onRemoveFriend} onSendFriendRequest={onSendFriendRequest} onOpenApp={onOpenApp || (() => {})} />;
       case 'account': return <AccountSettings user={user} onLogout={onLogout} onDeleteAccount={onDeleteAccount} onProfileUpdate={onProfileUpdate} onVerifyPassword={onVerifyPassword} onEmailChange={onEmailChange} />;

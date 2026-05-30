@@ -446,6 +446,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
     const [activeIconId, setActiveIconId] = useState<string | null>(null);
 
     const [taskbarPosition, setTaskbarPosition] = useLocalStorage<TaskbarPosition>('taskbarPosition', 'bottom');
+    const [mobileTaskbarPosition, setMobileTaskbarPosition] = useLocalStorage<TaskbarPosition>('mobileTaskbarPosition', 'bottom');
     const [pinnedAppIds, setPinnedAppIds] = useLocalStorage<string[]>(`pinnedAppIds-${currentUser.id}`, defaultPinnedApps);
     
     // Ensure resumeai is pinned for existing users who might have saved their layout before it was added
@@ -508,6 +509,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
     onProfileUpdateRef.current = onProfileUpdate;
     
     const isMobile = desktopDimensions.width > 0 && desktopDimensions.width <= 768;
+    const currentTaskbarPosition = isMobile ? mobileTaskbarPosition : taskbarPosition;
     const wasMobile = useRef(isMobile);
     
     // Select appropriate state based on current view mode
@@ -690,6 +692,9 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
             if (prefs.taskbarPosition) {
                 setTaskbarPosition(prefs.taskbarPosition);
             }
+            if (prefs.mobileTaskbarPosition) {
+                setMobileTaskbarPosition(prefs.mobileTaskbarPosition);
+            }
             if (prefs.desktopIconSize) {
                 setDesktopIconSize(prefs.desktopIconSize);
             }
@@ -863,7 +868,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
             let defaultY = Math.max(0, (availableHeight - defaultHeight) / 2);
 
             // Anchor Start Menu to bottom if taskbar is at bottom
-            if (isStartMenu && taskbarPosition === 'bottom') {
+            if (isStartMenu && currentTaskbarPosition === 'bottom') {
                 const taskbarHeight = 60;
                 const margin = isMobileSize ? 8 : 16;
                 const maxAvailableHeight = availableHeight - taskbarHeight - (margin * 2);
@@ -896,7 +901,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
             setWindows(currentWindows => [...currentWindows, newWindow]);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [urlState, isRestored, apps, taskbarPosition]); // Added taskbarPosition dependency
+    }, [urlState, isRestored, apps, currentTaskbarPosition]);
 
     const openApp = useCallback((appId: string, props: Record<string, any> = {}, initialBounds?: DOMRect) => {
         if (appId === 'about' && props.profileUserEmail) {
@@ -1134,7 +1139,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                     let targetY = Math.max(0, (availableHeight - targetHeight) / 2);
                     
                     // Anchor to taskbar if at bottom
-                    if (taskbarPosition === 'bottom') {
+                    if (currentTaskbarPosition === 'bottom') {
                         // Max height available above taskbar with margins
                         const maxAvailableHeight = availableHeight - taskbarHeight - (margin * 2);
                         
@@ -1184,7 +1189,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
         
         wasMobile.current = isMobile;
 
-    }, [desktopDimensions, isMobile, taskbarPosition]); // Added taskbarPosition
+    }, [desktopDimensions, isMobile, currentTaskbarPosition]);
     
     useEffect(() => {
         if (desktopDimensions.width > 0 && desktopWidgetState === null && !isMobile) {
@@ -1752,11 +1757,11 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
             <div 
                 ref={boundsRef} 
                 className={`h-full w-full relative z-10 overflow-hidden transition-all duration-300 ${
-                    !isAnyWindowMaximized ? (
-                        (desktopDimensions.width < 640 || taskbarPosition === 'bottom') ? 'pb-[56px]' : 
-                        (taskbarPosition === 'top' ? 'pt-[56px]' : 
-                        (taskbarPosition === 'left' ? 'pl-[64px]' : 
-                        (taskbarPosition === 'right' ? 'pr-[64px]' : 'pb-[56px]')))
+                    !isAnyWindowMaximized && !(isMobile && windows.length > 0 && (currentTaskbarPosition === 'left' || currentTaskbarPosition === 'right')) ? (
+                        (currentTaskbarPosition === 'bottom') ? 'pb-[56px]' : 
+                        (currentTaskbarPosition === 'top' ? 'pt-[56px]' : 
+                        (currentTaskbarPosition === 'left' ? 'pl-[64px]' : 
+                        (currentTaskbarPosition === 'right' ? 'pr-[64px]' : 'pb-[56px]')))
                     ) : ''
                 }`}
                 onClick={() => setActiveIconId(null)} 
@@ -1804,7 +1809,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
                     };
 
                     if (app.id === 'home') props = { ...props, writeups, blogPosts, isPending };
-                    if (app.id === 'settings') props = { ...props, allUsers, setAllUsers, taskbarPosition, setTaskbarPosition, pinnedAppIds, setPinnedAppIds: handleSetPinnedApps, allApps: userApps, desktopIconSize, setDesktopIconSize, onAcceptFriendRequest, onRejectFriendRequest, onRemoveFriend, onSendFriendRequest, onLogout: handleRequestLogout, onProfileUpdate: handleSettingsProfileUpdate, onDeleteAccount, onVerifyPassword, onEmailChange };
+                    if (app.id === 'settings') props = { ...props, allUsers, setAllUsers, taskbarPosition, setTaskbarPosition, mobileTaskbarPosition, setMobileTaskbarPosition, pinnedAppIds, setPinnedAppIds: handleSetPinnedApps, allApps: userApps, desktopIconSize, setDesktopIconSize, onAcceptFriendRequest, onRejectFriendRequest, onRemoveFriend, onSendFriendRequest, onLogout: handleRequestLogout, onProfileUpdate: handleSettingsProfileUpdate, onDeleteAccount, onVerifyPassword, onEmailChange };
                     if (app.id === 'search') props = { ...props, allApps: userApps, allPosts: [...writeups, ...blogPosts], query: (win.props as any)?.deepLinkInfo };
                     if (app.id === 'start') props = { ...props, onSearch: handleSearch, pinnedAppIds, setPinnedAppIds: handleSetPinnedApps, allApps: userApps, onLogout: handleRequestLogout, searchablePosts: [...writeups, ...blogPosts], addNotification, isWorkMode, onToggleWorkMode: () => setIsWorkMode(prev => !prev), onRestart: handleRequestRestart }; 
                     if (app.id === 'chat') props = { ...props, messages: chatMessages, onSendMessage: handleSendMessage, onEditMessage: handleEditMessage, onDeleteMessage: handleDeleteMessage, onReaction: handleReaction, allUsers, onClearChat: handleClearChatMessages };
@@ -1858,7 +1863,7 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
             
             <InstallPWAButton />
             <Taskbar 
-                position={taskbarPosition} 
+                position={currentTaskbarPosition} 
                 apps={taskbarApps} 
                 openWindows={windows} 
                 activeWindowId={activeWindowId} 

@@ -18,26 +18,29 @@ interface UserMenuProps {
 
 const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout, onRestart, onOpenSettings, position, isClosing, themeStyle }) => {
   const desktopPositionClasses: Record<TaskbarPosition, string> = {
-    top: 'sm:fixed sm:bottom-6 sm:right-8 sm:left-auto sm:translate-x-0 sm:top-auto sm:mt-0',
-    bottom: 'sm:fixed sm:bottom-20 sm:right-8 sm:left-auto sm:translate-x-0 sm:top-auto sm:mb-0',
-    left: 'sm:fixed sm:bottom-6 sm:right-8 sm:left-auto sm:translate-x-0 sm:top-auto sm:ml-0',
-    right: 'sm:fixed sm:bottom-6 sm:right-8 sm:left-auto sm:translate-x-0 sm:top-auto sm:mr-0'
+    top: 'md:fixed md:bottom-6 md:right-8 md:left-auto md:translate-x-0 md:top-auto md:mt-0',
+    bottom: 'md:fixed md:bottom-20 md:right-8 md:left-auto md:translate-x-0 md:top-auto md:mb-0',
+    left: 'md:fixed md:bottom-6 md:right-8 md:left-auto md:translate-x-0 md:top-auto md:ml-0',
+    right: 'md:fixed md:bottom-6 md:right-8 md:left-auto md:translate-x-0 md:top-auto md:mr-0'
   };
 
   const mobilePositionClasses: Record<TaskbarPosition, string> = {
-    top: 'fixed bottom-4 left-16',
-    bottom: 'fixed bottom-4 left-16',
-    left: 'fixed bottom-4 left-16',
-    right: 'fixed bottom-4 left-16'
+    top: 'fixed top-20 left-4',
+    bottom: 'fixed bottom-20 left-4',
+    left: 'fixed bottom-4 left-[76px]',
+    right: 'fixed bottom-4 right-[76px] left-auto'
   };
 
-  const originClass = themeStyle === 'mac' ? 'origin-bottom-right' : 'origin-bottom-left sm:origin-bottom-right';
+  const macPositionClass = position === 'left' ? 'left-0' : 'right-0';
+  const originClass = themeStyle === 'mac' 
+    ? (position === 'left' ? 'origin-bottom-left' : 'origin-bottom-right') 
+    : 'origin-bottom-left md:origin-bottom-right';
   
   const isMac = themeStyle === 'mac';
 
   return (
     <div className={`
-      ${!isMac ? `${mobilePositionClasses[position]} ${desktopPositionClasses[position]} rounded-full flex-row` : 'absolute bottom-full right-0 mb-3 w-64 rounded-2xl bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-2xl flex-col p-1.5'} 
+      ${!isMac ? `${mobilePositionClasses[position]} ${desktopPositionClasses[position]} rounded-full flex-row max-w-[calc(100vw-92px)]` : `absolute bottom-full ${macPositionClass} mb-3 w-64 max-w-[calc(100vw-92px)] rounded-2xl bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-2xl flex-col p-1.5`} 
       flex
       w-max max-w-[95vw]
       bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl 

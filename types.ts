@@ -45,6 +45,7 @@ export interface User {
     selectedFont?: string;
     taskbarPosition?: TaskbarPosition;
     desktopIconSize?: DesktopIconSize;
+    mobileTaskbarPosition?: TaskbarPosition;
     timeFormat?: TimeFormat;
     visibleTimezones?: Timezone[];
     iconPositions?: Record<string, { x: number; y: number }>;

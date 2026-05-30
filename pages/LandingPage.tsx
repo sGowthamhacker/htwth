@@ -37,11 +37,11 @@ import XCircleIcon from '../components/icons/XCircleIcon';
 import ChevronDownIcon from '../components/icons/ChevronDownIcon';
 import AnimatedSendButton from '../components/AnimatedSendButton';
 import Footer from '../components/Footer';
-import LegalSupport from '../components/LegalSupport';
 import MicrochipLoader from '../components/MicrochipLoader';
 import RevealOnScroll, { AnimationType } from '../components/RevealOnScroll';
 import { Menu, X, Cloud, CircleHelp, Rocket, Send, Search, Command, Terminal, Zap, Cpu, Sparkles, ArrowRight } from 'lucide-react';
 import { sanitizeUrl } from '../utils/sanitizeUrl';
+import QRCode from 'qrcode';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -422,19 +422,122 @@ const ContactSection: React.FC<{ onSendMessage: (name: string, email: string, ms
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState('');
     const [status, setStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
+    const [submittedName, setSubmittedName] = useState('');
+    const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
+    const [showThankYouCard, setShowThankYouCard] = useState(false);
+    const [cardState, setCardState] = useState<'hidden' | 'center' | 'bottom'>('hidden');
+    const [isPrinting, setIsPrinting] = useState(false);
+    const [honeypot, setHoneypot] = useState('');
+    const [rateLimitTimeLeft, setRateLimitTimeLeft] = useState(0);
+    const [spamError, setSpamError] = useState<string | null>(null);
+    const [captchaQuestion, setCaptchaQuestion] = useState({ q: '2 + 2', a: '4' });
+    const [captchaAnswer, setCaptchaAnswer] = useState('');
+
+    const generateCaptcha = () => {
+        const num1 = Math.floor(Math.random() * 9) + 2; // 2 to 10
+        const num2 = Math.floor(Math.random() * 8) + 1; // 1 to 8
+        setCaptchaQuestion({ q: `${num1} + ${num2}`, a: (num1 + num2).toString() });
+        setCaptchaAnswer('');
+    };
+
+    useEffect(() => {
+        generateCaptcha();
+    }, []);
+
+    useEffect(() => {
+        if (rateLimitTimeLeft <= 0) return;
+        const timer = setTimeout(() => {
+            setRateLimitTimeLeft(prev => prev - 1);
+        }, 1000);
+        return () => clearTimeout(timer);
+    }, [rateLimitTimeLeft]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setSpamError(null);
+
+        // Honeypot spam prevention
+        if (honeypot) {
+            setSpamError("Spam check failed. Submission rejected.");
+            return;
+        }
+
+        // Rate limiting verification
+        const nextAllowed = localStorage.getItem('contact_form_rate_limit');
+        const now = Date.now();
+        if (nextAllowed && now < parseInt(nextAllowed, 10)) {
+            const secondsLeft = Math.ceil((parseInt(nextAllowed, 10) - now) / 1000);
+            setRateLimitTimeLeft(secondsLeft);
+            setSpamError(`Spam Prevention: Please wait ${secondsLeft}s before sending another message.`);
+            return;
+        }
+
+        // Interactive Captcha Check
+        if (captchaAnswer.trim() !== captchaQuestion.a) {
+            setSpamError("Incorrect Security Answer. Please try again.");
+            generateCaptcha();
+            return;
+        }
+
         if(!name || !email || !message) return;
         setStatus('sending');
-        await onSendMessage(name, email, message);
-        setTimeout(() => {
-             setStatus('sent');
-             setName('');
-             setEmail('');
-             setMessage('');
-             setTimeout(() => setStatus('idle'), 3000);
-        }, 1500);
+        const currentName = name;
+
+        try {
+            // Generate real scanable QR containing text (no URL as requested)
+            const qrText = `--- SECURE PACKET RECEIPT ---\nSender Name : ${name}\nSender Email: ${email}\nSecure Message:\n${message}\n----------------------------`;
+            try {
+                const qrUrl = await QRCode.toDataURL(qrText, {
+                    margin: 1,
+                    width: 150,
+                    color: {
+                        dark: '#0a0f1d',
+                        light: '#ffffff'
+                    }
+                });
+                setQrCodeDataUrl(qrUrl);
+            } catch (qrErr) {
+                console.error("Failed to generate scanable session QR:", qrErr);
+            }
+
+            // Trigger message sending in background and handle failure silently without delaying card display
+            onSendMessage(name, email, message).catch(err => {
+                console.error("Background message transmission failed:", err);
+            });
+            
+            // Set 30-second cooldown in localStorage to prevent rapid submissions
+            const cooldownPeriod = 30 * 1000;
+            localStorage.setItem('contact_form_rate_limit', (Date.now() + cooldownPeriod).toString());
+            setRateLimitTimeLeft(30);
+
+            // Show the card instantly with zero delays
+            setStatus('sent');
+            setSubmittedName(currentName);
+            setShowThankYouCard(true);
+            setCardState('center');
+            setIsPrinting(true);
+            setName('');
+            setEmail('');
+            setMessage('');
+            setCaptchaAnswer('');
+            generateCaptcha();
+            setTimeout(() => setStatus('idle'), 3000);
+            
+            // Turn off active printing effects after 3.2 seconds
+            setTimeout(() => {
+                setIsPrinting(false);
+            }, 3200);
+
+            // Keep card centered for 10 seconds, then hide completely
+            setTimeout(() => {
+                setShowThankYouCard(false);
+                setCardState('hidden');
+            }, 10000);
+        } catch (err) {
+            setSpamError("Failed to send message. Please try again.");
+            setStatus('idle');
+            generateCaptcha();
+        }
     };
 
     return (
@@ -455,7 +558,7 @@ const ContactSection: React.FC<{ onSendMessage: (name: string, email: string, ms
                 </div>
             </div>
             
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-xl">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-xl relative overflow-hidden">
                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Get in Touch</h3>
                  <form onSubmit={handleSubmit} className="space-y-4">
                      <div>
@@ -470,6 +573,41 @@ const ContactSection: React.FC<{ onSendMessage: (name: string, email: string, ms
                          <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Message</label>
                          <textarea value={message} onChange={e => setMessage(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white h-32 resize-none" placeholder="How can we help?" required></textarea>
                      </div>
+                     {/* Honeypot field for spam prevention */}
+                     <input 
+                         type="text" 
+                         value={honeypot} 
+                         onChange={e => setHoneypot(e.target.value)} 
+                         className="hidden" 
+                         tabIndex={-1} 
+                         autoComplete="off" 
+                     />
+                     {/* Security Verification Challenge */}
+                     <div className="flex flex-col gap-2.5 py-3.5 px-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-150 dark:border-slate-850 text-xs">
+                         <div className="flex items-center justify-between gap-2">
+                             <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap flex items-center">
+                                 <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse inline-block mr-2"></span>
+                                 Security Verification
+                             </span>
+                             <span className="text-[10px] font-semibold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-100 dark:border-indigo-900/40">
+                                 Active Captcha
+                             </span>
+                         </div>
+                         <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400 select-none flex items-center flex-wrap gap-2 mt-1">
+                             Solve: <strong className="text-slate-850 dark:text-white font-mono text-base">{captchaQuestion.q}</strong> = <input type="text" value={captchaAnswer} onChange={e => setCaptchaAnswer(e.target.value)} placeholder="Answer" className="w-20 inline-block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-sm text-center text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-semibold" required /> <button type="button" onClick={generateCaptcha} className="text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-semibold underline underline-offset-2 ml-auto">Refresh</button>
+                         </p>
+                         {rateLimitTimeLeft > 0 && (
+                             <div className="mt-1 text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1.5 text-[11px]">
+                                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
+                                 Cooldown Active: Resetting in {rateLimitTimeLeft}s
+                             </div>
+                         )}
+                     </div>
+                     {spamError && (
+                         <div className="text-red-500 text-xs font-semibold bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-lg py-2 px-3 transition-all">
+                             {spamError}
+                         </div>
+                     )}
                      <div className="pt-2">
                         {status === 'sent' ? (
                             <div className="w-full py-3 bg-green-500 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2">
@@ -478,7 +616,7 @@ const ContactSection: React.FC<{ onSendMessage: (name: string, email: string, ms
                         ) : (
                             <AnimatedSendButton 
                                 isSending={status === 'sending'} 
-                                disabled={status !== 'idle'} 
+                                disabled={status !== 'idle' || !captchaAnswer.trim()} 
                                 style={{
                                     '--asb-width': '100%',
                                     '--asb-height': '48px'
@@ -487,6 +625,300 @@ const ContactSection: React.FC<{ onSendMessage: (name: string, email: string, ms
                         )}
                      </div>
                  </form>
+
+                 <AnimatePresence>
+                     {showThankYouCard && (
+                         <>
+                             {/* Printer Slot Decal */}
+                             <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-800 dark:from-black dark:via-slate-950 dark:to-slate-900 rounded-t-2xl z-[51] shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)] border-b border-slate-950 flex items-center justify-between px-6 pointer-events-none select-none">
+                                 <div className="flex gap-1.5 items-center">
+                                     <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse"></span>
+                                     <span className="text-[7px] font-mono font-bold text-slate-400 dark:text-slate-50 tracking-[0.1em] uppercase">SYSTEM PRINT OUT</span>
+                                 </div>
+                                 <div className="flex gap-1 items-center">
+                                     <span className="text-[7px] font-mono font-bold text-slate-400 dark:text-slate-50 tracking-[0.1em] uppercase">
+                                         {isPrinting ? "FEEDING DATA..." : "PRINT SECURE"}
+                                     </span>
+                                 </div>
+                             </div>
+
+                             {/* Glowing laser/thermal scanline */}
+                             {isPrinting && (
+                                 <motion.div 
+                                     initial={{ scaleX: 0.8, opacity: 0.7 }}
+                                     animate={{ scaleX: [0.8, 1, 0.8], opacity: [0.7, 1, 0.7], x: [-3, 3, -3] }}
+                                     transition={{ repeat: Infinity, duration: 0.12 }}
+                                     className="absolute top-2 left-0 right-0 h-1 bg-cyan-400 dark:bg-cyan-500 shadow-[0_0_15px_#22d3ee] z-[52] pointer-events-none select-none"
+                                 />
+                             )}
+
+                             <motion.div
+                                 id="thank-you-card"
+                             initial={{ y: "-100%", opacity: 0 }}
+                             animate={{
+                                 y: cardState === 'center' ? 0 : "-100%",
+                                 opacity: cardState === 'center' ? 1 : 0,
+                                 x: isPrinting ? [0, -0.6, 0.6, -0.4, 0.4, 0] : 0,
+                             }}
+                             exit={{ 
+                                 opacity: 0, 
+                                 y: "100%", 
+                                 transition: { duration: 0.6, ease: "easeIn" } 
+                             }}
+                             transition={{
+                                 y: { duration: 3.2, ease: [0.15, 0.85, 0.35, 1] },
+                                 opacity: { duration: 0.4 },
+                                 x: isPrinting ? { repeat: Infinity, duration: 0.15, ease: "easeInOut" } : { duration: 0.1 }
+                             }}
+                             className="absolute inset-x-0 top-0 bottom-2 bg-slate-50 dark:bg-slate-950 border-x border-b border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden rounded-t-xl flex flex-col justify-between p-8 pt-10 z-50 feedback-card-printout"
+                         >
+                             {/* Left perforation dot track */}
+                             <div className="absolute left-1.5 top-0 bottom-0 w-1 flex flex-col justify-between py-6 opacity-30 select-none pointer-events-none">
+                                 {Array.from({ length: 18 }).map((_, i) => (
+                                     <div key={i} className="w-1 h-1 rounded-full bg-slate-400 dark:bg-slate-600"></div>
+                                 ))}
+                             </div>
+
+                             {/* Right perforation dot track */}
+                             <div className="absolute right-1.5 top-0 bottom-0 w-1 flex flex-col justify-between py-6 opacity-30 select-none pointer-events-none">
+                                 {Array.from({ length: 18 }).map((_, i) => (
+                                     <div key={i} className="w-1 h-1 rounded-full bg-slate-400 dark:bg-slate-600"></div>
+                                 ))}
+                             </div>
+
+                             {/* Receipt torn edge mask at the bottom */}
+                             <div className="absolute bottom-0 left-0 right-0 h-2.5 flex overflow-hidden z-[53] bg-transparent select-none pointer-events-none">
+                                 {Array.from({ length: 24 }).map((_, i) => (
+                                     <div 
+                                         key={i} 
+                                         className="flex-1 h-full bg-white dark:bg-slate-900" 
+                                         style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }}
+                                     ></div>
+                                 ))}
+                             </div>
+
+                             <div className="flex flex-col items-center text-center justify-center flex-1 space-y-4 relative">
+                                 <div className="relative w-14 h-14">
+                                     {isPrinting ? (
+                                         <div className="absolute inset-0 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 dark:text-indigo-400 rounded-full flex items-center justify-center border border-indigo-200 dark:border-indigo-900/60 shadow-md">
+                                             <svg className="w-7 h-7 animate-spin text-indigo-500 dark:text-indigo-400" fill="none" viewBox="0 0 24 24">
+                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                             </svg>
+                                         </div>
+                                     ) : (
+                                         <motion.div 
+                                             initial={{ scale: 0.3, rotate: -45, opacity: 0 }}
+                                             animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                                             transition={{ type: "spring", stiffness: 220, damping: 12 }}
+                                             className="absolute inset-0 bg-green-100 dark:bg-green-950/50 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center border border-green-200 dark:border-green-900 shadow-md animate-bounce"
+                                         >
+                                             <CheckIcon className="w-7 h-7" />
+                                         </motion.div>
+                                     )}
+                                 </div>
+
+                                 <div className="space-y-1.5 px-4">
+                                     <div className="text-[10px] font-mono tracking-widest text-[#6366f1] dark:text-[#818cf8] font-bold uppercase select-none">
+                                         {isPrinting ? ":: SECURE DATA GENERATING ::" : ":: TRANSMISSION CONFIRMED ::"}
+                                     </div>
+                                     <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                                         Thank You, {submittedName}!
+                                     </h3>
+                                     <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
+                                         Your message has been encrypt-routed securely. Our response team will reach out to you within 24 hours.
+                                     </p>
+                                 </div>
+                             </div>
+
+                             <div className="space-y-4 w-full">
+                                  {/* Beautiful Long Custom Barcode */}
+                                  <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 rounded-xl p-4 flex flex-col items-center gap-3 shadow-inner w-full">
+                                      <div className="w-full flex flex-col items-center justify-center p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm">
+                                          <svg className="w-full h-10 text-slate-900 dark:text-slate-100 animate-pulse" viewBox="0 0 300 30" preserveAspectRatio="none">
+                                              {/* Guard bars (long) */}
+                                              <rect x="2" y="0" width="2.5" height="30" fill="currentColor" />
+                                              <rect x="6" y="0" width="1.5" height="30" fill="currentColor" />
+                                              
+                                              {/* Body bars */}
+                                              <rect x="12" y="0" width="1.0" height="26" fill="currentColor" />
+                                              <rect x="15" y="0" width="3.0" height="26" fill="currentColor" />
+                                              <rect x="20" y="0" width="2.0" height="26" fill="currentColor" />
+                                              <rect x="24" y="0" width="1.0" height="26" fill="currentColor" />
+                                              <rect x="27" y="0" width="4.0" height="26" fill="currentColor" />
+                                              <rect x="33" y="0" width="1.5" height="26" fill="currentColor" />
+                                              <rect x="37" y="0" width="2.5" height="26" fill="currentColor" />
+                                              <rect x="42" y="0" width="1.0" height="26" fill="currentColor" />
+                                              
+                                              {/* Middle Guard bars */}
+                                              <rect x="47" y="0" width="1.5" height="30" fill="currentColor" />
+                                              <rect x="50" y="0" width="1.5" height="30" fill="currentColor" />
+                                              
+                                              <rect x="55" y="0" width="3.0" height="26" fill="currentColor" />
+                                              <rect x="60" y="0" width="1.0" height="26" fill="currentColor" />
+                                              <rect x="63" y="0" width="2.0" height="26" fill="currentColor" />
+                                              <rect x="67" y="0" width="4.0" height="26" fill="currentColor" />
+                                              <rect x="73" y="0" width="1.5" height="26" fill="currentColor" />
+                                              <rect x="77" y="0" width="2.0" height="26" fill="currentColor" />
+                                              <rect x="81" y="0" width="1.0" height="26" fill="currentColor" />
+                                              <rect x="84" y="0" width="3.5" height="26" fill="currentColor" />
+                                              <rect x="90" y="0" width="1.5" height="26" fill="currentColor" />
+                                              <rect x="94" y="0" width="2.0" height="26" fill="currentColor" />
+                                              
+                                              {/* Extension bars for the long look */}
+                                              <rect x="100" y="0" width="1.0" height="26" fill="currentColor" />
+                                              <rect x="103" y="0" width="3.0" height="26" fill="currentColor" />
+                                              <rect x="108" y="0" width="1.5" height="26" fill="currentColor" />
+                                              <rect x="112" y="0" width="2.0" height="26" fill="currentColor" />
+                                              <rect x="116" y="0" width="4.0" height="26" fill="currentColor" />
+                                              <rect x="122" y="0" width="1.0" height="26" fill="currentColor" />
+                                              <rect x="125" y="0" width="3.0" height="26" fill="currentColor" />
+                                              
+                                              <rect x="131" y="0" width="1.5" height="30" fill="currentColor" />
+                                              <rect x="134" y="0" width="1.5" height="30" fill="currentColor" />
+                                              
+                                              <rect x="139" y="0" width="2.0" height="26" fill="currentColor" />
+                                              <rect x="143" y="0" width="1.0" height="26" fill="currentColor" />
+                                              <rect x="146" y="0" width="3.5" height="26" fill="currentColor" />
+                                              <rect x="152" y="0" width="1.5" height="26" fill="currentColor" />
+                                              <rect x="156" y="0" width="2.5" height="26" fill="currentColor" />
+                                              <rect x="161" y="0" width="1.0" height="26" fill="currentColor" />
+                                              <rect x="164" y="0" width="4.0" height="26" fill="currentColor" />
+                                              <rect x="170" y="0" width="1.5" height="26" fill="currentColor" />
+                                              <rect x="174" y="0" width="2.0" height="26" fill="currentColor" />
+                                              <rect x="178" y="0" width="3.0" height="26" fill="currentColor" />
+                                              
+                                              <rect x="183" y="0" width="1.5" height="30" fill="currentColor" />
+                                              <rect x="186" y="0" width="1.5" height="30" fill="currentColor" />
+                                              
+                                              <rect x="191" y="0" width="1.0" height="26" fill="currentColor" />
+                                              <rect x="194" y="0" width="3.0" height="26" fill="currentColor" />
+                                              <rect x="199" y="0" width="2.0" height="26" fill="currentColor" />
+                                              <rect x="203" y="0" width="1.5" height="26" fill="currentColor" />
+                                              <rect x="207" y="0" width="4.0" height="26" fill="currentColor" />
+                                              <rect x="213" y="0" width="1.0" height="26" fill="currentColor" />
+                                              <rect x="216" y="0" width="2.5" height="26" fill="currentColor" />
+                                              <rect x="221" y="0" width="3.0" height="26" fill="currentColor" />
+                                              <rect x="226" y="0" width="1.0" height="26" fill="currentColor" />
+                                              <rect x="229" y="0" width="4.0" height="26" fill="currentColor" />
+                                              
+                                              <rect x="235" y="0" width="1.5" height="30" fill="currentColor" />
+                                              <rect x="238" y="0" width="1.5" height="30" fill="currentColor" />
+                                              
+                                              <rect x="243" y="0" width="2.0" height="26" fill="currentColor" />
+                                              <rect x="247" y="0" width="1.0" height="26" fill="currentColor" />
+                                              <rect x="250" y="0" width="3.5" height="26" fill="currentColor" />
+                                              <rect x="256" y="0" width="1.5" height="26" fill="currentColor" />
+                                              <rect x="260" y="0" width="2.5" height="26" fill="currentColor" />
+                                              <rect x="265" y="0" width="1.0" height="26" fill="currentColor" />
+                                              <rect x="268" y="0" width="4.0" height="26" fill="currentColor" />
+                                              <rect x="274" y="0" width="1.5" height="26" fill="currentColor" />
+                                              <rect x="278" y="0" width="2.0" height="26" fill="currentColor" />
+                                              <rect x="282" y="0" width="3.0" height="26" fill="currentColor" />
+                                              
+                                              {/* End Guard bars */}
+                                              <rect x="291" y="0" width="1.5" height="30" fill="currentColor" />
+                                              <rect x="294" y="0" width="1.5" height="30" fill="currentColor" />
+                                              <rect x="297" y="0" width="2.5" height="30" fill="currentColor" />
+                                          </svg>
+                                          <span className="text-[7px] font-mono tracking-[0.25em] text-slate-700 dark:text-slate-400 mt-1 select-none font-bold">
+                                              * HTWTH-SECURE-SESSION-2026-X9 *
+                                           </span>
+                                           {qrCodeDataUrl && (
+                                               <div className="mt-4 p-2 bg-white border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col items-center gap-1">
+                                                   <img 
+                                                       src={qrCodeDataUrl} 
+                                                       alt="Scannable Session QR" 
+                                                       className="w-28 h-28 object-contain"
+                                                       referrerPolicy="no-referrer"
+                                                   />
+                                                   <div className="text-[8px] font-mono text-[#6366f1] font-black tracking-wider uppercase select-all text-center">
+                                                       ⚡ SCAN TO DECRYPT SESSION
+                                                   </div>
+                                               </div>
+                                           )}
+                                           <span className="hidden">
+                                          </span>
+                                      </div>
+                                  </div>
+
+                                  <div className="text-center min-w-0">
+                                      <div className="flex items-center justify-center gap-1.5 mb-1 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded w-fit mx-auto">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></div>
+                                          <span className="text-[9px] font-mono font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">PRODUCT COMPANION</span>
+                                      </div>
+                                      <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">Offline Message Decryption</h4>
+                                      <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Scan the dynamic QR code with your smartphone camera to instantly decode and display your original name, email, and message directly on your screen — fully offline, with no URLs involved!</p>
+                                  </div>
+                              </div>
+                              <div style={{ display: 'none' }}>
+                                 <div className="flex items-center gap-3 w-full sm:w-auto">
+                                     <div className="w-14 h-14 bg-white p-1 rounded-md shadow-inner flex-shrink-0 flex items-center justify-center border border-slate-200 dark:border-slate-800">
+                                     <svg className="w-full h-full text-slate-900" viewBox="0 0 100 100">
+                                         <rect x="5" y="5" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="6" />
+                                         <rect x="11" y="11" width="10" height="10" fill="currentColor" />
+                                         <rect x="73" y="5" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="6" />
+                                         <rect x="79" y="11" width="10" height="10" fill="currentColor" />
+                                         <rect x="5" y="73" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="6" />
+                                         <rect x="11" y="79" width="10" height="10" fill="currentColor" />
+                                         
+                                         <rect x="42" y="42" width="16" height="16" fill="currentColor" />
+                                         <rect x="47" y="47" width="6" height="6" fill="white" />
+                                         <rect x="49" y="49" width="2" height="2" fill="currentColor" />
+                                         
+                                         <path d="M 32,5 h 6 v 6 h -6 z M 48,5 h 6 v 6 h -6 z M 64,5 h 6 v 6 h -6 z" fill="currentColor" />
+                                         <path d="M 32,15 h 6 v 6 h -6 z M 48,15 h 6 v 6 h -6 z M 64,15 h 6 v 6 h -6 z" fill="currentColor" />
+                                         <path d="M 5,32 h 6 v 6 h -6 z M 15,32 h 6 v 6 h -6 z M 25,32 h 6 v 6 h -6 z" fill="currentColor" />
+                                         <path d="M 32,32 h 6 v 6 h -6 z M 48,32 h 6 v 6 h -6 z M 64,32 h 6 v 6 h -6 z M 75,32 h 6 v 6 h -6 z M 85,32 h 6 v 6 h -6 z" fill="currentColor" />
+                                         <path d="M 5,48 h 6 v 6 h -6 z M 15,48 h 6 v 6 h -6 z M 25,48 h 6 v 6 h -6 z" fill="currentColor" />
+                                         <path d="M 32,48 h 6 v 6 h -6 z M 64,48 h 6 v 6 h -6 z M 75,48 h 6 v 6 h -6 z" fill="currentColor" />
+                                         <path d="M 5,64 h 6 v 6 h -6 z M 15,64 h 6 v 6 h -6 z M 25,64 h 6 v 6 h -6 z" fill="currentColor" />
+                                         <path d="M 32,64 h 6 v 6 h -6 z M 48,64 h 6 v 6 h -6 z M 64,64 h 6 v 6 h -6 z M 75,64 h 6 v 6 h -6 z M 85,64 h 6 v 6 h -6 z" fill="currentColor" />
+                                         <path d="M 32,75 h 6 v 6 h -6 z M 48,75 h 6 v 6 h -6 z M 64,75 h 6 v 6 h -6 z" fill="currentColor" />
+                                         <path d="M 32,85 h 6 v 6 h -6 z M 48,85 h 6 v 6 h -6 z M 64,85 h 6 v 6 h -6 z" fill="currentColor" />
+                                     </svg>
+                                 </div>
+                                 
+                                 <div className="w-px h-10 bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
+                                 
+                                 <div className="flex flex-col items-center justify-center p-1 bg-white border border-slate-200 dark:border-slate-800 rounded-md shadow-inner flex-shrink-0 w-24 h-14">
+                                     <svg className="w-full h-8 text-slate-900 animate-pulse" viewBox="0 0 100 30" preserveAspectRatio="none">
+                                         <rect x="2" y="0" width="2" height="30" fill="currentColor" />
+                                         <rect x="6" y="0" width="2" height="30" fill="currentColor" />
+                                         <rect x="12" y="0" width="1" height="26" fill="currentColor" />
+                                         <rect x="16" y="0" width="3" height="26" fill="currentColor" />
+                                         <rect x="22" y="0" width="2" height="26" fill="currentColor" />
+                                         <rect x="26" y="0" width="1" height="26" fill="currentColor" />
+                                         <rect x="30" y="0" width="4" height="26" fill="currentColor" />
+                                         <rect x="36" y="0" width="2" height="26" fill="currentColor" />
+                                         <rect x="44" y="0" width="2" height="30" fill="currentColor" />
+                                         <rect x="48" y="0" width="2" height="30" fill="currentColor" />
+                                         <rect x="54" y="0" width="3" height="26" fill="currentColor" />
+                                         <rect x="60" y="0" width="1" height="26" fill="currentColor" />
+                                         <rect x="64" y="0" width="2" height="26" fill="currentColor" />
+                                         <rect x="70" y="0" width="4" height="26" fill="currentColor" />
+                                         <rect x="76" y="0" width="1" height="26" fill="currentColor" />
+                                         <rect x="80" y="0" width="2" height="26" fill="currentColor" />
+                                         <rect x="88" y="0" width="2" height="30" fill="currentColor" />
+                                         <rect x="92" y="0" width="2" height="30" fill="currentColor" />
+                                     </svg>
+                                     <span className="text-[6px] font-mono tracking-widest text-[#1e293b] leading-none select-none">HTWTH-2026</span>
+                                 </div>
+                             </div>
+
+                             <div className="flex-1 min-w-0">
+                                 <div className="flex items-center gap-1.5 mb-1 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded w-fit">
+                                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></div>
+                                     <span className="text-[9px] font-mono font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">PRODUCT COMPANION</span>
+                                 </div>
+                                 <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">HtWtH Mobile App</h4>
+                                 <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Scan QR code or use barcode to download product companion suite.</p>
+                             </div>
+                         </div>
+                         </motion.div>
+                         </>
+                     )}
+                 </AnimatePresence>
             </div>
         </div>
     );
@@ -745,6 +1177,29 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
   const [activeBountyCommentsId, setActiveBountyCommentsId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedBlogPost, setSelectedBlogPost] = useState<Post | null>(null);
+  const [scannedTransmission, setScannedTransmission] = useState<{
+    name: string;
+    email: string;
+    message: string;
+  } | null>(null);
+  const [scannedCopied, setScannedCopied] = useState(false);
+
+  // Parse scanned URL parameters
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('scanned') === 'true') {
+      const name = params.get('name') || '';
+      const email = params.get('email') || '';
+      const message = params.get('message') || '';
+      if (name || email || message) {
+        setScannedTransmission({ name, email, message });
+        
+        // Clean URL to avoid repeating on reload or hash navigations
+        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + window.location.hash;
+        window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+      }
+    }
+  }, []);
 
   // Handle URL Hash for Shareable Links (e.g., /#/blog, /#/pricing)
   useEffect(() => {
@@ -937,11 +1392,32 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
   const [showAllFeatures, setShowAllFeatures] = useState(false);
 
   const handleSendAdminMessage = async (name: string, email: string, message: string): Promise<{success: boolean}> => {
-      // Mock success
+      // Register locally in state
       onContactAdmin(
           { name, email, avatar: `https://i.pravatar.cc/150?u=${email}`, role: 'user' },
           message
       );
+
+      // Trigger server-side SMTP auto-responder & administrator notifier
+      try {
+          const response = await fetch('/api/contact', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ name, email, message })
+          });
+          if (!response.ok) {
+              const errData = await response.json();
+              console.error("SMTP contact route error:", errData.error || response.statusText);
+          } else {
+              const resData = await response.json();
+              console.log("SMTP automatic email verification/receipt sent:", resData);
+          }
+      } catch (err) {
+          console.error("Failed to connect with HTWTH SMTP contact server:", err);
+      }
+
       return { success: true };
   };
   
@@ -2168,8 +2644,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
 
       </main>
 
-      <LegalSupport />
-
       <Footer 
         onAction={onSignIn} 
         onShowCopyright={() => setShowCopyright(true)} 
@@ -2197,6 +2671,156 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
       />
       {/* SupportBot Removed as per request to hide it on Landing Page */}
       <CookieCard />
+
+      {/* Scanned Transmission Decrypt Modal */}
+      <AnimatePresence>
+        {scannedTransmission && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 30 }}
+              transition={{ type: "spring", stiffness: 150, damping: 20 }}
+              className="w-full max-w-lg bg-slate-900 border border-emerald-500/30 rounded-2xl p-6 md:p-8 shadow-[0_0_50px_rgba(16,185,129,0.15)] overflow-hidden relative"
+            >
+              {/* Scan grid effect */}
+              <div className="absolute inset-0 bg-[linear-gradient(to_right,#022c22_1px,transparent_1px),linear-gradient(to_bottom,#022c22_1px,transparent_1px)] bg-[size:16px_16px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-35 pointer-events-none" />
+              
+              {/* Glowing vertical scanning line */}
+              <motion.div
+                initial={{ y: 0 }}
+                animate={{ y: ["0%", "100%", "0%"] }}
+                transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                className="absolute left-0 right-0 h-0.5 bg-emerald-500/50 shadow-[0_0_12px_#10b981] pointer-events-none z-[111]"
+                style={{ top: "10%" }}
+              />
+
+              <div className="relative z-10 space-y-6">
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full bg-emerald-500 animate-ping shadow-[0_0_8px_#10b981]" />
+                    <div className="font-mono text-xs tracking-wider text-emerald-400 font-bold uppercase">
+                      SECURE TERMINAL DECRYPT OK
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                        setScannedTransmission(null);
+                        setScannedCopied(false);
+                    }}
+                    className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Subtitle / Verification Status */}
+                <div className="text-center bg-emerald-950/20 border border-emerald-500/20 rounded-xl p-4 space-y-1">
+                  <div className="text-[10px] font-mono tracking-widest text-emerald-500 font-bold uppercase">:: TRANSMISSION VERIFIED ::</div>
+                  <p className="text-sm font-bold text-white tracking-widest font-mono">
+                    BARCODE DECRYPTION COMPLETE
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    A physical security voucher for this session was scanned from the printer slot.
+                  </p>
+                </div>
+
+                {/* Decrypted payload details */}
+                <div className="space-y-4 font-mono text-xs text-slate-300">
+                  <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-3 space-y-1">
+                    <div className="text-[10px] uppercase text-emerald-500/80 font-bold tracking-wider">
+                      [+] DECRYPTED SENDER SCRIPT
+                    </div>
+                    <div className="text-sm font-bold text-white pl-2 border-l-2 border-emerald-500">
+                      {scannedTransmission.name}
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-3 space-y-1">
+                    <div className="text-[10px] uppercase text-emerald-500/80 font-bold tracking-wider">
+                      [+] SECURE ROUTED EMAIL
+                    </div>
+                    <div className="text-sm font-bold text-slate-200 pl-2 border-l-2 border-emerald-500 font-mono text-[#6366f1]">
+                      {scannedTransmission.email}
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-3 space-y-1">
+                    <div className="text-[10px] uppercase text-emerald-500/80 font-bold tracking-wider">
+                      [+] SECURE MESSAGE PAYLOAD
+                    </div>
+                    <p className="text-xs text-slate-300 pl-2 border-l-2 border-emerald-500 leading-relaxed font-sans whitespace-pre-wrap break-words">
+                      {scannedTransmission.message}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Bottom Barcode Icon Decor */}
+                <div className="flex flex-col items-center gap-2 pt-2 border-t border-slate-800/60">
+                  <div className="w-full h-8 flex justify-center items-center py-2 bg-white rounded shadow-sm opacity-80 max-w-[200px]">
+                     <svg className="w-full h-full text-slate-900" viewBox="0 0 100 20" preserveAspectRatio="none">
+                         <rect x="2" y="0" width="2" height="20" fill="currentColor" />
+                         <rect x="6" y="0" width="2" height="20" fill="currentColor" />
+                         <rect x="12" y="0" width="1" height="20" fill="currentColor" />
+                         <rect x="16" y="0" width="3" height="20" fill="currentColor" />
+                         <rect x="22" y="0" width="2" height="20" fill="currentColor" />
+                         <rect x="26" y="0" width="1" height="20" fill="currentColor" />
+                         <rect x="30" y="0" width="4" height="20" fill="currentColor" />
+                         <rect x="36" y="0" width="2" height="20" fill="currentColor" />
+                         <rect x="44" y="0" width="2" height="20" fill="currentColor" />
+                         <rect x="48" y="0" width="2" height="20" fill="currentColor" />
+                         <rect x="54" y="0" width="3" height="20" fill="currentColor" />
+                         <rect x="60" y="0" width="1" height="20" fill="currentColor" />
+                         <rect x="64" y="0" width="2" height="20" fill="currentColor" />
+                         <rect x="70" y="0" width="4" height="20" fill="currentColor" />
+                         <rect x="76" y="0" width="1" height="20" fill="currentColor" />
+                         <rect x="80" y="0" width="2" height="20" fill="currentColor" />
+                         <rect x="88" y="0" width="2" height="20" fill="currentColor" />
+                         <rect x="92" y="0" width="2" height="20" fill="currentColor" />
+                     </svg>
+                  </div>
+                  <span className="text-[8px] font-mono tracking-widest text-slate-500">SESSION IDENTIFIED ID: HTWTH-DECRYPT-V2</span>
+                </div>
+
+                {/* Controls */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                        const text = `Sender: ${scannedTransmission.name}\nEmail: ${scannedTransmission.email}\nMessage: ${scannedTransmission.message}`;
+                        navigator.clipboard.writeText(text);
+                        setScannedCopied(true);
+                        setTimeout(() => setScannedCopied(false), 2000);
+                    }}
+                    className="flex-1 font-mono text-xs font-bold py-2.5 px-4 bg-slate-800 border border-slate-700 text-slate-200 hover:text-white hover:bg-slate-700 rounded-xl transition-all flex items-center justify-center gap-1.5"
+                  >
+                    {scannedCopied ? (
+                        <>
+                          <CheckIcon className="w-4 h-4 text-emerald-400" />
+                          COPIED OK
+                        </>
+                    ) : (
+                        <>
+                          🗄️ COPY PAYLOAD
+                        </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                        setScannedTransmission(null);
+                        setScannedCopied(false);
+                    }}
+                    className="flex-1 font-mono text-xs font-bold py-2.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl transition-all shadow-[0_4px_12px_rgba(16,185,129,0.25)] hover:from-emerald-500 hover:to-teal-500 hover:shadow-[0_4px_20px_rgba(16,185,129,0.35)] flex items-center justify-center gap-1.5"
+                  >
+                    ⚡ ACCEPT PACKET
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
       
       {lightboxImage && <ImageLightbox imageUrl={lightboxImage} onClose={() => setLightboxImage(null)} />}
 
