@@ -1684,6 +1684,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
                     <button onClick={() => handleTabChange('pricing')} className={`text-sm font-bold transition-colors ${activeTab === 'pricing' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>Pricing</button>
                     <button onClick={() => handleTabChange('blog')} className={`text-sm font-bold transition-colors ${activeTab === 'blog' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>Blog</button>
                     <button onClick={() => handleTabChange('bounty')} className={`text-sm font-bold transition-colors ${activeTab === 'bounty' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>Bounties</button>
+                    <button onClick={() => { handleTabChange('bounty'); window.location.href = 'https://https://reachouts.vercel.app/'; }} className={`text-sm font-bold transition-colors ${activeTab === 'bounty' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>CampSec</button>
+                  
                 </div>
 
                 {/* Actions Area */}
