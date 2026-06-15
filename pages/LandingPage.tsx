@@ -1684,7 +1684,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
                     <button onClick={() => handleTabChange('pricing')} className={`text-sm font-bold transition-colors ${activeTab === 'pricing' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>Pricing</button>
                     <button onClick={() => handleTabChange('blog')} className={`text-sm font-bold transition-colors ${activeTab === 'blog' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>Blog</button>
                     <button onClick={() => handleTabChange('bounty')} className={`text-sm font-bold transition-colors ${activeTab === 'bounty' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>Bounties</button>
-                    <button onClick={() => { handleTabChange('bounty'); window.location.href = 'https://https://reachouts.vercel.app/'; }} className={`text-sm font-bold transition-colors ${activeTab === 'bounty' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>CampSec</button>
+                    <button onClick={() => { handleTabChange('bounty'); window.location.href = 'https://reachouts.vercel.app/'; }} className={`text-sm font-bold transition-colors ${activeTab === 'bounty' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>CampSec</button>
                   
                 </div>
 
@@ -1711,7 +1711,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
             {/* Mobile Menu Dropdown */}
             <div className={`md:hidden overflow-hidden transition-all duration-500 ease-in-out ${mobileMenuOpen ? 'max-h-[500px] opacity-100 border-t border-slate-200/60 dark:border-white/5' : 'max-h-0 opacity-0'}`}>
                 <div className="flex flex-col p-4 gap-2">
-                    {['features', 'community', 'resources', 'pricing', 'blog', 'bounty'].map((tab, index) => (
+                    {['features', 'community', 'resources', 'pricing', 'blog', 'bounty', 'CampSec'].map((tab, index) => (
                         <button 
                             key={tab}
                             onClick={() => handleTabChange(tab as typeof activeTab)} 
