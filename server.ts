@@ -1,7 +1,6 @@
 
 import express from "express";
 import path from "path";
-import { fileURLToPath } from "url";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import QRCode from "qrcode";
@@ -9,12 +8,14 @@ import QRCode from "qrcode";
 // Force load from .env, overriding any sticky/stuck platform secrets
 dotenv.config({ override: true });
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 async function startServer() {
   const app = express();
   const PORT = 3000;
+
+  // Add Health Check Endpoint for container health probes
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok" });
+  });
 
   app.use(express.json());
 
@@ -337,8 +338,16 @@ async function startServer() {
         return transporter.sendMail(mailOptions);
       });
 
-      await Promise.all(sendPromises);
-      res.json({ success: true, message: `Successfully sent ${recipients.length} individual email(s).` });
+      const results = await Promise.allSettled(sendPromises);
+      
+      const fulfilled = results.filter(r => r.status === 'fulfilled').length;
+      const rejected = results.filter(r => r.status === 'rejected').length;
+      
+      if (fulfilled === 0 && rejected > 0) {
+        throw new Error(`Failed to send to all ${rejected} recipients.`);
+      }
+
+      res.json({ success: true, message: `Successfully sent to ${fulfilled} recipient(s). ${rejected > 0 ? `Failed to send to ${rejected}.` : ''}` });
     } catch (error: any) {
       console.error("Mail Error:", error);
       res.status(500).json({ error: error.message || "Failed to send email" });
@@ -354,12 +363,17 @@ async function startServer() {
       appType: "spa",
     });
     app.use(vite.middlewares);
+    
+    app.use((req, res, next) => {
+      console.log("[DEV-MISSING] ", req.url);
+      next();
+    });
   } else {
     console.log("Serving static production assets from /dist...");
     const buildPath = path.join(process.cwd(), 'dist');
     console.log("BUILD PATH:", buildPath);
     app.use(express.static(buildPath));
-    app.use((req, res, next) => {
+    app.get('*all', (req, res) => {
       console.log("Fallback serving index.html for:", req.url);
       res.sendFile(path.join(buildPath, 'index.html'));
     });

@@ -595,7 +595,10 @@ const App: React.FC = () => {
       
       if (isUsingMockData()) {
           const initError = getInitError();
-          const errorMessage = initError instanceof Error ? initError.message : String(initError || 'Unknown error');
+          let errorMessage = initError instanceof Error ? initError.message : String(initError || 'Unknown error');
+          if (errorMessage.includes('Failed to fetch')) {
+              errorMessage = 'Network issue or Adblocker preventing database connection';
+          }
           addNotification({
               title: "Offline Mode Active",
               message: `Could not connect to database: ${errorMessage}. Using sample data. App is functional for demonstration.`,
@@ -1975,11 +1978,7 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
   };
 
   const handleGoBack = () => {
-    if (window.history.length > 1) {
-      window.history.back();
-    } else {
-      handleBackToLanding();
-    }
+    handleBackToLanding();
   };
 
   const handleNavigate = (page: Page) => {

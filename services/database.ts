@@ -144,7 +144,12 @@ async function safeDbQuery<T>(
         if (error) throw error;
         return data as T;
     } catch (error: any) {
-        console.error(`[Database Error] in ${context}:`, error.message || error);
+        const msg = error.message || String(error);
+        if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+            console.warn(`[Database Warning] in ${context}: Network issue (Failed to fetch). Using fallback.`);
+        } else {
+            console.error(`[Database Error] in ${context}:`, msg);
+        }
         return fallbackValue;
     }
 }

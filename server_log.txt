@@ -1,0 +1,12 @@
+◇ injected env (2) from .env // tip: ⌘ enable debugging { debug: true }
+--- SYSTEM ENVIRONMENT CHECK ---
+NODE_ENV: development
+EFFECTIVE MODE: DEVELOPMENT (VITE)
+SMTP_USER: VALID EMAIL
+APP_URL: https://ais-dev-fl5m6z2lmsovznnquito44-475153556207.asia-southeast1.run.app
+--------------------------------
+Initializing Vite Middleware...
+12:59:54 PM [vite] (client) Forced re-optimization of dependencies
+WebSocket server error: Port 24678 is already in use
+Server running on http://localhost:3000
+Vite development server integrated.

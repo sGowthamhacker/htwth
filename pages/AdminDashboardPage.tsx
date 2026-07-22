@@ -532,7 +532,7 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
             const data = await response.json();
 
             if (response.ok) {
-                addNotification({ title: 'Email Sent', message: `Updates sent to ${recipients.length} user(s) via Gmail SMTP.`, type: 'success' });
+                addNotification({ title: 'Email Sent', message: data.message || `Updates sent to ${recipients.length} user(s) via Gmail SMTP.`, type: 'success' });
                 setTitle('');
                 setMessage('');
                 setSelectedUsers([]);

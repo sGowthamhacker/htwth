@@ -239,7 +239,7 @@ const AuthPage: FC<AuthPageProps> = ({
       <>
         <button 
             onClick={onBackToHome}
-            className="fixed top-4 left-4 sm:top-6 sm:left-6 z-50 flex items-center gap-2 text-white/80 hover:text-white transition-colors bg-black/20 hover:bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full"
+            className="fixed top-4 left-4 sm:top-6 sm:left-6 z-[9999] pointer-events-auto flex items-center gap-2 text-white/80 hover:text-white transition-colors bg-black/20 hover:bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full"
         >
             <ArrowLeftIcon className="w-4 h-4" />
             <span className="text-sm font-medium leading-none pt-0.5">Back</span>

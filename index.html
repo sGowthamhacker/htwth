@@ -1953,6 +1953,17 @@
       };
       
       // --- Execution Logic ---
+      
+      // Attempt to unregister any stale service workers immediately
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister();
+            console.log('ServiceWorker unregistered manually from index.html');
+          }
+        });
+      }
+      
       // Initialize Firebase immediately to check for email link.
       const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
       const auth = getAuth(app);
@@ -1966,6 +1977,5 @@
       }
     </script>
     <!-- The main app script is now loaded dynamically by the script above -->
-  <script type="module" src="/index.tsx"></script>
 </body>
 </html>

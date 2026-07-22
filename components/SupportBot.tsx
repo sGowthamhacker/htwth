@@ -420,10 +420,10 @@ const SupportBot: React.FC<SupportBotProps> = ({ onSendAdminMessage }) => {
         return (
             <button
                 onClick={handleToggle}
-                className="fixed bottom-6 right-6 z-[9999] w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center transform transition-transform duration-200 hover:scale-110 hover:shadow-indigo-500/50"
+                className="fixed bottom-6 right-6 z-[9999] w-14 h-14 sm:w-16 sm:h-16 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center transform transition-transform duration-200 hover:scale-110 hover:shadow-indigo-500/50"
                 aria-label="Open support chat"
             >
-                <ChatBubbleOvalLeftEllipsisIcon className="w-8 h-8" />
+                <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5 sm:w-8 sm:h-8" />
             </button>
         );
     }

@@ -1,11 +1,23 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
-
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --animate-marquee: marquee 60s linear infinite;
+  --animate-shimmer-slide: shimmer-slide 2.5s infinite;
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  @keyframes shimmer-slide {
+    0% { transform: translateX(-150%); }
+    100% { transform: translateX(150%); }
+  }
 }
 
 @layer base {
@@ -14,11 +26,27 @@
   }
 }
 
-@keyframes marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+.marquee-animation {
+  animation: var(--animate-marquee);
 }
 
-.marquee-animation {
-  animation: marquee 60s linear infinite;
+/* ElevenLabs ConvAI & Support Chat Agent Responsive & Mobile Menu Rules */
+elevenlabs-convai {
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+}
+
+/* Hide chat agents when mobile view menu bar is open */
+[data-mobile-menu-open="true"] elevenlabs-convai,
+html[data-mobile-menu-open="true"] elevenlabs-convai,
+body.mobile-menu-open elevenlabs-convai,
+[data-mobile-menu-open="true"] .support-bot-window,
+[data-mobile-menu-open="true"] button[aria-label="Open support chat"],
+html[data-mobile-menu-open="true"] .support-bot-window,
+html[data-mobile-menu-open="true"] button[aria-label="Open support chat"],
+body.mobile-menu-open .support-bot-window,
+body.mobile-menu-open button[aria-label="Open support chat"] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
 }

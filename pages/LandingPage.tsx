@@ -39,7 +39,7 @@ import AnimatedSendButton from '../components/AnimatedSendButton';
 import Footer from '../components/Footer';
 import MicrochipLoader from '../components/MicrochipLoader';
 import RevealOnScroll, { AnimationType } from '../components/RevealOnScroll';
-import { Menu, X, Cloud, CircleHelp, Rocket, Send, Search, Command, Terminal, Zap, Cpu, Sparkles, ArrowRight } from 'lucide-react';
+import { Menu, X, Cloud, CircleHelp, Rocket, Send, Search, Command, Terminal, Zap, Cpu, Sparkles, ArrowRight, ExternalLink, BookOpen } from 'lucide-react';
 import { sanitizeUrl } from '../utils/sanitizeUrl';
 import QRCode from 'qrcode';
 
@@ -1177,6 +1177,21 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
   const [activeBountyCommentsId, setActiveBountyCommentsId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedBlogPost, setSelectedBlogPost] = useState<Post | null>(null);
+
+  // Toggle global mobile menu attribute so floating widgets (like chat agent) hide when menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.documentElement.setAttribute('data-mobile-menu-open', 'true');
+      document.body.classList.add('mobile-menu-open');
+    } else {
+      document.documentElement.removeAttribute('data-mobile-menu-open');
+      document.body.classList.remove('mobile-menu-open');
+    }
+    return () => {
+      document.documentElement.removeAttribute('data-mobile-menu-open');
+      document.body.classList.remove('mobile-menu-open');
+    };
+  }, [mobileMenuOpen]);
   const [scannedTransmission, setScannedTransmission] = useState<{
     name: string;
     email: string;
@@ -1625,9 +1640,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
       </Suspense>
 
       {/* Navigation */}
-      <RevealOnScroll animation="fade-down" duration={1000} className="fixed top-0 left-0 right-0 z-50">
-        <nav className="transition-all duration-300 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl border-b border-slate-200/60 dark:border-white/5 supports-[backdrop-filter]:bg-white/50">
-            <div className="w-full px-4 sm:px-12 lg:px-16">
+      <nav 
+        className="fixed top-0 left-0 right-0 z-[100] transition-all duration-300 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl border-b border-slate-200/60 dark:border-white/5 supports-[backdrop-filter]:bg-white/50"
+      >
+          <div className="w-full px-4 sm:px-12 lg:px-16">
             <div className="flex justify-between items-center h-20">
                 {/* Logo Area */}
                 <div className="flex items-center gap-4 cursor-pointer group select-none" onClick={() => handleTabChange('home')}>
@@ -1678,14 +1694,52 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
                 
                 {/* Center Nav Links */}
                 <div className="hidden md:flex items-center gap-8">
+                    {/* Ecosystem Dropdown */}
+                    <div className="relative group">
+                        <button className="flex items-center gap-1 text-sm font-bold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors py-2">
+                            Ecosystem <ChevronDownIcon className="w-3.5 h-3.5 transition-transform duration-300 group-hover:rotate-180" />
+                        </button>
+                        
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 z-50">
+                            {/* Invisible hit area to prevent hover from dropping */}
+                            <div className="absolute -top-4 left-0 right-0 h-4 bg-transparent"></div>
+                            
+                            <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] dark:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] w-56 p-1.5 overflow-hidden">
+                                <a href="https://htwth.vercel.app/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 transition-colors group/link">
+                                    <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 group-hover/link:scale-110 transition-transform">
+                                        <Zap className="w-4 h-4" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="leading-none mb-1">HTWTH</div>
+                                        <div className="text-[10px] font-normal text-slate-500 dark:text-slate-400">Core platform</div>
+                                    </div>
+                                    <ExternalLink className="w-3.5 h-3.5 opacity-0 group-hover/link:opacity-100 transition-opacity" />
+                                </a>
+                                <a href="https://writeupportalos.netlify.app/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 transition-colors group/link">
+                                    <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0 group-hover/link:scale-110 transition-transform">
+                                        <BookOpen className="w-4 h-4" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="leading-none mb-1">Writeup Portal</div>
+                                        <div className="text-[10px] font-normal text-slate-500 dark:text-slate-400">Documentation & guides</div>
+                                    </div>
+                                    <ExternalLink className="w-3.5 h-3.5 opacity-0 group-hover/link:opacity-100 transition-opacity" />
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="w-px h-4 bg-slate-300 dark:bg-slate-700"></div>
                     <button onClick={() => handleTabChange('features')} className={`text-sm font-bold transition-colors ${activeTab === 'features' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>Features</button>
                     <button onClick={() => handleTabChange('community')} className={`text-sm font-bold transition-colors ${activeTab === 'community' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>Community</button>
                     <button onClick={() => handleTabChange('resources')} className={`text-sm font-bold transition-colors ${activeTab === 'resources' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>Resources</button>
                     <button onClick={() => handleTabChange('pricing')} className={`text-sm font-bold transition-colors ${activeTab === 'pricing' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>Pricing</button>
                     <button onClick={() => handleTabChange('blog')} className={`text-sm font-bold transition-colors ${activeTab === 'blog' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>Blog</button>
                     <button onClick={() => handleTabChange('bounty')} className={`text-sm font-bold transition-colors ${activeTab === 'bounty' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>Bounties</button>
-                    <button onClick={() => { handleTabChange('bounty'); window.location.href = 'https://reachouts.vercel.app/'; }} className={`text-sm font-bold transition-colors ${activeTab === 'bounty' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400'}`}>CampSec</button>
-                  
+                    <a href="https://reachouts.vercel.app/" target="_blank" rel="noopener noreferrer" className="relative group inline-flex items-center justify-center text-sm font-bold transition-all px-4 py-1.5 rounded-full bg-gradient-to-r from-yellow-500 via-yellow-300 to-yellow-500 text-black shadow-[0_0_15px_rgba(234,179,8,0.5)] hover:shadow-[0_0_25px_rgba(234,179,8,0.8)] overflow-hidden dark:from-yellow-400 dark:via-white dark:to-yellow-400 dark:text-black">
+                        <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/80 to-transparent -translate-x-[150%] animate-shimmer-slide"></span>
+                        <span className="relative z-10 flex items-center gap-1">Campsec <ExternalLink className="w-3.5 h-3.5" /></span>
+                    </a>
                 </div>
 
                 {/* Actions Area */}
@@ -1709,14 +1763,57 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
             </div>
             
             {/* Mobile Menu Dropdown */}
-            <div className={`md:hidden overflow-hidden transition-all duration-500 ease-in-out ${mobileMenuOpen ? 'max-h-[500px] opacity-100 border-t border-slate-200/60 dark:border-white/5' : 'max-h-0 opacity-0'}`}>
+            <div className={`md:hidden overflow-hidden transition-all duration-500 ease-in-out ${mobileMenuOpen ? 'max-h-[700px] opacity-100 border-t border-slate-200/60 dark:border-white/5' : 'max-h-0 opacity-0'}`}>
                 <div className="flex flex-col p-4 gap-2">
-                    {['features', 'community', 'resources', 'pricing', 'blog', 'bounty', 'CampSec'].map((tab, index) => (
+                    <div
+                        style={{ 
+                            transitionDelay: mobileMenuOpen ? '0ms' : '0ms',
+                            transform: mobileMenuOpen ? 'translateY(0)' : 'translateY(24px)',
+                            opacity: mobileMenuOpen ? 1 : 0,
+                        }}
+                        className="transition-all duration-500 ease-out"
+                    >
+                        <details className="group border border-slate-200/60 dark:border-white/5 rounded-xl overflow-hidden bg-slate-50/50 dark:bg-slate-800/30">
+                            <summary className="flex items-center justify-between px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer list-none appearance-none [&::-webkit-details-marker]:hidden focus:outline-none">
+                                <div className="flex items-center gap-2">
+                                    <Zap className="w-4 h-4 text-indigo-500" />
+                                    Ecosystem
+                                </div>
+                                <ChevronDownIcon className="w-4 h-4 transition-transform group-open:-rotate-180 text-slate-500" />
+                            </summary>
+                            <div className="px-3 pb-3 pt-1 flex flex-col gap-1 border-t border-slate-200/50 dark:border-white/5 mt-1">
+                                <a href="https://htwth.vercel.app/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-lg text-sm font-bold text-slate-700 hover:bg-white hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:text-indigo-400 transition-colors mt-2 shadow-sm bg-white/50 dark:bg-slate-800/50 border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                    <div className="w-7 h-7 rounded-md bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                                        <Zap className="w-3.5 h-3.5" />
+                                    </div>
+                                    <div className="flex-1 text-left">
+                                        <div className="leading-none mb-0.5">HTWTH</div>
+                                        <div className="text-[10px] font-normal text-slate-500 dark:text-slate-400">Core platform</div>
+                                    </div>
+                                    <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                                </a>
+                                <a href="https://writeupportalos.netlify.app/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-lg text-sm font-bold text-slate-700 hover:bg-white hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:text-indigo-400 transition-colors shadow-sm bg-white/50 dark:bg-slate-800/50 border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                    <div className="w-7 h-7 rounded-md bg-purple-100 dark:bg-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
+                                        <BookOpen className="w-3.5 h-3.5" />
+                                    </div>
+                                    <div className="flex-1 text-left">
+                                        <div className="leading-none mb-0.5">Writeup Portal</div>
+                                        <div className="text-[10px] font-normal text-slate-500 dark:text-slate-400">Documentation</div>
+                                    </div>
+                                    <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                                </a>
+                            </div>
+                        </details>
+                    </div>
+                    
+                    <div className="h-px bg-slate-200 dark:bg-slate-700/50 my-1"></div>
+                    
+                    {['features', 'community', 'resources', 'pricing', 'blog', 'bounty'].map((tab, index) => (
                         <button 
                             key={tab}
                             onClick={() => handleTabChange(tab as typeof activeTab)} 
                             style={{ 
-                                transitionDelay: mobileMenuOpen ? `${index * 75}ms` : '0ms',
+                                transitionDelay: mobileMenuOpen ? `${(index + 2) * 75}ms` : '0ms',
                                 transform: mobileMenuOpen ? 'translateY(0)' : 'translateY(24px)',
                                 opacity: mobileMenuOpen ? 1 : 0,
                             }}
@@ -1725,9 +1822,26 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
                             {tab === 'bounty' ? 'Bounties' : tab.charAt(0).toUpperCase() + tab.slice(1)}
                         </button>
                     ))}
+                    
+                    <a 
+                        href="https://reachouts.vercel.app/" 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        style={{ 
+                            transitionDelay: mobileMenuOpen ? `${6 * 75}ms` : '0ms',
+                            transform: mobileMenuOpen ? 'translateY(0)' : 'translateY(24px)',
+                            opacity: mobileMenuOpen ? 1 : 0,
+                        }}
+                        className="relative overflow-hidden flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all duration-500 ease-out bg-gradient-to-r from-yellow-400 via-amber-200 to-yellow-500 text-black shadow-[0_0_15px_rgba(250,204,21,0.3)] dark:from-yellow-500 dark:via-white dark:to-yellow-500"
+                    >
+                        <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/80 to-transparent -translate-x-[150%] animate-shimmer-slide"></span>
+                        <span className="relative z-10 flex items-center gap-2">Campsec</span>
+                        <ExternalLink className="relative z-10 w-4 h-4" />
+                    </a>
+
                     <div 
                         style={{ 
-                            transitionDelay: mobileMenuOpen ? `${5 * 75}ms` : '0ms',
+                            transitionDelay: mobileMenuOpen ? `${7 * 75}ms` : '0ms',
                             transform: mobileMenuOpen ? 'translateY(0)' : 'translateY(24px)',
                             opacity: mobileMenuOpen ? 1 : 0,
                         }}
@@ -1739,7 +1853,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
             </div>
             </div>
         </nav>
-      </RevealOnScroll>
 
       {/* Main Content */}
       <main className={`${activeTab === 'blog' ? 'pt-28 px-4 sm:px-6 lg:px-12' : 'pt-32 sm:pt-40 px-4 sm:px-12 lg:px-24'} pb-16 sm:pb-24 lg:pb-32 w-full relative z-10 min-h-[80vh]`}>

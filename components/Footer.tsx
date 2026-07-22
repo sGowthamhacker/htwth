@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Rocket, Cloud, CircleHelp } from 'lucide-react';
+import { Rocket, Cloud, CircleHelp, Zap, ExternalLink } from 'lucide-react';
 import TwitterIcon from './icons/TwitterIcon';
 import GithubIcon from './icons/GithubIcon';
 import LinkedInIcon from './icons/LinkedInIcon';
@@ -218,29 +218,73 @@ const Footer: React.FC<FooterProps> = ({ onAction, onShowCopyright, onShowInnova
               </div>
           </RevealOnScroll>
 
-          {/* Column 5: Environment */}
+          {/* Column 5: Ecosystem */}
           <RevealOnScroll animation="fade-up" delay={250} className="lg:col-span-1">
               <div className="space-y-6">
-                  <h3 className="text-white text-base font-bold uppercase tracking-wider mb-6">Environment</h3>
-                  <div className="bg-[#111] rounded-xl p-4 border border-white/5 font-mono text-[9px] backdrop-blur-md shadow-2xl group transition-all hover:border-indigo-500/30">
-                      <div className="flex items-center justify-between mb-3 border-b border-white/5 pb-2">
-                             <span className="text-[8px] text-white/50 tracking-widest uppercase font-bold">NODE STATUS</span>
-                             <span className="text-[8px] text-indigo-500 font-bold">V5.7</span>
+                  <h3 className="text-white text-base font-bold uppercase tracking-wider mb-6">Ecosystem</h3>
+                  <div className="bg-[#111] rounded-xl p-3 border border-white/5 font-mono text-[9px] backdrop-blur-md shadow-2xl relative overflow-hidden group hover:border-indigo-500/30 transition-all duration-300">
+                      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                      
+                      <div className="flex items-center justify-between mb-3 border-b border-white/5 pb-2 relative z-10">
+                             <span className="text-[8px] text-white/50 tracking-widest uppercase font-bold flex items-center gap-1">
+                                <Zap className="w-2.5 h-2.5 text-yellow-500" /> LIVE NETWORK
+                             </span>
+                             <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_5px_rgba(34,197,94,0.6)]"></span>
                       </div>
-                      <div className="space-y-4">
+                      
+                      <div className="space-y-3 relative z-10 max-h-[160px] overflow-y-auto pr-1 scrollbar-hide">
+                          {/* Main Level */}
                           <div>
-                                <div className="flex justify-between items-center mb-1 opacity-60 uppercase tracking-tighter text-[7px] font-bold">
-                                    <span>Vercel</span>
-                                    <span className="text-green-500">RUNNING</span>
+                                <div className="flex justify-between items-center mb-1 uppercase tracking-tighter text-[7px] font-bold text-slate-500">
+                                    <span>Main Protocols</span>
+                                    <span className="text-indigo-400">ACTIVE</span>
                                 </div>
-                                <div className="text-indigo-400 truncate tracking-tight text-[8px]">htwth.vercel.app</div>
+                                <div className="space-y-1">
+                                    <a href="https://htwth.vercel.app" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-1.5 rounded bg-black/40 hover:bg-indigo-500/10 border border-transparent hover:border-indigo-500/30 transition-all group/link">
+                                        <span className="text-slate-300 truncate tracking-tight text-[8px] group-hover/link:text-indigo-300 transition-colors">htwth.vercel.app</span>
+                                        <ExternalLink className="w-2.5 h-2.5 text-slate-600 group-hover/link:text-indigo-400 opacity-0 group-hover/link:opacity-100 transition-all" />
+                                    </a>
+                                    <a href="https://writeupportalos.netlify.app" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-1.5 rounded bg-black/40 hover:bg-indigo-500/10 border border-transparent hover:border-indigo-500/30 transition-all group/link">
+                                        <span className="text-slate-300 truncate tracking-tight text-[8px] group-hover/link:text-indigo-300 transition-colors">writeupportalos.netlify.app</span>
+                                        <ExternalLink className="w-2.5 h-2.5 text-slate-600 group-hover/link:text-indigo-400 opacity-0 group-hover/link:opacity-100 transition-all" />
+                                    </a>
+                                </div>
                             </div>
+                            
+                            {/* Products */}
                             <div>
-                                <div className="flex justify-between items-center mb-1 opacity-60 uppercase tracking-tighter text-[7px] font-bold">
-                                    <span>Netlify</span>
-                                    <span className="text-green-500">RUNNING</span>
+                                <div className="flex justify-between items-center mb-1 uppercase tracking-tighter text-[7px] font-bold text-slate-500">
+                                    <span>Products</span>
+                                    <span className="text-yellow-400">NEW</span>
                                 </div>
-                                <div className="text-indigo-400 truncate tracking-tight text-[8px]">writeupportalos.app</div>
+                                <div className="space-y-1">
+                                    <a href="https://reachouts.vercel.app" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-1.5 rounded bg-black/40 hover:bg-yellow-500/10 border border-transparent hover:border-yellow-500/30 transition-all group/link">
+                                        <span className="text-slate-300 truncate tracking-tight text-[8px] group-hover/link:text-yellow-300 transition-colors">reachouts.vercel.app</span>
+                                        <ExternalLink className="w-2.5 h-2.5 text-slate-600 group-hover/link:text-yellow-400 opacity-0 group-hover/link:opacity-100 transition-all" />
+                                    </a>
+                                    <a href="https://nifty-50.vercel.app" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-1.5 rounded bg-black/40 hover:bg-yellow-500/10 border border-transparent hover:border-yellow-500/30 transition-all group/link">
+                                        <span className="text-slate-300 truncate tracking-tight text-[8px] group-hover/link:text-yellow-300 transition-colors">nifty-50.vercel.app</span>
+                                        <ExternalLink className="w-2.5 h-2.5 text-slate-600 group-hover/link:text-yellow-400 opacity-0 group-hover/link:opacity-100 transition-all" />
+                                    </a>
+                                </div>
+                            </div>
+
+                            {/* Portfolio */}
+                            <div>
+                                <div className="flex justify-between items-center mb-1 uppercase tracking-tighter text-[7px] font-bold text-slate-500">
+                                    <span>Portfolios</span>
+                                    <span className="text-green-400">ONLINE</span>
+                                </div>
+                                <div className="space-y-1">
+                                    <a href="https://gowthamprofile.vercel.app" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-1.5 rounded bg-black/40 hover:bg-green-500/10 border border-transparent hover:border-green-500/30 transition-all group/link">
+                                        <span className="text-slate-300 truncate tracking-tight text-[8px] group-hover/link:text-green-300 transition-colors">gowthamprofile.vercel.app</span>
+                                        <ExternalLink className="w-2.5 h-2.5 text-slate-600 group-hover/link:text-green-400 opacity-0 group-hover/link:opacity-100 transition-all" />
+                                    </a>
+                                    <a href="https://gowthamsinfo.vercel.app" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-1.5 rounded bg-black/40 hover:bg-green-500/10 border border-transparent hover:border-green-500/30 transition-all group/link">
+                                        <span className="text-slate-300 truncate tracking-tight text-[8px] group-hover/link:text-green-300 transition-colors">gowthamsinfo.vercel.app</span>
+                                        <ExternalLink className="w-2.5 h-2.5 text-slate-600 group-hover/link:text-green-400 opacity-0 group-hover/link:opacity-100 transition-all" />
+                                    </a>
+                                </div>
                             </div>
                       </div>
                   </div>
