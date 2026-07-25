@@ -124,7 +124,7 @@ const WriteupPreviewPanel: React.FC<{ post: Post | any, currentUser: User }> = (
 
                 <div className="prose prose-lg dark:prose-invert max-w-none break-words overflow-hidden">
                     {post.content ? (
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{post.content}</ReactMarkdown>
                     ) : (
                         <p className="text-slate-400 italic">Start typing to see your writeup...</p>
                     )}
@@ -286,7 +286,7 @@ const WriteupEditor: React.FC<{
                 <div className={activeTab === 'preview' ? 'block md:hidden' : 'hidden'}>
                     <div className="modern-textarea min-h-[300px] prose prose-sm dark:prose-invert max-w-none overflow-y-auto p-4 bg-slate-50 dark:bg-slate-800/50 rounded-md border border-slate-200 dark:border-slate-700">
                         {postData.content ? (
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{postData.content}</ReactMarkdown>
+                            <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{postData.content}</ReactMarkdown>
                         ) : (
                             <p className="text-slate-400 italic">Nothing to preview yet...</p>
                         )}

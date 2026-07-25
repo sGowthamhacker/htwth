@@ -1,7 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import nodemailer from 'nodemailer';
-import dotenv from 'dotenv';
-dotenv.config({ override: true });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Add CORS headers for Vercel
@@ -22,37 +20,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  // DEBUG LOG (Safe: only shows true/false)
-  const debugData = {
-    HAS_USER: !!process.env.SMTP_USER,
-    HAS_PASS: !!process.env.SMTP_PASS,
-    USER_TYPE: typeof process.env.SMTP_USER,
-    NODE_ENV: process.env.NODE_ENV,
-    AVAILABLE_KEYS: Object.keys(process.env).filter(k => k.includes('SMTP') || k.includes('API'))
-  };
-  console.log("SMTP_ENV_DEBUG_V2:", debugData);
-
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    let missing = [];
-    if (!process.env.SMTP_USER) missing.push("SMTP_USER");
-    if (!process.env.SMTP_PASS) missing.push("SMTP_PASS");
-    
-    return res.status(500).json({ 
-      error: `SMTP configuration missing: [${missing.join(", ")}]. Found keys: [${debugData.AVAILABLE_KEYS.join(", ")}]`
-    });
-  }
-
   try {
-    const user = (process.env.SMTP_USER || '').trim();
-    const pass = (process.env.SMTP_PASS || '').replace(/\s+/g, '');
+    const user = (process.env.SMTP_USER || 'ragow49@gmail.com').trim();
+    const pass = (process.env.SMTP_PASS || 'clfuqmldpuezhslv').replace(/\s+/g, '');
+    const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+    const portStr = process.env.SMTP_PORT || '465';
+    const port = parseInt(portStr, 10);
+    const secure = port === 465;
 
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp.gmail.com",
-      port: parseInt(process.env.SMTP_PORT || "587"),
-      secure: process.env.SMTP_PORT === "465",
+      host,
+      port,
+      secure,
       auth: {
-        user: user,
-        pass: pass,
+        user,
+        pass,
       },
     });
 

@@ -87,6 +87,35 @@ const ALL_BACKGROUND_IMAGES = BACKGROUND_CATEGORIES.flatMap(c => c.images);
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 const ThemeTransitionOverlay: React.FC<{ isVisible: boolean }> = ({ isVisible }) => {
+  const [progress, setProgress] = useState(0);
+  const [statusText, setStatusText] = useState('CALIBRATING ENVIRONMENT');
+  const [step, setStep] = useState(1);
+
+  useEffect(() => {
+    if (isVisible) {
+      setProgress(0);
+      setStep(1);
+      setStatusText('CALIBRATING ENVIRONMENT');
+
+      const interval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 100) return 100;
+          const next = prev + 2;
+          if (next > 35 && next < 75) {
+            setStep(2);
+            setStatusText('SYNCHRONIZING OS ENGINE');
+          } else if (next >= 75) {
+            setStep(3);
+            setStatusText('OPTIMIZING WORKSPACE');
+          }
+          return next;
+        });
+      }, 55);
+
+      return () => clearInterval(interval);
+    }
+  }, [isVisible]);
+
   return (
     <AnimatePresence>
       {isVisible && (
@@ -95,9 +124,10 @@ const ThemeTransitionOverlay: React.FC<{ isVisible: boolean }> = ({ isVisible })
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-auto"
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center pointer-events-auto select-none overflow-hidden"
         >
-          <div className="absolute inset-0 flex flex-wrap pointer-events-auto">
+          {/* Shutter Glass Panels with Futuristic Grid */}
+          <div className="absolute inset-0 flex flex-wrap pointer-events-none">
             {[...Array(4)].map((_, i) => (
               <motion.div
                 key={i}
@@ -106,21 +136,19 @@ const ThemeTransitionOverlay: React.FC<{ isVisible: boolean }> = ({ isVisible })
                   y: i < 2 ? '-100%' : '100%',
                   opacity: 0 
                 }}
-                animate={{ x: 0, y: 0, opacity: 1 }}
+                animate={{ x: 0, y: 0, opacity: 0.98 }}
                 exit={{ 
-                  x: i % 2 === 0 ? '-110%' : '110%', 
-                  y: i < 2 ? '-110%' : '110%',
+                  x: i % 2 === 0 ? '-100%' : '100%', 
+                  y: i < 2 ? '-100%' : '100%',
                   opacity: 0,
-                  transition: { duration: 0.5, delay: i * 0.05 }
+                  transition: { duration: 0.5, ease: "easeInOut" }
                 }}
                 transition={{ 
-                  type: "spring",
-                  stiffness: 70,
-                  damping: 18,
-                  mass: 1.2,
-                  delay: i * 0.08 
+                  duration: 0.5,
+                  ease: [0.16, 1, 0.3, 1],
+                  delay: i * 0.04
                 }}
-                className="bg-slate-900 border-[0.5px] border-white/10 absolute overflow-hidden shadow-2xl"
+                className="bg-slate-950/95 backdrop-blur-3xl border-[0.5px] border-white/10 absolute overflow-hidden shadow-2xl"
                 style={{
                   width: '50.5%',
                   height: '50.5%',
@@ -130,125 +158,140 @@ const ThemeTransitionOverlay: React.FC<{ isVisible: boolean }> = ({ isVisible })
                   right: i % 2 !== 0 ? 0 : 'auto',
                 }}
               >
-                 {/* Secondary edge trace line */}
-                 <motion.div 
-                   initial={{ opacity: 0 }}
-                   animate={{ opacity: [0, 1, 0] }}
-                   transition={{ repeat: Infinity, duration: 4, delay: i * 1 }}
-                   className={`absolute ${i < 2 ? 'bottom-0' : 'top-0'} ${i % 2 === 0 ? 'right-0' : 'left-0'} ${i < 2 ? 'w-full h-px' : 'w-px h-full'} bg-indigo-500/20`}
-                 />
-
-                 <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:24px_24px]"></div>
-                 
-                 {/* Internal shimmer scan */}
-                 <motion.div 
-                   animate={{ 
-                     x: i % 2 === 0 ? ['-100%', '200%'] : ['100%', '-200%'],
-                     opacity: [0, 0.3, 0]
-                   }}
-                   transition={{ repeat: Infinity, duration: 3, ease: "linear", delay: i * 0.5 }}
-                   className="absolute top-0 bottom-0 w-64 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[25deg] blur-3xl"
-                 />
-
-                 {/* Corner Branding - Technical "Logo Pieces" that form a seal at the center */}
-                  <div className={`absolute ${i < 2 ? 'bottom-0' : 'top-0'} ${i % 2 === 0 ? 'right-0' : 'left-0'} w-16 h-16 md:w-20 md:h-20 overflow-hidden pointer-events-none`}>
-                    <motion.div
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ 
-                        scale: isVisible ? 1.05 : 0.8, 
-                        opacity: isVisible ? [0, 1, 1, 0] : 0,
-                      }}
-                      transition={{ 
-                        opacity: { times: [0, 0.2, 0.8, 1], duration: 2.2, delay: 0.4 },
-                        scale: { delay: 0.4, duration: 0.6, ease: "easeOut" }
-                      }}
-                      className="relative w-32 h-32 md:w-40 md:h-40"
-                      style={{
-                        left: i % 2 === 0 ? 0 : '-100%',
-                        top: i < 2 ? 0 : '-100%'
-                      }}
-                    >
-                      <img 
-                        src="https://res.cloudinary.com/dlovm3y8x/image/upload/v1/llogo-removebg-preview_obh2ek.png" 
-                        className="w-full h-full object-contain brightness-150" 
-                        alt="" 
-                        referrerPolicy="no-referrer"
-                      />
-                    </motion.div>
-                  </div>
+                {/* Tech Grid Lines */}
+                <div className="absolute inset-0 opacity-[0.06] bg-[radial-gradient(#6366f1_1px,transparent_1px)] [background-size:20px_20px]" />
+                
+                {/* Shimmer Light Beams */}
+                <motion.div 
+                  animate={{ 
+                    x: ['-100%', '200%'],
+                    opacity: [0, 0.3, 0]
+                  }}
+                  transition={{ repeat: Infinity, duration: 2.8, ease: "linear", delay: i * 0.4 }}
+                  className="absolute top-0 bottom-0 w-64 bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent skew-x-[35deg] blur-2xl"
+                />
               </motion.div>
             ))}
           </div>
 
-          {/* Central Logo/Glyph - Reveal after finish */}
-          <motion.div
-            initial={{ scale: 0.4, opacity: 0, filter: 'blur(10px)' }}
-            animate={{ scale: 1, opacity: 1, filter: 'blur(0px)' }}
-            exit={{ scale: 1.2, opacity: 0, filter: 'blur(20px)' }}
-            transition={{ delay: 1.2, duration: 0.8, ease: "easeOut" }}
-            className="relative z-10 flex flex-col items-center scale-90 md:scale-100"
-          >
-            <div className="relative w-40 h-40 md:w-48 md:h-48 flex items-center justify-center">
-              {/* Central Impact Flare */}
+          {/* Floating Atmospheric Ambient Sparks */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {[...Array(6)].map((_, idx) => (
               <motion.div
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: [0, 1.8, 0], opacity: [0, 1, 0] }}
-                transition={{ delay: 1.2, duration: 0.5 }}
-                className="absolute inset-0 bg-indigo-500/30 rounded-full blur-3xl mix-blend-screen"
+                key={idx}
+                initial={{ 
+                  x: Math.random() * 100 - 50 + '%', 
+                  y: '110%', 
+                  scale: Math.random() * 0.5 + 0.5,
+                  opacity: 0 
+                }}
+                animate={{ 
+                  y: '-10%', 
+                  opacity: [0, 0.7, 0] 
+                }}
+                transition={{ 
+                  duration: 2.5 + Math.random() * 1.5, 
+                  repeat: Infinity, 
+                  delay: idx * 0.4,
+                  ease: "easeOut"
+                }}
+                className="absolute w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_12px_#38bdf8]"
+                style={{ left: `${15 + idx * 14}%` }}
               />
-              {/* Vertical Data Particles */}
-              {[...Array(6)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ y: 60, opacity: 0, x: (i - 2.5) * 25 }}
-                  animate={{ y: -60, opacity: [0, 1, 0] }}
-                  transition={{ 
-                    repeat: Infinity, 
-                    duration: 1.5 + Math.random(), 
-                    delay: i * 0.2,
-                    ease: "linear"
-                  }}
-                  className="absolute w-0.5 h-8 bg-gradient-to-t from-transparent via-indigo-500/50 to-transparent rounded-full"
+            ))}
+          </div>
+
+          {/* Central Holographic HUD Card */}
+          <motion.div
+            initial={{ scale: 0.85, opacity: 0, y: 24 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: -24 }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            className="relative z-10 flex flex-col items-center w-88 max-w-[90vw] px-7 py-8 rounded-3xl bg-slate-900/85 border border-white/15 backdrop-blur-3xl shadow-[0_0_100px_rgba(0,0,0,0.9)] overflow-hidden"
+          >
+            {/* Top Right & Bottom Left HUD Bracket Accents */}
+            <div className="absolute top-3 right-3 w-3 h-3 border-t-2 border-r-2 border-cyan-400/60 rounded-tr-sm" />
+            <div className="absolute bottom-3 left-3 w-3 h-3 border-b-2 border-l-2 border-indigo-400/60 rounded-bl-sm" />
+
+            {/* Ambient Multi-layer Backlight Glow */}
+            <motion.div
+              animate={{ scale: [1, 1.3, 1], opacity: [0.35, 0.65, 0.35] }}
+              transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
+              className="absolute -inset-6 bg-gradient-to-r from-indigo-500/25 via-sky-500/20 to-purple-500/25 rounded-full blur-3xl -z-10"
+            />
+
+            {/* Top Pill Badge */}
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/80 border border-white/10 text-[10px] font-mono font-medium tracking-wider text-indigo-300 uppercase mb-5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              OS RECONFIGURATION
+            </div>
+
+            {/* Logo Ring Badge with Dual Counter-Rotating Rings */}
+            <div className="relative mb-6 flex items-center justify-center w-24 h-24">
+              {/* Outer Counter-Clockwise Ring */}
+              <motion.div
+                animate={{ rotate: -360 }}
+                transition={{ repeat: Infinity, duration: 6, ease: "linear" }}
+                className="absolute inset-0 rounded-full border border-dashed border-cyan-400/40"
+              />
+              {/* Inner Clockwise Glowing Ring */}
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ repeat: Infinity, duration: 3.5, ease: "linear" }}
+                className="absolute inset-1 rounded-2xl border-2 border-indigo-500/50 border-t-indigo-400 border-r-cyan-400 border-b-transparent"
+              />
+              {/* Center Logo Emblem Box */}
+              <div className="w-16 h-16 rounded-2xl bg-slate-950/90 border border-white/20 flex items-center justify-center shadow-[0_0_30px_rgba(99,102,241,0.5)]">
+                <img 
+                  src="https://res.cloudinary.com/dlovm3y8x/image/upload/v1/llogo-removebg-preview_obh2ek.png" 
+                  className="w-10 h-10 object-contain drop-shadow-[0_0_12px_rgba(56,189,248,0.7)]" 
+                  alt="Logo" 
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            </div>
+
+            {/* Step Indicators */}
+            <div className="flex items-center gap-2 mb-3">
+              {[1, 2, 3].map((s) => (
+                <div 
+                  key={s} 
+                  className={`h-1 rounded-full transition-all duration-300 ${
+                    s === step 
+                      ? 'w-6 bg-cyan-400 shadow-[0_0_8px_#38bdf8]' 
+                      : s < step 
+                        ? 'w-2 bg-indigo-500' 
+                        : 'w-2 bg-slate-700'
+                  }`}
                 />
               ))}
+            </div>
 
-              {/* Ambient Energy cloud */}
+            {/* Dynamic Status Text */}
+            <motion.p 
+              key={statusText}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-xs font-mono font-semibold text-slate-200 tracking-wider text-center mb-4 h-5"
+            >
+              {statusText}
+            </motion.p>
+
+            {/* Futuristic Progress Bar */}
+            <div className="w-full h-2.5 bg-slate-950/90 rounded-full overflow-hidden border border-white/10 relative p-0.5">
               <motion.div 
-                animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }}
-                transition={{ repeat: Infinity, duration: 4 }}
-                className="absolute inset-[-40px] bg-indigo-500/10 blur-[80px] rounded-full"
-              />
-              
-              {/* Prism Diamonds */}
-              <div className="relative">
-                 {/* Outer Prism Layer */}
-                 <motion.div 
-                   animate={{ rotate: 45, scale: [1, 1.05, 1] }}
-                   transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-                   className="w-32 h-32 border border-white/10 rotate-45 backdrop-blur-xl bg-white/5 rounded-xl shadow-2xl"
-                 />
-                 
-                 {/* Middle Prism Layer */}
-                 <motion.div 
-                   animate={{ rotate: -45, scale: [1, 1.1, 1] }}
-                   transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                   className="absolute inset-4 border border-white/20 -rotate-45 backdrop-blur-3xl bg-indigo-500/10 rounded-lg shadow-xl"
-                 />
+                className="h-full bg-gradient-to-r from-indigo-500 via-cyan-400 to-indigo-400 rounded-full shadow-[0_0_14px_rgba(56,189,248,0.9)] transition-all duration-75 relative"
+                style={{ width: `${progress}%` }}
+              >
+                {/* Laser Streak Tip */}
+                <div className="absolute right-0 top-0 bottom-0 w-2 bg-white rounded-full shadow-[0_0_8px_#ffffff]" />
+              </motion.div>
+            </div>
 
-                                   {/* Core Prism */}
-                  <motion.div 
-                    className="absolute inset-4 flex items-center justify-center"
-                  >
-                    <div className="w-24 h-24 rounded-2xl bg-slate-900/40 backdrop-blur-xl flex items-center justify-center shadow-[0_0_50px_rgba(99,102,241,0.4)] border border-white/10 overflow-hidden">
-                      <img 
-                        src="https://res.cloudinary.com/dlovm3y8x/image/upload/v1/llogo-removebg-preview_obh2ek.png" 
-                        className="w-16 h-16 object-contain" 
-                        alt="Logo" 
-                        referrerPolicy="no-referrer"
-                      />
-                    </div>
-                  </motion.div>
-              </div>
+            {/* Percentage & System Code */}
+            <div className="w-full flex items-center justify-between mt-3 text-[11px] font-mono text-slate-400">
+              <span className="text-slate-500">SYS_BUILD_2026</span>
+              <span className="font-bold text-cyan-300">{progress}%</span>
             </div>
           </motion.div>
         </motion.div>
@@ -270,12 +313,13 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [appliedThemeMode, setAppliedThemeMode] = useState(themeMode);
 
   const triggerTransition = (action: () => void) => {
-    if (isTransitioning) return;
     setIsTransitioning(true);
     setTimeout(() => {
       action();
-      setTimeout(() => setIsTransitioning(false), 1300);
-    }, 1300);
+    }, 1000);
+    setTimeout(() => {
+      setIsTransitioning(false);
+    }, 3000);
   };
 
   const setThemeStyle = (style: ThemeStyle, silent: boolean = false) => {

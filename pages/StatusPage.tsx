@@ -20,12 +20,12 @@ const systems = [
 const getHistory = () => {
   return Array.from({ length: 90 }).map((_, i) => ({
     date: new Date(Date.now() - (89 - i) * 24 * 60 * 60 * 1000).toISOString(),
-    status: Math.random() > 0.05 ? 'operational' : (Math.random() > 0.5 ? 'degraded' : 'outage')
+    status: 'operational'
   }));
 };
 
 const StatusPage: React.FC<StatusPageProps> = ({ onNavigateHome, isDarkMode }) => {
-  const [uptime] = useState(99.99);
+  const [uptime] = useState(100.00);
   const [history] = useState(getHistory());
   const [incidents, setIncidents] = useState<SystemIncident[]>([]);
   const [showFullHistory, setShowFullHistory] = useState(false);
@@ -304,10 +304,10 @@ const StatusPage: React.FC<StatusPageProps> = ({ onNavigateHome, isDarkMode }) =
               <h2 className="text-2xl font-bold mb-6 tracking-tight flex items-center gap-2">System Components</h2>
               <div className="flex flex-col gap-4">
                 {systems.map((system, idx) => {
-                  // Generate an independent minor history for each system, heavily weighted to green
+                  // Generate an independent minor history for each system showing 100% operational status
                   const sysHistory = Array.from({ length: 90 }).map((_, i) => ({
                     date: new Date(Date.now() - (89 - i) * 24 * 60 * 60 * 1000).toISOString(),
-                    status: Math.random() > 0.02 ? 'operational' : (Math.random() > 0.5 ? 'degraded' : 'outage')
+                    status: 'operational'
                   }));
                   
                   return (
@@ -378,9 +378,9 @@ const StatusPage: React.FC<StatusPageProps> = ({ onNavigateHome, isDarkMode }) =
                             <div 
                                 key={i} 
                                 className={`flex-1 rounded-t-sm transition-all duration-300 hover:h-full cursor-pointer relative group/bar
-                                    ${day.status === 'operational' ? 'bg-emerald-400 dark:bg-emerald-500/80 h-1/3 hover:bg-emerald-500' : ''}
+                                    ${day.status === 'operational' ? 'bg-emerald-400 dark:bg-emerald-500/80 h-full hover:bg-emerald-500' : ''}
                                     ${day.status === 'degraded' ? 'bg-amber-400 dark:bg-amber-500/80 h-2/3 hover:bg-amber-500' : ''}
-                                    ${day.status === 'outage' ? 'bg-rose-400 dark:bg-rose-500/80 h-full hover:bg-rose-500' : ''}
+                                    ${day.status === 'outage' ? 'bg-rose-400 dark:bg-rose-500/80 h-1/3 hover:bg-rose-500' : ''}
                                 `}
                             >
                                 {/* Tooltip */}

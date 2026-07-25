@@ -115,7 +115,7 @@ const AnimatedBackground = () => (
 );
 
 
-const ADMIN_SECRET = import.meta.env.VITE_ADMIN_SECRET_PATH || 'admin-login';
+const ADMIN_SECRET = import.meta.env.VITE_ADMIN_SECRET || 'admin-login';
 const ADMIN_LOGIN_PATH = `#/${ADMIN_SECRET}`;
 const VALID_PROTECTED_APPS = ['dashboard', 'home', 'writeup', 'blog', 'chat', 'notes', 'todolist', 'settings', 'search', 'start', 'admin', 'notifications', 'mywork', 'resources', 'kali', 'docs', 'resumeai', 'features', 'community', 'pricing', 'browser', 'consistency', 'copyright', 'about', 'gowthamprofile', 'bounty', 'tools', 'live', 'portfolio', 'youtube', 'github'];
 
@@ -280,19 +280,11 @@ const App: React.FC = () => {
             if (appUser.desktop_preferences.theme_style !== themeStyle) {
                 setThemeStyle(appUser.desktop_preferences.theme_style, true);
             }
-        } else if (themeStyle !== 'windows') {
-            setThemeStyle('windows', true);
         }
 
         if (appUser.desktop_preferences.theme_mode) {
             if (appUser.desktop_preferences.theme_mode !== themeMode) {
                 setThemeMode(appUser.desktop_preferences.theme_mode, true);
-            }
-        } else {
-            const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const defaultMode = systemDark ? 'dark' : 'light';
-            if (themeMode !== defaultMode) {
-                setThemeMode(defaultMode, true);
             }
         }
 
@@ -300,33 +292,19 @@ const App: React.FC = () => {
             if (appUser.desktop_preferences.selectedFont !== selectedFont) {
                 setSelectedFont(appUser.desktop_preferences.selectedFont);
             }
-        } else if (selectedFont !== 'Inter') {
-            setSelectedFont('Inter');
         }
 
         if (appUser.desktop_preferences.timeFormat) {
             if (appUser.desktop_preferences.timeFormat !== timeFormat) {
                 setTimeFormat(appUser.desktop_preferences.timeFormat);
             }
-        } else if (timeFormat !== '12hr') {
-            setTimeFormat('12hr');
         }
 
         if (appUser.desktop_preferences.visibleTimezones) {
             if (JSON.stringify(appUser.desktop_preferences.visibleTimezones) !== JSON.stringify(visibleTimezones)) {
                 setVisibleTimezones(appUser.desktop_preferences.visibleTimezones);
             }
-        } else if (JSON.stringify(visibleTimezones) !== JSON.stringify(['local'])) {
-            setVisibleTimezones(['local']);
         }
-    } else {
-        // If no desktop_preferences exist at all, reset to all defaults
-        if (themeStyle !== 'windows') setThemeStyle('windows', true);
-        const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (themeMode !== (systemDark ? 'dark' : 'light')) setThemeMode(systemDark ? 'dark' : 'light', true);
-        if (selectedFont !== 'Inter') setSelectedFont('Inter');
-        if (timeFormat !== '12hr') setTimeFormat('12hr');
-        if (JSON.stringify(visibleTimezones) !== JSON.stringify(['local'])) setVisibleTimezones(['local']);
     }
   }, [appUser, isInitialAuthLoading, setSelectedBackground, setThemeStyle, setThemeMode, setSelectedFont, setTimeFormat, setVisibleTimezones]);
 

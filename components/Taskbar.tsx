@@ -60,10 +60,10 @@ const Clock: React.FC<{isVertical: boolean}> = ({ isVertical }) => {
         <div className={`flex ${isVertical ? 'flex-col gap-2' : 'flex-row items-center gap-3'} px-2 overflow-hidden`}>
             {visibleTimezones.map(tz => (
                 <div key={tz} className="text-center group relative cursor-default">
-                    <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 scale-75 origin-center leading-tight">
+                    <div className="text-[10px] uppercase font-bold text-slate-600 dark:text-slate-400 scale-75 origin-center leading-tight">
                         {tz === 'local' ? 'LOC' : tz}
                     </div>
-                    <div className="text-xs font-bold text-slate-700 dark:text-slate-200 tabular-nums">
+                    <div className="text-xs font-bold text-slate-800 dark:text-slate-100 tabular-nums">
                         {formatTime(time, tz)}
                     </div>
                     {/* Tooltip for date */}
@@ -162,7 +162,8 @@ const Taskbar: React.FC<TaskbarProps> = ({
     useEffect(() => {
         if (isUserMenuOpen && themeStyle === 'mac' && userButtonRef.current && macDockRef.current) {
              const updatePosition = () => {
-                 const dockRect = macDockRef.current!.getBoundingClientRect();
+                 if (!macDockRef.current) return;
+                 const dockRect = macDockRef.current.getBoundingClientRect();
                  const effectivePosition = position;
                  
                  const style: React.CSSProperties = {
@@ -385,7 +386,7 @@ const Taskbar: React.FC<TaskbarProps> = ({
                                 <button key={app.id} onClick={(e) => onAppClick(app.id, e)} className={`relative w-12 h-12 md:w-14 md:h-14 p-1.5 flex items-center justify-center group flex-shrink-0`} title={app.name}>
                                     <div className={`absolute ${macIsVertical ? (effectivePosition === 'left' ? 'left-full ml-2' : 'right-full mr-2') : '-top-12'} left-1/2 -translate-x-1/2 bg-slate-800/90 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-[10000]`} style={macIsVertical ? { top: '50%', transform: 'translateY(-50%)' } : {}}>{app.name}</div>
                                     <div className={`w-full h-full flex items-center justify-center rounded-[22%] shadow-sm border border-white/20 group-hover:scale-110 ${macIsVertical ? (effectivePosition === 'left' ? 'group-hover:translate-x-1' : 'group-hover:-translate-x-1') : 'group-hover:-translate-y-1'} transition-all duration-200 ${app.bgColorClass || 'bg-slate-800'}`}>
-                                        {React.cloneElement(app.icon as any, {className: `w-3/5 h-3/5 text-white drop-shadow-md`})}
+                                        {React.isValidElement(app.icon) ? React.cloneElement(app.icon as any, {className: `w-3/5 h-3/5 text-white drop-shadow-md`}) : null}
                                     </div>
                                     {running && <div className={`absolute ${macIsVertical ? (effectivePosition === 'left' ? '-left-1' : '-right-1') : '-bottom-2'} w-1 h-1 bg-black/50 dark:bg-white/80 rounded-full`}></div>}
                                 </button>
@@ -458,7 +459,7 @@ const Taskbar: React.FC<TaskbarProps> = ({
                         <button onClick={() => setMobileSearchActive(true)} className="w-10 h-10 md:w-12 md:h-12 p-2 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 flex items-center justify-center md:hidden" title="Search">
                             <SearchIcon className="w-5 h-5 md:w-6 md:h-6" />
                         </button>
-                        <button onClick={(e) => onOpenNotifications(e)} className="h-10 w-10 md:h-12 md:w-12 flex items-center justify-center rounded-lg hover:bg-black/10 dark:hover:bg-white/10 relative" title="Notifications">
+                        <button onClick={(e) => onOpenNotifications(e)} className="h-10 w-10 md:h-12 md:w-12 flex items-center justify-center rounded-lg hover:bg-black/10 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 relative" title="Notifications">
                             <NotificationBellIcon className="w-5 h-5 md:w-6 md:h-6" />
                             {unreadNotificationCount > 0 && <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-200 dark:border-slate-900"></div>}
                         </button>

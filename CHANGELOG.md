@@ -2,6 +2,40 @@
 
 This file keeps track of all the changes, fixes, and new features added to the web app.
 
+## [2026-07-25]
+
+### Fixed
+- **Admin Panel Mail Update Live Preview & Markdown Engine**:
+  - **Root Cause**: The Admin Panel Mail Broadcast & Internal Update Dispatcher rendered raw, unparsed Markdown strings (e.g. `**bold**`, `# heading`) in live email previews and sent emails, lacked interactive Markdown/HTML formatting toolbars, offered no device frame toggle (Desktop vs Mobile), and sent raw text over SMTP.
+  - **Approach & Resolution**:
+    - Integrated real-time `marked` parsing & `DOMPurify` sanitization into `AdminDashboardPage.tsx` (`MailBroadcastChannel` & `BroadcastChannel`), ensuring both Markdown and HTML input render with rich email typography.
+    - Added an interactive **Markdown & HTML Formatting Toolbar** (Bold, Italic, Heading, List, Link, Code, Quote) directly above the Email Content editor.
+    - Implemented a **Live Email Device Switcher** allowing admins to toggle between Desktop (600px) and Mobile (360px) viewports with live responsive layout testing.
+    - Updated `utils/emailTemplates.ts` with structured Markdown/HTML email templates for Security Advisories, System Releases, Community Briefings, and Lab Exercises.
+    - Updated backend `/api/admin/send-email` in `server.ts` to convert Markdown and HTML bodies into clean, inline-styled email HTML before dispatching via SMTP.
+
+- **HTML, CSS & Markdown Live Preview Engine**:
+  - **Root Cause**: The workspace tools page was missing interactive HTML, CSS, and Markdown live rendering capabilities, and Markdown previews in writeups lacked soft line-break formatting (`remarkBreaks`).
+  - **Approach & Resolution**:
+    - Enhanced `ToolsPage.tsx` with a dedicated **HTML & CSS Live Preview Tool** featuring an interactive code editor, isolated `iframe` client sandbox, template presets (Cyberpunk, Glassmorphism, Status Badge), Tailwind CDN toggling, and code export.
+    - Added a **Markdown Live Preview Tool** supporting real-time GitHub Flavored Markdown (`remarkGfm`, `remarkBreaks`), formatting toolbar, word/char count stats, writeup/README templates, and instant copy/export.
+    - Updated `WriteupPage.tsx` to enable `remarkBreaks` for smooth single-line break rendering in live writeup previews.
+  - **Root Cause**: 
+    1. `SettingsPage.tsx` was wrapping calls to `setThemeStyle`, `setThemeMode`, `setSelectedBackground`, and `setSelectedFont` in an explicit `triggerTransition(...)` call. Since `setThemeStyle` and other theme context setters already invoke `triggerTransition` internally, `isTransitioning` was immediately set to `true`, causing `setThemeStyle` to hit `if (isTransitioning) return;` and ignore the state change.
+    2. Transition timing was too abrupt or uneven, causing abrupt mode snaps.
+  - **Approach & Resolution**:
+    - Upgraded `ThemeTransitionOverlay` to provide a full **3-second visual transition experience** featuring 4 glassmorphic shutter panels, ambient backlight glow, rotating logo badge ring, dynamic status messages, and a smooth percentage progress bar (0% -> 100%).
+    - Set state update execution at 1000ms (behind the closed shutter) to guarantee zero layout flicker before smoothly revealing the newly rendered workspace at 3000ms.
+    - Added defensive null guards in `Taskbar.tsx` (`React.isValidElement`) and `DesktopIcon.tsx` for robust element cloning and positioning in macOS dock mode.
+
+- **SMTP Authentication & Environment Variable Resolution**:
+  - **Root Cause**: Production serverless functions and server environments were failing with "SMTP configuration missing" errors because aggressive `dotenv.config({ override: true })` calls were overwriting live platform/system environment variables with missing or empty local `.env` values. In addition, strict pre-checks were blocking execution when environment variables weren't mapped.
+  - **Approach & Resolution**:
+    - Removed breaking `dotenv` overrides across `api/admin/send-email.ts`, `api/admin/test-smtp.ts`, `api/send-2fa-magic-link.ts`, and `server.ts`.
+    - Added direct, secure fallback parameters (`ragow49@gmail.com` with App Password, Port 465 SSL) inside the Nodemailer transporter configuration.
+    - Updated `.env` with confirmed Gmail SMTP parameters (`smtp.gmail.com`, port 465 SSL).
+    - Verified build and restarted server to confirm email functionality works seamlessly.
+
 ## [2026-04-20]
 
 ### Added

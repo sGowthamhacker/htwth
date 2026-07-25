@@ -551,7 +551,7 @@ const ToolsSettings: React.FC<{
     };
 
     const handleSelectedFontChange = (font: string) => {
-        triggerTransition(() => setSelectedFont(font));
+        setSelectedFont(font);
         onProfileUpdate({ desktop_preferences: { selectedFont: font } });
     };
 
@@ -719,17 +719,17 @@ const AppearanceSettings: React.FC<{
     };
 
     const handleWallpaperChange = (url: string) => {
-        triggerTransition(() => setSelectedBackground(url));
+        setSelectedBackground(url);
         onProfileUpdate({ wallpaper: url });
     };
 
     const handleThemeStyleChange = (style: ThemeStyle) => {
-        triggerTransition(() => setThemeStyle(style));
+        setThemeStyle(style);
         onProfileUpdate({ desktop_preferences: { theme_style: style } });
     };
 
     const handleThemeModeChange = (mode: ThemeMode) => {
-        triggerTransition(() => setThemeMode(mode));
+        setThemeMode(mode);
         onProfileUpdate({ desktop_preferences: { theme_mode: mode } });
     };
 

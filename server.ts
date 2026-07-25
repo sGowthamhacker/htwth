@@ -4,9 +4,19 @@ import path from "path";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import QRCode from "qrcode";
+import { marked } from "marked";
+import { formatEmailHtml } from "./utils/emailFormatter.js";
 
-// Force load from .env, overriding any sticky/stuck platform secrets
-dotenv.config({ override: true });
+// Load .env for local dev without overwriting existing non-empty system process.env variables
+const sysSmtpUser = process.env.SMTP_USER;
+const sysSmtpPass = process.env.SMTP_PASS;
+const sysSmtpHost = process.env.SMTP_HOST;
+const sysSmtpPort = process.env.SMTP_PORT;
+dotenv.config();
+if (sysSmtpUser && sysSmtpUser.trim()) process.env.SMTP_USER = sysSmtpUser;
+if (sysSmtpPass && sysSmtpPass.trim()) process.env.SMTP_PASS = sysSmtpPass;
+if (sysSmtpHost && sysSmtpHost.trim()) process.env.SMTP_HOST = sysSmtpHost;
+if (sysSmtpPort && sysSmtpPort.trim()) process.env.SMTP_PORT = sysSmtpPort;
 
 async function startServer() {
   const app = express();
@@ -57,6 +67,92 @@ async function startServer() {
     res.json({ apiKey });
   });
 
+  // Utility function to verify and log diagnostic status of SMTP configuration
+  function verifySmtpConfiguration() {
+    const rawHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+    const rawUser = process.env.SMTP_USER || 'ragow49@gmail.com';
+    const rawPass = process.env.SMTP_PASS || 'clfuqmldpuezhslv';
+    const rawPort = process.env.SMTP_PORT || '465';
+
+    const smtpHost = rawHost.trim().replace(/^["']|["']$/g, '');
+    const smtpUser = rawUser.trim().replace(/^["']|["']$/g, '');
+    const smtpPass = rawPass.trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '');
+    const smtpPort = rawPort.trim().replace(/^["']|["']$/g, '');
+
+    let maskedPass = '[NOT SET]';
+    if (rawPass) {
+      const pStr = String(rawPass);
+      const len = pStr.length;
+      if (len <= 2) {
+        maskedPass = '*'.repeat(len);
+      } else {
+        const firstChar = pStr.charAt(0);
+        const lastChar = pStr.charAt(len - 1);
+        maskedPass = `${firstChar}${'*'.repeat(len - 2)}${lastChar}`;
+      }
+    }
+
+    const hasWhitespaceIssue = rawUser !== smtpUser || rawHost !== smtpHost || rawPass.trim() !== rawPass;
+
+    console.log('--- [SMTP DIAGNOSTICS] ---');
+    console.log(`SMTP_HOST: "${smtpHost}" (configured: ${Boolean(smtpHost)})`);
+    console.log(`SMTP_PORT: "${smtpPort}"`);
+    console.log(`SMTP_USER: "${smtpUser}" (configured: ${Boolean(smtpUser)})`);
+    console.log(`SMTP_PASS: ${maskedPass} (raw len: ${rawPass.length}, cleaned len: ${smtpPass.length})`);
+    if (hasWhitespaceIssue) {
+      console.warn('[SMTP WARNING] Leading/trailing whitespace detected in SMTP configuration. Auto-trimming applied.');
+    }
+    console.log('---------------------------');
+
+    return { smtpHost, smtpUser, smtpPass, smtpPort, hasWhitespaceIssue };
+  }
+
+  // Helper to construct clean SMTP Transporter
+  function getSmtpTransporter() {
+    const diag = verifySmtpConfiguration();
+    const user = diag.smtpUser;
+    const pass = diag.smtpPass;
+    const host = diag.smtpHost;
+    const portStr = diag.smtpPort;
+    const port = portStr ? parseInt(portStr, 10) : undefined;
+
+    let transportConfig: any;
+    if (host) {
+      transportConfig = {
+        host,
+        port: port || 587,
+        secure: port === 465,
+        auth: { user, pass },
+        tls: { rejectUnauthorized: false }
+      };
+    } else {
+      transportConfig = {
+        service: "gmail",
+        auth: { user, pass },
+        tls: { rejectUnauthorized: false }
+      };
+    }
+
+    return {
+      transporter: nodemailer.createTransport(transportConfig),
+      user,
+      pass
+    };
+  }
+
+  function formatSmtpError(error: any): string {
+    const msg = error?.message || String(error);
+    if (msg.includes("535") || msg.includes("BadCredentials") || msg.includes("Username and Password not accepted")) {
+      return `SMTP Auth Failed (535 Bad Credentials).\n` +
+             `To fix this Google Gmail SMTP issue:\n` +
+             `1. Ensure 2-Step Verification (2FA) is turned ON for ${process.env.SMTP_USER || 'your Google Account'}.\n` +
+             `2. Visit https://myaccount.google.com/apppasswords to create a 16-character App Password.\n` +
+             `3. Set SMTP_PASS in Settings -> Secrets to this 16-character App Password.\n` +
+             `Details: ${msg}`;
+    }
+    return msg;
+  }
+
   // Contact Form Auto-responder SMTP Integration
   app.post("/api/contact", async (req, res) => {
     const { name, email, message } = req.body;
@@ -72,16 +168,7 @@ async function startServer() {
 
     if (process.env.SMTP_USER && process.env.SMTP_PASS) {
       try {
-        const user = (process.env.SMTP_USER || '').trim();
-        const pass = (process.env.SMTP_PASS || '').replace(/\s+/g, '');
-
-        const transporter = nodemailer.createTransport({
-          service: "gmail",
-          auth: {
-            user,
-            pass,
-          },
-        });
+        const { transporter, user } = getSmtpTransporter();
 
         // Generate QR/barcode buffer containing friendly textual details
         const qrText = `Contact Name: ${name}\nContact Email: ${email}\nMessage:\n${message}`;
@@ -185,7 +272,7 @@ async function startServer() {
 
       } catch (err: any) {
         console.error("Auto-responder / notify SMTP error:", err);
-        mailError = err.message || err;
+        mailError = formatSmtpError(err);
       }
     } else {
       console.warn("SMTP_USER or SMTP_PASS environment variables are not configured correctly. Skipped actual email transmission.");
@@ -209,36 +296,23 @@ async function startServer() {
   app.get("/api/admin/test-smtp", async (req, res) => {
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
       return res.status(500).json({ 
-        error: "SMTP configuration missing. Please set SMTP_USER and SMTP_PASS." 
+        error: "SMTP configuration missing. Please set SMTP_USER and SMTP_PASS in environment variables." 
       });
     }
 
     try {
-      const user = (process.env.SMTP_USER || '').trim();
-      const pass = (process.env.SMTP_PASS || '').replace(/\s+/g, '');
-
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: user,
-          pass: pass,
-        },
-      });
-
+      const { transporter } = getSmtpTransporter();
       await transporter.verify();
       res.json({ success: true, message: "SMTP Server is active and ready." });
     } catch (error: any) {
-      res.status(500).json({ error: error.message || "Connection failed." });
+      res.status(500).json({ error: formatSmtpError(error) });
     }
   });
 
   // API Route for sending emails
   app.post("/api/admin/send-email", async (req, res) => {
-    const { to, subject, body } = req.body;
+    const { to, subject, body, senderName } = req.body;
 
-    // Very basic security: check for a secret or admin flag if possible
-    // In a real app, this should check the user's session/token
-    
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
       return res.status(500).json({ 
         error: "SMTP configuration missing. Please set SMTP_USER and SMTP_PASS in environment variables." 
@@ -246,105 +320,43 @@ async function startServer() {
     }
 
     try {
-      const user = (process.env.SMTP_USER || '').trim();
-      const pass = (process.env.SMTP_PASS || '').replace(/\s+/g, '');
-      console.log(`[SMTP SEND DEBUG] User: ${user.substring(0,3)}... (len:${user.length}), Pass (len:${pass.length})`);
-
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user,
-          pass,
-        },
-      });
+      const { transporter, user } = getSmtpTransporter();
+      console.log(`[SMTP SEND DEBUG] User: ${user.substring(0,3)}... (len:${user.length})`);
 
       const recipients = Array.isArray(to) ? to : [to];
-      
-      const portalUrls = [
-        'https://htwth.vercel.app/',
-        'https://htwth.pages.dev/'
-      ];
-      
-      const sendPromises = recipients.map(recipient => {
-        const selectedPortalUrl = portalUrls[Math.floor(Math.random() * portalUrls.length)];
-        
+      const results = [];
+
+      const rawSender = senderName || process.env.SENDER_NAME || process.env.SMTP_FROM_NAME;
+      let actualSenderName = rawSender ? rawSender.trim() : 'Gowtham S Admin';
+      if (actualSenderName === 'HTWTH' || actualSenderName === 'HTWTH System' || actualSenderName === 'System' || actualSenderName === 'admin' || !actualSenderName) {
+        actualSenderName = 'Gowtham S Admin';
+      }
+      const htmlFormattedContent = formatEmailHtml(body || '', actualSenderName);
+
+      for (const recipient of recipients) {
         const mailOptions = {
           from: `"${process.env.SMTP_FROM_NAME || 'HTWTH System'}" <${user}>`,
           to: recipient,
           subject: subject,
           text: body,
-          html: `
-            <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #333333; max-width: 600px; padding: 20px;">
-              <div style="white-space: pre-wrap; margin-bottom: 25px;">${body}</div>
-              
-              <div style="margin-top: 35px;">
-                <div style="font-size: 15px; color: #333333; margin-bottom: 15px;">Best regards,</div>
-                <div style="font-weight: bold; color: #111111; font-size: 15px; margin-bottom: 2px;">
-                  ${process.env.SMTP_FROM_NAME || 'Gowtham'}
-                </div>
-                <div style="color: #555555; font-size: 14px; margin-bottom: 12px;">
-                  Security Research Hub
-                </div>
-                <table cellpadding="0" cellspacing="0" border="0">
-                  <tr>
-                    <td style="padding-right: 8px; vertical-align: middle;">
-                      <a href="${process.env.APP_URL || 'https://ais-dev-fl5m6z2lmsovznnquito44-475153556207.asia-southeast1.run.app'}" style="text-decoration: none;">
-                        <img src="https://res.cloudinary.com/dlovm3y8x/image/upload/v1/llogo-removebg-preview_obh2ek.png" width="28" height="28" alt="Logo" style="display: block; border-radius: 4px;">
-                      </a>
-                    </td>
-                    <td style="font-weight: 800; font-size: 18px; color: #0f172a; letter-spacing: -0.5px; vertical-align: middle; padding-top: 2px;">
-                      <a href="${process.env.APP_URL || 'https://ais-dev-fl5m6z2lmsovznnquito44-475153556207.asia-southeast1.run.app'}" style="text-decoration: none; color: #0f172a;">
-                        HTWTH
-                      </a>
-                    </td>
-                  </tr>
-                </table>
-
-                <div style="margin-top: 30px; padding-top: 25px; border-top: 1px solid #eaeaea;">
-                  <div style="color: #64748b; font-size: 11px; font-weight: 800; margin-bottom: 15px; letter-spacing: 1.5px; text-transform: uppercase;">
-                    Connect with Me
-                  </div>
-                  <div style="margin-bottom: 25px;">
-                    <a href="https://www.instagram.com/gow.tham__rk?utm_source=qr&igsh=NWpveGJ6eXZ0bWM3" style="text-decoration: none; margin-right: 12px;" target="_blank">
-                      <img src="https://img.icons8.com/color/96/instagram-new.png" width="24" height="24" alt="IG" style="display:inline-block;">
-                    </a>
-                    <a href="https://x.com/hackers_00?t=7NOXZfGHFA37-FPR-iaraA&s=09" style="text-decoration: none; margin-right: 12px;" target="_blank">
-                      <img src="https://img.icons8.com/color/96/twitterx--v1.png" width="24" height="24" alt="X" style="display:inline-block;">
-                    </a>
-                    <a href="https://in.linkedin.com/in/gowtham-s-528631249" style="text-decoration: none; margin-right: 12px;" target="_blank">
-                      <img src="https://img.icons8.com/color/96/linkedin.png" width="24" height="24" alt="LI" style="display:inline-block;">
-                    </a>
-                    <a href="https://wa.me/919346082957" style="text-decoration: none; margin-right: 12px;" target="_blank">
-                      <img src="https://img.icons8.com/color/96/whatsapp.png" width="24" height="24" alt="WA" style="display:inline-block;">
-                    </a>
-                    <a href="mailto:${user}" style="text-decoration: none; margin-right: 12px;">
-                      <img src="https://img.icons8.com/color/96/gmail-new.png" width="24" height="24" alt="Mail" style="display:inline-block;">
-                    </a>
-                  </div>
-
-                  <div style="background-color: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 25px; font-size: 11px; line-height: 1.6; color: #64748b;">
-                    <b style="color: #4f46e5;">CAUTION - ENCRYPTED COMMUNICATION:</b> This report contains proprietary security intelligence. Unauthorized distribution is strictly monitored.
-                  </div>
-
-                  <div style="color: #94a3b8; font-size: 10px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;">
-                    &copy; ${new Date().getFullYear()} HackToWriteToHack | ALL RIGHTS RESERVED
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          `,
+          html: htmlFormattedContent
         };
-        return transporter.sendMail(mailOptions);
-      });
-
-      const results = await Promise.allSettled(sendPromises);
+        
+        try {
+          const res = await transporter.sendMail(mailOptions);
+          results.push({ status: 'fulfilled', value: res });
+          await new Promise(r => setTimeout(r, 1000));
+        } catch (err) {
+          results.push({ status: 'rejected', reason: err });
+        }
+      }
       
       const fulfilled = results.filter(r => r.status === 'fulfilled').length;
       const rejected = results.filter(r => r.status === 'rejected').length;
       
       if (fulfilled === 0 && rejected > 0) {
-        throw new Error(`Failed to send to all ${rejected} recipients.`);
+        const firstErr = results.find(r => r.status === 'rejected')?.reason;
+        throw new Error(formatSmtpError(firstErr));
       }
 
       res.json({ success: true, message: `Successfully sent to ${fulfilled} recipient(s). ${rejected > 0 ? `Failed to send to ${rejected}.` : ''}` });

@@ -27,7 +27,9 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 import ParticlesBackground from '../components/ParticlesBackground';
 import { EMAIL_TEMPLATES, EmailTemplate } from '../utils/emailTemplates';
+import { formatEmailHtml } from '../utils/emailFormatter';
 import DOMPurify from 'dompurify';
+import { marked } from 'marked';
 import { Server } from 'lucide-react';
 
 // EyeIcon for Permissions dropdown
@@ -163,6 +165,16 @@ const BroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({ adm
     const [suggestions, setSuggestions] = useState<User[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const broadcastRef = useRef<HTMLDivElement>(null);
+
+    const parsedMessageHtml = useMemo(() => {
+        if (!message || !message.trim()) return 'Message content will appear here...';
+        try {
+            const parsed = marked.parse(message, { breaks: true, gfm: true }) as string;
+            return DOMPurify.sanitize(parsed);
+        } catch {
+            return DOMPurify.sanitize(message);
+        }
+    }, [message]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -378,7 +390,7 @@ const BroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({ adm
                                         <span className="text-xs text-slate-400 ml-auto">Now</span>
                                     </div>
                                     <p className="font-semibold text-sm text-slate-800 dark:text-slate-200 truncate pr-4">{title || "Subject Line"}</p>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{message || "Message content will appear here..."}</p>
+                                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-3 prose prose-xs dark:prose-invert [&_p]:m-0 [&_a]:text-indigo-500 [&_strong]:text-slate-800 dark:[&_strong]:text-slate-200" dangerouslySetInnerHTML={{ __html: parsedMessageHtml }} />
                                 </div>
                             </div>
                             {/* Decorative BG Element */}
@@ -450,6 +462,7 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
     const [removedUserIds, setRemovedUserIds] = useState<string[]>([]);
     const [title, setTitle] = useState('');
     const [message, setMessage] = useState('');
+    const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
     const [isLoading, setIsLoading] = useState(false);
     const [isTesting, setIsTesting] = useState(false);
     const [smtpStatus, setSmtpStatus] = useState<'unknown' | 'success' | 'error'>('unknown');
@@ -459,44 +472,132 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
     const [selectedTemplate, setSelectedTemplate] = useState<string>('');
     const broadcastRef = useRef<HTMLDivElement>(null);
 
+    const renderedLivePreview = useMemo(() => {
+        const rawContent = message || 'Your email content will appear here...';
+        try {
+            const formatted = formatEmailHtml(rawContent, adminUser?.name || 'Gowtham S Admin');
+            return DOMPurify.sanitize(formatted, {
+                ADD_ATTR: ['style', 'target', 'cellspacing', 'cellpadding', 'border', 'align', 'valign', 'width', 'height', 'class', 'box-sizing'],
+                ADD_TAGS: ['style']
+            });
+        } catch {
+            return DOMPurify.sanitize(rawContent);
+        }
+    }, [message, adminUser]);
+
+    const isHtmlContent = useMemo(() => {
+        const rawContent = (message || '').trim();
+        return rawContent.startsWith('<') || rawContent.includes('style=') || rawContent.includes('class=') || rawContent.includes('border=') || rawContent.includes('<table');
+    }, [message]);
+
+    const insertFormatting = (prefix: string, suffix: string = '') => {
+        setMessage(prev => prev + `${prefix}text${suffix}`);
+    };
+
+    const insertSnippet = (snippet: string) => {
+        setMessage(prev => (prev ? prev + '\n\n' + snippet : snippet));
+    };
+
     const applyTemplate = async (templateId: string) => {
         const template = EMAIL_TEMPLATES.find(t => t.id === templateId);
         if (template) {
             let finalBody = template.body;
+            const appUrl = window.location.origin;
             
-            // Handle dynamic content injection with proper HTML spacing and blocks
-            if (template.body.includes('[POST_LIST]')) {
-                const posts = await getPosts('writeup');
-                const recentPosts = posts.slice(0, 3);
-                const postListStr = recentPosts.length > 0 
-                  ? recentPosts.map(p => `
-                    <div style="margin-bottom: 20px; padding: 12px; background-color: #1e293b; border-radius: 8px; border: 1px solid #334155;">
-                        <div style="color: #f8fafc; font-weight: bold; font-size: 14px; margin-bottom: 6px;">📍 ${p.title}</div>
-                        <a href="${window.location.origin}/#/writeup/${p.id}" style="color: #4f46e5; text-decoration: none; font-size: 12px; font-weight: bold;">🔗 Click to View Report</a>
+            // Replaces APP_URL
+            finalBody = finalBody.replace(/\[APP_URL\]/g, appUrl);
+
+            // Replaces APP_STATS
+            if (finalBody.includes('[APP_STATS]')) {
+                const totalMembers = allUsers?.length || 18;
+                const verifiedResearchers = allUsers?.filter(u => u.status === 'verified' || u.admin_verified || u.role === 'admin')?.length || 9;
+                const statsHtml = `
+                  <div style="background-color: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 16px; margin: 16px 0;">
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td width="33%" style="text-align: center; border-right: 1px solid #1e293b; padding-right: 6px;">
+                          <div style="color: #6366f1; font-size: 18px; font-weight: 800;">${totalMembers}</div>
+                          <div style="color: #64748b; font-size: 10px; text-transform: uppercase; font-weight: 600; margin-top: 2px;">Total Members</div>
+                        </td>
+                        <td width="33%" style="text-align: center; border-right: 1px solid #1e293b; padding: 0 6px;">
+                          <div style="color: #10b981; font-size: 18px; font-weight: 800;">${verifiedResearchers}</div>
+                          <div style="color: #64748b; font-size: 10px; text-transform: uppercase; font-weight: 600; margin-top: 2px;">Verified Scholars</div>
+                        </td>
+                        <td width="33%" style="text-align: center; padding-left: 6px;">
+                          <div style="color: #38bdf8; font-size: 18px; font-weight: 800;">99.9%</div>
+                          <div style="color: #64748b; font-size: 10px; text-transform: uppercase; font-weight: 600; margin-top: 2px;">Platform Uptime</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </div>
+                `;
+                finalBody = finalBody.replace(/\[APP_STATS\]/g, statsHtml);
+            }
+
+            // Replaces BLOG_LIST with latest 3 blogs
+            if (finalBody.includes('[BLOG_LIST]')) {
+                const blogs = await getPosts('blog');
+                const recentBlogs = (blogs && blogs.length > 0) ? blogs.slice(0, 3) : [
+                    { id: '1', title: 'Zero-Trust Architecture in Modern Cloud Infrastructure', summary: 'Architectural guide on adopting zero-trust verification across containerized microservices.', author: { name: 'Gowtham' }, created_at: new Date().toISOString() },
+                    { id: '2', title: 'Automating Security Scans with Custom CI/CD Workflows', summary: 'How to inject static code analysis and SAST scanners into release pipelines.', author: { name: 'Security Hub' }, created_at: new Date().toISOString() },
+                    { id: '3', title: 'Deep Dive: Web Security in High-Throughput Node Applications', summary: 'Analyzing memory safety and input validation mitigations.', author: { name: 'Admin Team' }, created_at: new Date().toISOString() }
+                ];
+
+                const blogListStr = recentBlogs.map(b => `
+                    <div style="margin-bottom: 14px; padding: 16px 18px; background-color: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; text-align: left;">
+                        <div style="color: #0f172a; font-weight: 700; font-size: 14px; margin-bottom: 8px; line-height: 1.4;">✍️ ${b.title}</div>
+                        ${b.summary ? `<div style="color: #475569; font-size: 12px; margin-bottom: 12px; line-height: 1.5;">${b.summary}</div>` : ''}
+                        <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-top: 8px; border-top: 1px dashed #cbd5e1; padding-top: 10px;">
+                            <tr>
+                                <td align="left" style="color: #64748b; font-size: 11px; font-weight: 500; text-align: left; vertical-align: middle; padding-right: 12px;">
+                                    By <strong style="color: #334155;">${b.author?.name || 'Security Hub'}</strong>
+                                </td>
+                                <td align="right" style="text-align: right; vertical-align: middle;">
+                                    <a href="${appUrl}/#/blog/${b.id}" style="color: #4f46e5; text-decoration: none; font-size: 12px; font-weight: 700; white-space: nowrap; display: inline-block;">Read Full Article &rarr;</a>
+                                </td>
+                            </tr>
+                        </table>
                     </div>
-                  `).join('')
-                  : '<div style="color: #94a3b8; font-style: italic;">No recent writeups found.</div>';
-                finalBody = finalBody.replace('[POST_LIST]', postListStr);
+                `).join('');
+
+                finalBody = finalBody.replace(/\[BLOG_LIST\]/g, blogListStr);
             }
             
-            if (template.body.includes('[BLOG_LIST]')) {
-                const blogs = await getPosts('blog');
-                const recentBlogs = blogs.slice(0, 3);
-                const blogListStr = recentBlogs.length > 0 
-                  ? recentBlogs.map(b => `
-                    <div style="margin-bottom: 20px; padding: 12px; background-color: #1e293b; border-radius: 8px; border: 1px solid #334155;">
-                        <div style="color: #f8fafc; font-weight: bold; font-size: 14px; margin-bottom: 6px;">✍️ ${b.title}</div>
-                        <a href="${window.location.origin}/#/blog/${b.id}" style="color: #4f46e5; text-decoration: none; font-size: 12px; font-weight: bold;">🔗 Read Full Blog</a>
+            // Replaces WRITEUP_LIST / POST_LIST / LATEST_WRITEUPS
+            if (finalBody.includes('[WRITEUP_LIST]') || finalBody.includes('[POST_LIST]') || finalBody.includes('[LATEST_WRITEUPS]')) {
+                const writeups = await getPosts('writeup');
+                const recentWriteups = (writeups && writeups.length > 0) ? writeups.slice(0, 3) : [
+                    { id: 'w1', title: 'Bypassing OAuth 2.0 State Verification in SSO Implementations', summary: 'Critical advisory regarding CSRF vulnerabilities in single sign-on redirect flows.', author: { name: 'Gowtham' }, created_at: new Date().toISOString() },
+                    { id: 'w2', title: 'SQL Injection Vulnerability in Legacy Reporting Module', summary: 'In-depth analysis of unescaped parameters in SQL query concatenation.', author: { name: 'Research Team' }, created_at: new Date().toISOString() },
+                    { id: 'w3', title: 'Remote Code Execution in Node.js File Processing Engine', summary: 'Demonstrating unsafe command execution through unsanitized user uploads.', author: { name: 'Vulnerability Lab' }, created_at: new Date().toISOString() }
+                ];
+
+                const writeupListStr = recentWriteups.map(p => `
+                    <div style="margin-bottom: 14px; padding: 16px 18px; background-color: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; text-align: left;">
+                        <div style="color: #0f172a; font-weight: 700; font-size: 14px; margin-bottom: 8px; line-height: 1.4;">📍 ${p.title}</div>
+                        ${p.summary ? `<div style="color: #475569; font-size: 12px; margin-bottom: 12px; line-height: 1.5;">${p.summary}</div>` : ''}
+                        <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-top: 8px; border-top: 1px dashed #cbd5e1; padding-top: 10px;">
+                            <tr>
+                                <td align="left" style="color: #64748b; font-size: 11px; font-weight: 500; text-align: left; vertical-align: middle; padding-right: 12px;">
+                                    By <strong style="color: #334155;">${p.author?.name || 'Security Hub'}</strong>
+                                </td>
+                                <td align="right" style="text-align: right; vertical-align: middle;">
+                                    <a href="${appUrl}/#/writeup/${p.id}" style="color: #059669; text-decoration: none; font-size: 12px; font-weight: 700; white-space: nowrap; display: inline-block;">View Security Report &rarr;</a>
+                                </td>
+                            </tr>
+                        </table>
                     </div>
-                  `).join('')
-                  : '<div style="color: #94a3b8; font-style: italic;">No recent blog posts found.</div>';
-                finalBody = finalBody.replace('[BLOG_LIST]', blogListStr);
+                `).join('');
+
+                finalBody = finalBody.replace(/\[WRITEUP_LIST\]/g, writeupListStr);
+                finalBody = finalBody.replace(/\[POST_LIST\]/g, writeupListStr);
+                finalBody = finalBody.replace(/\[LATEST_WRITEUPS\]/g, writeupListStr);
             }
 
             setTitle(template.subject);
             setMessage(finalBody);
             setSelectedTemplate(templateId);
-            addNotification({ title: 'Template Applied', message: `${template.name} loaded with live data.`, type: 'info' });
+            addNotification({ title: 'Template Applied', message: `${template.name} loaded with live platform data.`, type: 'info' });
         }
     };
 
@@ -525,7 +626,8 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
                 body: JSON.stringify({
                     to: recipients,
                     subject: title,
-                    body: message
+                    body: message,
+                    senderName: adminUser?.name || 'Gowtham S Admin'
                 })
             });
 
@@ -662,22 +764,28 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
 
                     <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 p-6">
                         <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center justify-between">
-                            Mail Templates
-                            <span className="bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 text-[10px] px-2 py-0.5 rounded-full">10 AVAILABLE</span>
+                            Premium Mail Templates
+                            <span className="bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 text-[10px] px-2 py-0.5 rounded-full">{EMAIL_TEMPLATES.length} TEMPLATES</span>
                         </h3>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[280px] overflow-y-auto pr-1">
                              {EMAIL_TEMPLATES.map(t => (
                                  <button 
                                     key={t.id}
                                     onClick={() => applyTemplate(t.id)}
-                                    className={`text-[10px] p-2 rounded-lg border text-left flex flex-col gap-1 transition-all ${
+                                    className={`text-[10px] p-2.5 rounded-lg border text-left flex flex-col gap-1 transition-all ${
                                         selectedTemplate === t.id 
-                                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-500' 
+                                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-500 shadow-sm' 
                                         : 'border-slate-100 dark:border-slate-800 hover:border-indigo-300 text-slate-500 dark:text-slate-400'
                                     }`}
                                  >
-                                     <span className="font-bold uppercase tracking-tighter opacity-60">{t.category}</span>
-                                     <span className="font-semibold truncate">{t.name}</span>
+                                     <div className="flex items-center justify-between w-full">
+                                         <span className="font-bold uppercase tracking-tighter opacity-60 text-[9px]">{t.category}</span>
+                                         <span className={`text-[8px] font-extrabold px-1.5 py-0.2 rounded ${t.format === 'html' ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
+                                             {t.format === 'html' ? 'HTML+CSS' : 'MARKDOWN'}
+                                         </span>
+                                     </div>
+                                     <span className="font-bold truncate text-slate-800 dark:text-slate-200">{t.name}</span>
+                                     <span className="text-[9px] text-slate-400 dark:text-slate-500 line-clamp-1">{t.description}</span>
                                  </button>
                              ))}
                         </div>
@@ -717,58 +825,104 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
                                 <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="System Update: v1.0.x is now live!" className="w-full bg-transparent border-b border-slate-200 dark:border-slate-800 py-2 text-lg font-bold outline-none focus:border-indigo-500 transition-colors" />
                             </div>
                             <div className="flex-1 flex flex-col">
-                                <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Email Content (HTML Supported)</label>
-                                <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Enter the update details for your users..." className="flex-1 w-full bg-slate-50 dark:bg-slate-800/20 rounded-xl p-4 text-sm resize-none outline-none focus:ring-1 focus:ring-indigo-500 min-h-[150px]" />
+                                <div className="flex flex-col gap-2 mb-2">
+                                    <div className="flex items-center justify-between">
+                                        <label className="block text-[10px] font-black uppercase text-slate-400">Email Content (HTML & CSS / Markdown)</label>
+                                        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+                                            <button type="button" onClick={() => insertFormatting('**', '**')} className="px-1.5 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded transition-colors" title="Bold">B</button>
+                                            <button type="button" onClick={() => insertFormatting('*', '*')} className="px-1.5 py-0.5 text-[10px] font-italic text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded transition-colors" title="Italic"><i>I</i></button>
+                                            <button type="button" onClick={() => insertFormatting('## ')} className="px-1.5 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded transition-colors" title="Heading">H2</button>
+                                            <button type="button" onClick={() => insertFormatting('- ')} className="px-1.5 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded transition-colors" title="List">• List</button>
+                                            <button type="button" onClick={() => insertFormatting('[', '](https://)')} className="px-1.5 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded transition-colors" title="Link">Link</button>
+                                            <button type="button" onClick={() => insertFormatting('`', '`')} className="px-1.5 py-0.5 text-[10px] font-mono text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded transition-colors" title="Code">&lt;/&gt;</button>
+                                            <button type="button" onClick={() => insertFormatting('> ')} className="px-1.5 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded transition-colors" title="Quote">Quote</button>
+                                        </div>
+                                    </div>
+
+                                    {/* HTML Component Snippets Bar */}
+                                    <div className="flex items-center gap-1.5 overflow-x-auto py-1 border-t border-b border-slate-100 dark:border-slate-800">
+                                        <span className="text-[9px] font-black uppercase text-indigo-500 dark:text-indigo-400 whitespace-nowrap">Insert HTML UI:</span>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => insertSnippet('<div style="text-align: center; margin: 24px 0;"><a href="https://example.com" style="background-color: #4f46e5; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 700; padding: 12px 28px; border-radius: 8px; display: inline-block;">Action Button &rarr;</a></div>')} 
+                                            className="px-2 py-0.5 text-[9px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-md hover:bg-indigo-100 transition-colors whitespace-nowrap"
+                                        >
+                                            + CTA Button
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => insertSnippet('<div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 14px 16px; border-radius: 0 8px 8px 0; margin: 16px 0;"><strong style="color: #dc2626; font-size: 13px;">Security Notice:</strong><p style="margin: 4px 0 0 0; color: #7f1d1d; font-size: 13px;">Please verify your account credentials in settings.</p></div>')} 
+                                            className="px-2 py-0.5 text-[9px] font-bold bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-md hover:bg-rose-100 transition-colors whitespace-nowrap"
+                                        >
+                                            + Alert Card
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => insertSnippet('<div style="background-color: #0f172a; border-radius: 12px; padding: 20px; text-align: center; margin: 16px 0; color: #ffffff;"><div style="color: #38bdf8; font-size: 24px; font-weight: 800;">100%</div><div style="color: #94a3b8; font-size: 11px; font-weight: 600; text-transform: uppercase;">System Operational</div></div>')} 
+                                            className="px-2 py-0.5 text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-200 transition-colors whitespace-nowrap"
+                                        >
+                                            + Metric Card
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => insertSnippet('<span style="display: inline-block; background-color: rgba(99, 102, 241, 0.15); border: 1px solid #6366f1; color: #6366f1; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 12px; text-transform: uppercase;">VERIFIED</span>')} 
+                                            className="px-2 py-0.5 text-[9px] font-bold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-md hover:bg-emerald-100 transition-colors whitespace-nowrap"
+                                        >
+                                            + Status Badge
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => insertSnippet('<div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 24px; border-radius: 12px; color: #ffffff; margin-bottom: 16px;"><h2 style="margin: 0 0 6px 0; color: #ffffff; font-size: 18px; font-weight: 800;">Header Banner</h2><p style="margin: 0; color: #94a3b8; font-size: 13px;">Subtitle highlight details...</p></div>')} 
+                                            className="px-2 py-0.5 text-[9px] font-bold bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded-md hover:bg-purple-100 transition-colors whitespace-nowrap"
+                                        >
+                                            + Banner Header
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => insertSnippet('<hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />')} 
+                                            className="px-2 py-0.5 text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-200 transition-colors whitespace-nowrap"
+                                        >
+                                            + Divider
+                                        </button>
+                                    </div>
+                                </div>
+                                <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Type update details in HTML, CSS or Markdown..." className="flex-1 w-full bg-slate-50 dark:bg-slate-800/20 rounded-xl p-4 text-xs font-mono resize-none outline-none focus:ring-1 focus:ring-indigo-500 min-h-[180px]" />
                             </div>
 
                             {/* Live Email Preview */}
-                            <div className="mt-4 p-4 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                                <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">Live Preview (What users see)</label>
-                                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden max-w-[600px] shadow-sm text-left font-['Helvetica_Neue',_Helvetica,_Arial,_sans-serif] text-[15px] leading-relaxed text-[#333] p-8 mx-0">
-                                    
-                                    <div className="whitespace-pre-wrap mb-8 text-[#333333]" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(message || 'Your email content will appear here...') }}>
+                            <div className="mt-8 p-5 sm:p-7 border border-slate-200/90 dark:border-slate-800 rounded-2xl bg-slate-100/70 dark:bg-slate-900/50 shadow-inner">
+                                <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-3 border-b border-slate-200/80 dark:border-slate-800">
+                                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50"></span>
+                                        Live Client Inbox Preview (Responsive Render)
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono font-semibold">Viewport:</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPreviewDevice('desktop')}
+                                            className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${previewDevice === 'desktop' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300'}`}
+                                        >
+                                            Desktop (600px)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPreviewDevice('mobile')}
+                                            className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${previewDevice === 'mobile' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300'}`}
+                                        >
+                                            Mobile (360px)
+                                        </button>
                                     </div>
-                                    
-                                    <div className="mt-10">
-                                        <div className="font-size-[15px] text-[#333333] mb-4">Best regards,</div>
-                                        <div className="font-bold text-[#111111] text-[15px] mb-0.5">
-                                            {adminUser.name || 'Gowtham'}
-                                        </div>
-                                        <div className="text-[#555555] text-[14px] mb-3">
-                                            Security Research Hub
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <img src="https://res.cloudinary.com/dlovm3y8x/image/upload/v1/llogo-removebg-preview_obh2ek.png" className="w-7 h-7 rounded-[4px] block" alt="Logo" />
-                                            <div className="font-[800] text-[18px] text-[#0f172a] -tracking-[0.5px] mt-0.5">
-                                                HTWTH
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-8 pt-6 border-t border-slate-100">
-                                            <div className="text-slate-500 text-[10px] font-extrabold uppercase tracking-widest mb-4">
-                                                Connect with Me
-                                            </div>
-                                            <div className="flex gap-3 mb-6">
-                                                <img src="https://img.icons8.com/color/96/instagram-new.png" className="w-6 h-6 inline-block" alt="IG" />
-                                                <img src="https://img.icons8.com/color/96/twitterx--v1.png" className="w-6 h-6 inline-block" alt="X" />
-                                                <img src="https://img.icons8.com/color/96/linkedin.png" className="w-6 h-6 inline-block" alt="LI" />
-                                                <img src="https://img.icons8.com/color/96/whatsapp.png" className="w-6 h-6 inline-block" alt="WA" />
-                                                <img src="https://img.icons8.com/color/96/gmail-new.png" className="w-6 h-6 inline-block" alt="Mail" />
-                                            </div>
-                                            
-                                            <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 mb-6 font-sans">
-                                                <div className="text-slate-500 text-[11px] leading-relaxed">
-                                                    <b className="text-indigo-600 font-bold uppercase">CAUTION - ENCRYPTED COMMUNICATION:</b> This report contains proprietary security intelligence. Unauthorized distribution is strictly monitored.
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="text-slate-400 text-[9px] font-bold uppercase tracking-widest font-sans">
-                                                &copy; {new Date().getFullYear()} HackToWriteToHack | ALL RIGHTS RESERVED
-                                            </div>
-                                        </div>
-
-                                    </div>
-
+                                </div>
+                                
+                                <div 
+                                    className="mx-auto transition-all duration-300 py-4 px-4 sm:px-6"
+                                    style={{ maxWidth: previewDevice === 'mobile' ? '360px' : '620px' }}
+                                >
+                                    <div 
+                                        className="rounded-xl overflow-hidden shadow-xl text-left bg-white border border-slate-200 dark:border-slate-800"
+                                        dangerouslySetInnerHTML={{ __html: renderedLivePreview }}
+                                    />
                                 </div>
                             </div>
                         </div>

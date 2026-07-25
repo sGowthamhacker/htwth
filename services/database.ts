@@ -218,10 +218,19 @@ export const getApiPath = (functionName: string): string => {
     return `/api/${functionName}`;
 };
 
+import { verifySmtpConfiguration } from './emailService';
+
 export const sendMagicLinkWithBrevo = async (email: string, backupCode: string): Promise<{ success: boolean; error?: string }> => {
     if (hasFallenBackToMock) {
         return { success: true };
     }
+
+    // Explicitly trim whitespace from target email and backup code
+    const cleanEmail = email?.trim() || '';
+    const cleanBackupCode = backupCode?.trim() || '';
+
+    // Verify SMTP diagnostic status
+    verifySmtpConfiguration();
 
     const backendEndpoint = getApiPath('send-2fa-magic-link');
     const controller = new AbortController();
@@ -231,7 +240,7 @@ export const sendMagicLinkWithBrevo = async (email: string, backupCode: string):
         const response = await fetch(backendEndpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, backupCode }),
+            body: JSON.stringify({ email: cleanEmail, backupCode: cleanBackupCode }),
             signal: controller.signal
         });
         clearTimeout(timeoutId);
