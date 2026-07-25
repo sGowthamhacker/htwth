@@ -333,7 +333,37 @@ async function startServer() {
       }
       const htmlFormattedContent = formatEmailHtml(body || '', actualSenderName);
 
-      for (const recipient of recipients) {
+      // Return immediately for multiple recipients to avoid UI timeout
+      if (recipients.length > 1) {
+        res.json({ success: true, message: `Email sending process started for ${recipients.length} recipient(s) in the background.` });
+        
+        // Background process
+        (async () => {
+          let fulfilled = 0;
+          let rejected = 0;
+          for (const recipient of recipients) {
+            const mailOptions = {
+              from: `"${process.env.SMTP_FROM_NAME || 'HTWTH System'}" <${user}>`,
+              to: recipient,
+              subject: subject,
+              text: body,
+              html: htmlFormattedContent
+            };
+            
+            try {
+              await transporter.sendMail(mailOptions);
+              fulfilled++;
+              await new Promise(r => setTimeout(r, 1000));
+            } catch (err) {
+              console.error(`[SMTP ERROR] Failed to send email to ${recipient}:`, err);
+              rejected++;
+            }
+          }
+          console.log(`[SMTP BACKGROUND] Sent to ${fulfilled} recipient(s). Failed: ${rejected}`);
+        })();
+      } else {
+        // Single recipient: wait and return actual result
+        const recipient = recipients[0];
         const mailOptions = {
           from: `"${process.env.SMTP_FROM_NAME || 'HTWTH System'}" <${user}>`,
           to: recipient,
@@ -342,24 +372,9 @@ async function startServer() {
           html: htmlFormattedContent
         };
         
-        try {
-          const res = await transporter.sendMail(mailOptions);
-          results.push({ status: 'fulfilled', value: res });
-          await new Promise(r => setTimeout(r, 1000));
-        } catch (err) {
-          results.push({ status: 'rejected', reason: err });
-        }
+        await transporter.sendMail(mailOptions);
+        res.json({ success: true, message: `Successfully sent to 1 recipient.` });
       }
-      
-      const fulfilled = results.filter(r => r.status === 'fulfilled').length;
-      const rejected = results.filter(r => r.status === 'rejected').length;
-      
-      if (fulfilled === 0 && rejected > 0) {
-        const firstErr = results.find(r => r.status === 'rejected')?.reason;
-        throw new Error(formatSmtpError(firstErr));
-      }
-
-      res.json({ success: true, message: `Successfully sent to ${fulfilled} recipient(s). ${rejected > 0 ? `Failed to send to ${rejected}.` : ''}` });
     } catch (error: any) {
       console.error("Mail Error:", error);
       res.status(500).json({ error: error.message || "Failed to send email" });
