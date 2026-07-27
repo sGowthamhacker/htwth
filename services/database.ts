@@ -587,7 +587,7 @@ export const subscribeToGlobalSettings = (onUpdate: (settings: GlobalSettings) =
     if (!supabase || hasFallenBackToMock) return () => {};
 
     const channel = supabase
-        .channel('global_settings_changes')
+        .channel('global_settings_changes_' + Math.random().toString(36).substring(7))
         .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'global_settings' },
@@ -617,7 +617,7 @@ export const subscribeToActivityLog = (onNewLog: (log: ActivityLog) => void) => 
     let supabaseUnsubscribe = () => {};
     if (supabase && !hasFallenBackToMock) {
         const channel = supabase
-            .channel('activity_log_changes')
+            .channel('activity_log_changes_' + Math.random().toString(36).substring(7))
             .on(
                 'postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'activity_log' },
@@ -648,7 +648,7 @@ export const subscribeToChatMessages = (onNewMessage: (msg: ChatMessage) => void
     if (!supabase || hasFallenBackToMock) return () => {};
 
     const channel = supabase
-        .channel('chat_messages_changes')
+        .channel('chat_messages_changes_' + Math.random().toString(36).substring(7))
         .on(
             'postgres_changes',
             { event: 'INSERT', schema: 'public', table: 'chat_messages' },
@@ -675,7 +675,7 @@ export const subscribeToUsers = (onUpdate: (user: User) => void) => {
     let supabaseUnsubscribe = () => {};
     if (supabase && !hasFallenBackToMock) {
         const channel = supabase
-            .channel('users_changes')
+            .channel('users_changes_' + Math.random().toString(36).substring(7))
             .on(
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'users' },

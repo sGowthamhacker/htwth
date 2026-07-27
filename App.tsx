@@ -8,7 +8,6 @@ import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
 import DashboardPage from './pages/DashboardPage';
 import MicrochipLoader from './components/MicrochipLoader';
-import ElevenLabsWidget from './components/ElevenLabsWidget';
 
 // Lazy load secondary pages
 const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
@@ -689,7 +688,7 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
             
             setAuthPage(null); 
             setAuthExiting(true);
-            setIsInitialAuthLoading(false); // Disable global loader immediately so animation can mount
+            // setIsInitialAuthLoading(false); // Disable global loader immediately so animation can mount
 
             // 2. Delay setting appUser to ensure Animation mounts and takes over the view BEFORE dashboard tries to render
             setTimeout(async () => {
@@ -718,7 +717,7 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
             setAuthPage(null); 
             setAuthExiting(true);
             setAuthLoading(true); // Show loader
-            setIsInitialAuthLoading(false); // Unblock main render so loader takes over properly
+            // setIsInitialAuthLoading(false); // Unblock main render so loader takes over properly
 
             // Delay setting appUser to show loader for a brief moment
             setTimeout(async () => {
@@ -762,6 +761,14 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
 }, [setAppUser, setAuthExiting, setAuthLoading, setAuthPage, setNotifications, refreshPosts]);
 
 
+  // Safety: Prevent white screen if auth listener hangs
+  useEffect(() => {
+    const timer = setTimeout(() => {
+        setIsInitialAuthLoading(false);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // --- Firebase Auth State Listener ---
   useEffect(() => {
     if (isDbLoading) return;
@@ -773,7 +780,7 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
             console.error("Firebase auth object is not initialized. Cannot set up auth state listener.");
             addNotification({ title: "Initialization Error", message: "Authentication service failed to load. Please refresh.", type: "error" });
             setAuthLoading(false);
-            setIsInitialAuthLoading(false);
+            // setIsInitialAuthLoading(false);
             return;
         }
         
@@ -985,7 +992,7 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
                         
                         setIsChecking2FA(false);
                         setAuthLoading(false);
-                        setIsInitialAuthLoading(false);
+                        // setIsInitialAuthLoading(false);
                         return;
                     }
 
@@ -2111,7 +2118,6 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
         <div style={backgroundStyle} className={`${(authPage === null && appUser) ? 'h-[100dvh] overflow-hidden' : 'min-h-screen'} font-sans relative`}>
           {appUser && !showLanding && <AnimatedBackground />}
           <NotificationContainer />
-          {(!appUser && showLanding && !authPage) && <ElevenLabsWidget />}
           
           {(showWelcomeAnimation || isWelcomeAnimationRunning.current) && userForWelcome ? (
                <WelcomeAnimation onComplete={handleWelcomeAnimationEnd} username={userForWelcome.name.split(' ')[0]} />

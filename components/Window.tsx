@@ -160,12 +160,12 @@ const Window: React.FC<WindowProps> = ({
 
     const stopPropagation = (e: React.MouseEvent | React.TouchEvent) => e.stopPropagation();
 
-    const openEase = 'cubic-bezier(0.215, 0.61, 0.355, 1)';
-    const closeEase = 'cubic-bezier(0.55, 0.055, 0.675, 0.19)';
-    const duration = '250ms';
+    const openEase = themeStyle === 'mac' ? 'cubic-bezier(0.16, 1, 0.3, 1)' : 'cubic-bezier(0.215, 0.61, 0.355, 1)';
+    const closeEase = themeStyle === 'mac' ? 'cubic-bezier(0.4, 0, 1, 1)' : 'cubic-bezier(0.55, 0.055, 0.675, 0.19)';
+    const duration = themeStyle === 'mac' ? '300ms' : '250ms';
 
     const isOpening = !isMounted && !isClosing;
-    const scale = isClosing || isOpening ? 0.95 : 1;
+    const scale = isClosing || isOpening ? (themeStyle === 'mac' ? 0.92 : 0.95) : 1;
     const opacity = isClosing || isOpening ? 0 : 1;
     
     const style: React.CSSProperties = {
@@ -189,7 +189,7 @@ const Window: React.FC<WindowProps> = ({
         <div
             ref={windowRef}
             id={id}
-            className={`absolute flex flex-col bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700/50 overflow-hidden ${isMaximized ? 'rounded-none' : ''} ${isActive ? 'shadow-2xl' : 'shadow-lg'} ${themeToRender}`}
+            className={`absolute flex flex-col bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700/50 overflow-hidden ${isMaximized ? 'rounded-none' : (themeStyle === 'mac' ? 'rounded-xl' : '')} ${isActive ? 'shadow-2xl' : 'shadow-lg'} ${themeToRender}`}
             style={style}
             onMouseDown={() => onFocus(id)}
             onTouchStart={() => onFocus(id)}

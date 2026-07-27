@@ -111,10 +111,16 @@ const RetroSearchInput: React.FC<RetroSearchInputProps> = ({
           border-radius: 8px;
           padding-left: 34px; /* Space for icon */
           padding-right: 12px;
-          font-size: 13px;
+          font-size: 16px; /* Prevent iOS auto-zoom */
           font-weight: 500;
           font-family: inherit;
           display: block;
+        }
+
+        @media (min-width: 768px) {
+          .retro-input {
+            font-size: 13px;
+          }
         }
         
         .dark .retro-input {

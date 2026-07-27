@@ -363,11 +363,8 @@ const Footer: React.FC<FooterProps> = ({ onAction, onShowCopyright, onShowInnova
                     G0W HTWTH : Vv: {version}
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row items-center gap-3 text-[11px] opacity-80 transition-all font-bold text-slate-400">
-                 <span className="uppercase tracking-widest">Developed By</span>
-                 <div className="scale-90 origin-center sm:origin-left hover:scale-100 transition-transform">
-                    <AdminNameButton />
-                 </div>
+              <div>
+                 <AdminNameButton />
               </div>
             </div>
         </RevealOnScroll>

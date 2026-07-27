@@ -82,12 +82,12 @@ export function formatEmailHtml(rawBody: string, senderName: string = 'Gowtham S
 
   if (hasFooter) {
     return `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: ${outerBg}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 20px 16px; width: 100%;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: ${outerBg}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 20px 10px; width: 100%; table-layout: fixed;">
         <tr>
           <td align="center" style="padding: 0;">
-            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; margin: 0 auto; width: 100%;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; margin: 0 auto; width: 100%; word-break: break-word; overflow-wrap: break-word; table-layout: fixed;">
               <tr>
-                <td style="padding: 0;">
+                <td style="padding: 0; word-break: break-word; overflow-wrap: break-word;">
                   ${bodyHtml}
                 </td>
               </tr>
@@ -99,21 +99,21 @@ export function formatEmailHtml(rawBody: string, senderName: string = 'Gowtham S
   }
 
   return `
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: ${outerBg}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 24px 16px; width: 100%;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: ${outerBg}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 24px 10px; width: 100%; table-layout: fixed;">
       <tr>
         <td align="center" style="padding: 0;">
-          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; margin: 0 auto; background-color: ${cardBg}; border: 1px solid ${cardBorder}; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; margin: 0 auto; background-color: ${cardBg}; border: 1px solid ${cardBorder}; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03); word-break: break-word; overflow-wrap: break-word; table-layout: fixed;">
             
             <!-- Message Payload -->
             <tr>
-              <td style="padding: 0; background-color: ${cardBg};">
+              <td style="padding: 0; background-color: ${cardBg}; word-break: break-word; overflow-wrap: break-word;">
                 ${bodyHtml}
               </td>
             </tr>
 
             <!-- Integrated Signature Footer -->
             <tr>
-              <td style="border-top: 1px solid ${sigBorderTop}; padding: 22px 24px; background-color: ${sigBg}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align: left;">
+              <td style="border-top: 1px solid ${sigBorderTop}; padding: 22px 20px; background-color: ${sigBg}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align: left;">
                 <div style="font-size: 13px; color: ${sigTextMuted}; margin-bottom: 4px;">Best regards,</div>
                 <div style="font-weight: 800; color: ${sigTextHeading}; font-size: 15px; margin-bottom: 4px; letter-spacing: -0.2px;">${cleanSender}</div>
                 <div style="color: ${sigSubText}; font-size: 12px; margin-bottom: 16px;">Security Research Hub</div>

@@ -105,6 +105,8 @@ interface SettingsPageProps {
   onEmailChange: (newEmail: string) => Promise<string | void>;
   deepLinkInfo?: string | null;
   onNavigateWithinApp?: (path: string) => void;
+  displayMode?: 'desktop' | 'webapp';
+  setDisplayMode?: (mode: 'desktop' | 'webapp') => void;
 }
 
 type SettingsSection = 'profile' | 'appearance' | 'tools' | 'friends' | 'account';
@@ -206,7 +208,7 @@ const FieldSection: React.FC<{
     children: React.ReactNode;
 }> = ({ title, description, icon, isEditing, onEdit, onCancel, onSave, saveState, children }) => {
     return (
-        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-[2rem] border border-slate-200 dark:border-slate-800 p-10 shadow-xl shadow-indigo-500/5 transition-all duration-300">
+        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-[2rem] border border-slate-200 dark:border-slate-800 p-4 sm:p-8 md:p-10 shadow-xl shadow-indigo-500/5 transition-all duration-300">
             <div className="mb-8 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                 <div className="flex items-start gap-5">
                     <div className="p-3 bg-indigo-500/10 rounded-2xl text-indigo-600 dark:text-indigo-400">
@@ -675,7 +677,9 @@ const AppearanceSettings: React.FC<{
     desktopIconSize: DesktopIconSize;
     setDesktopIconSize: (size: DesktopIconSize) => void;
     onProfileUpdate: (updatedData: Partial<User>, silent?: boolean) => Promise<void>;
-}> = ({ user, taskbarPosition, setTaskbarPosition, mobileTaskbarPosition, setMobileTaskbarPosition, desktopIconSize, setDesktopIconSize, onProfileUpdate }) => {
+    displayMode?: 'desktop' | 'webapp';
+    setDisplayMode?: (mode: 'desktop' | 'webapp') => void;
+}> = ({ user, taskbarPosition, setTaskbarPosition, mobileTaskbarPosition, setMobileTaskbarPosition, desktopIconSize, setDesktopIconSize, onProfileUpdate, displayMode = 'desktop', setDisplayMode }) => {
     const { themeStyle, setThemeStyle, themeMode, setThemeMode, selectedBackground, setSelectedBackground, backgroundCategories, triggerTransition } = useTheme();
     const { timeFormat, setTimeFormat, visibleTimezones, setVisibleTimezones } = useTime();
     const [activeCategory, setActiveCategory] = useState<BackgroundCategory | null>(null);
@@ -723,9 +727,14 @@ const AppearanceSettings: React.FC<{
         onProfileUpdate({ wallpaper: url });
     };
 
-    const handleThemeStyleChange = (style: ThemeStyle) => {
-        setThemeStyle(style);
-        onProfileUpdate({ desktop_preferences: { theme_style: style } });
+    const handleLayoutChange = (mode: 'desktop' | 'webapp', style?: ThemeStyle) => {
+        if (setDisplayMode) {
+            setDisplayMode(mode);
+        }
+        if (style) {
+            setThemeStyle(style);
+            onProfileUpdate({ desktop_preferences: { theme_style: style } });
+        }
     };
 
     const handleThemeModeChange = (mode: ThemeMode) => {
@@ -752,34 +761,46 @@ const AppearanceSettings: React.FC<{
                     </div>
                 </div>
                 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="space-y-6">
                     {/* OS Style */}
                     <div className="space-y-4">
                         <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Interface Layout</label>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <button
-                                onClick={() => handleThemeStyleChange('windows')}
-                                className={`relative p-5 rounded-2xl border-2 text-left transition-all duration-300 isolate overflow-hidden group ${themeStyle === 'windows' ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-500/10' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600'}`}
+                                onClick={() => handleLayoutChange('desktop', 'windows')}
+                                className={`relative p-5 rounded-2xl border-2 text-left transition-all duration-300 isolate overflow-hidden group ${displayMode === 'desktop' && themeStyle === 'windows' ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-500/10' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600'}`}
                             >
-                                {themeStyle === 'windows' && <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent -z-10 animate-fade-in"></div>}
-                                <div className={`flex items-center gap-3 mb-3 ${themeStyle === 'windows' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                                {displayMode === 'desktop' && themeStyle === 'windows' && <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent -z-10 animate-fade-in"></div>}
+                                <div className={`flex items-center gap-3 mb-3 ${displayMode === 'desktop' && themeStyle === 'windows' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'}`}>
                                     <Layout className="w-7 h-7 transition-transform group-hover:scale-110" />
                                     <span className="font-bold">Windows</span>
                                 </div>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Bottom taskbar, angular UI, start menu.</p>
-                                {themeStyle === 'windows' && <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-indigo-500" />}
+                                {displayMode === 'desktop' && themeStyle === 'windows' && <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-indigo-500" />}
                             </button>
                             <button
-                                onClick={() => handleThemeStyleChange('mac')}
-                                className={`relative p-5 rounded-2xl border-2 text-left transition-all duration-300 isolate overflow-hidden group ${themeStyle === 'mac' ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-500/10' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600'}`}
+                                onClick={() => handleLayoutChange('desktop', 'mac')}
+                                className={`relative p-5 rounded-2xl border-2 text-left transition-all duration-300 isolate overflow-hidden group ${displayMode === 'desktop' && themeStyle === 'mac' ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-500/10' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600'}`}
                             >
-                                {themeStyle === 'mac' && <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent -z-10 animate-fade-in"></div>}
-                                <div className={`flex items-center gap-3 mb-3 ${themeStyle === 'mac' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                                {displayMode === 'desktop' && themeStyle === 'mac' && <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent -z-10 animate-fade-in"></div>}
+                                <div className={`flex items-center gap-3 mb-3 ${displayMode === 'desktop' && themeStyle === 'mac' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'}`}>
                                     <Monitor className="w-7 h-7 transition-transform group-hover:scale-110" />
                                     <span className="font-bold">macOS</span>
                                 </div>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Floating dock, rounded corners, top menu.</p>
-                                {themeStyle === 'mac' && <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-indigo-500" />}
+                                {displayMode === 'desktop' && themeStyle === 'mac' && <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-indigo-500" />}
+                            </button>
+                            <button
+                                onClick={() => handleLayoutChange('webapp')}
+                                className={`relative p-5 rounded-2xl border-2 text-left transition-all duration-300 isolate overflow-hidden group ${displayMode === 'webapp' ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-500/10' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600'}`}
+                            >
+                                {displayMode === 'webapp' && <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent -z-10 animate-fade-in"></div>}
+                                <div className={`flex items-center gap-3 mb-3 ${displayMode === 'webapp' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                                    <Globe className="w-7 h-7 transition-transform group-hover:scale-110" />
+                                    <span className="font-bold">Web App Mode</span>
+                                </div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Single-page web navigation layout.</p>
+                                {displayMode === 'webapp' && <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-indigo-500" />}
                             </button>
                         </div>
                     </div>
@@ -806,6 +827,8 @@ const AppearanceSettings: React.FC<{
                     </div>
                 </div>
             </div>
+
+
 
             {/* Display & Layout Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2176,7 +2199,9 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   onDeleteAccount,
   onVerifyPassword,
   onEmailChange,
-  deepLinkInfo
+  deepLinkInfo,
+  displayMode,
+  setDisplayMode
 }) => {
   const [activeSection, setActiveSection] = useState<SettingsSection>('profile');
   const [isSidebarOpen, setSidebarOpen] = useState(false); // Mobile sidebar state
@@ -2208,7 +2233,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
     switch (activeSection) {
       case 'profile': return <ProfileSettings user={user} onSave={onProfileUpdate} onOpenApp={onOpenApp || (() => {})} />;
-      case 'appearance': return <AppearanceSettings user={user} taskbarPosition={taskbarPosition} setTaskbarPosition={setTaskbarPosition} mobileTaskbarPosition={mobileTaskbarPosition} setMobileTaskbarPosition={setMobileTaskbarPosition} desktopIconSize={desktopIconSize} setDesktopIconSize={setDesktopIconSize} onProfileUpdate={onProfileUpdate} />;
+      case 'appearance': return <AppearanceSettings user={user} taskbarPosition={taskbarPosition} setTaskbarPosition={setTaskbarPosition} mobileTaskbarPosition={mobileTaskbarPosition} setMobileTaskbarPosition={setMobileTaskbarPosition} desktopIconSize={desktopIconSize} setDesktopIconSize={setDesktopIconSize} onProfileUpdate={onProfileUpdate} displayMode={displayMode} setDisplayMode={setDisplayMode} />;
       case 'tools': return <ToolsSettings user={user} onProfileUpdate={onProfileUpdate} />;
       case 'friends': return <FriendManagement user={user} allUsers={allUsers} onAccept={onAcceptFriendRequest} onReject={onRejectFriendRequest} onRemoveFriend={onRemoveFriend} onSendFriendRequest={onSendFriendRequest} onOpenApp={onOpenApp || (() => {})} />;
       case 'account': return <AccountSettings user={user} onLogout={onLogout} onDeleteAccount={onDeleteAccount} onProfileUpdate={onProfileUpdate} onVerifyPassword={onVerifyPassword} onEmailChange={onEmailChange} />;

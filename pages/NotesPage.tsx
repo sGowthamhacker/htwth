@@ -204,7 +204,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ user }) => {
                                         </span>
                                         <button 
                                             onClick={() => handleDeleteNote(note.id)} 
-                                            className={`p-1.5 rounded-full bg-white/40 hover:bg-red-500 hover:text-white transition-all duration-200 opacity-0 group-hover:opacity-100 focus:opacity-100 ${theme.text}`}
+                                            className={`p-1.5 rounded-full bg-white/40 hover:bg-red-500 hover:text-white transition-all duration-200 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 ${theme.text}`}
                                             title="Delete Note"
                                         >
                                             <TrashIcon className="w-4 h-4" />

@@ -87,7 +87,7 @@ const WriteupPreviewPanel: React.FC<{ post: Post | any, currentUser: User }> = (
             </div>
             <div className="max-w-5xl mx-auto p-6 sm:p-8">
                 <header className="mb-8 border-b border-slate-200 dark:border-slate-800 pb-6">
-                    <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight mb-4 text-slate-900 dark:text-white break-words">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight mb-4 text-slate-900 dark:text-white break-words">
                         {post.title || <span className="text-slate-300 dark:text-slate-600">Untitled Writeup</span>}
                     </h1>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-6 text-sm text-slate-500 dark:text-slate-400">
@@ -759,7 +759,7 @@ const WriteupPage: React.FC<WriteupPageProps> = ({ user, posts, onSavePost, onDe
                     {selectedPost ? (
                         <div className="flex flex-col min-h-full">
                             <header className="p-4 sm:p-6 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-                                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight mb-3 text-slate-900 dark:text-white break-words">{selectedPost.title}</h1>
+                                <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold tracking-tight mb-3 text-slate-900 dark:text-white break-words">{selectedPost.title}</h1>
                                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-6 text-sm text-slate-500 dark:text-slate-400">
                                     <div className="flex items-center gap-3">
                                        <img src={getCloudinaryUrl(selectedPost.author?.avatar || 'https://i.pravatar.cc/150?u=anonymous', { width: 36, height: 36, radius: 'max' })} alt={selectedPost.author?.name || 'Anonymous'} className="w-9 h-9 rounded-full" />

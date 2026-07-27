@@ -176,7 +176,7 @@ const BlogPostViewer: React.FC<BlogPostViewerProps> = ({ post, onUpdate }) => {
             <div className="max-w-3xl mx-auto">
                 <article>
                     <header className="mb-8">
-                        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-3">
+                        <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-3 break-words">
                             {post.title}
                         </h1>
                         <div className="flex items-center justify-between">

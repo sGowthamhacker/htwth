@@ -2,6 +2,18 @@
 
 This file keeps track of all the changes, fixes, and new features added to the web app.
 
+## [2026-07-27]
+
+### Added
+- **UI Mode Separation & Maintenance**:
+  - Restructured `WebAppLayout` and configuration state to enforce strict separation between `windows`, `mac`, and `webapp` modes.
+  - Implemented user-specific maintenance scripts for `desktop_preferences` ensuring consistent theme application.
+  - Added automated database maintenance (JSONB parsing) to initialize/update theme settings for all users.
+  - Optimized visual presentation in `webapp` mode: reduced excess padding, removed duplicate borders, and restricted the footer to `home` view for a cleaner, unified dashboard experience.
+
+### Fixed
+- **UI Consistency**: Resolved issue where footer/borders were appearing on non-dashboard pages in `webapp` mode.
+
 ## [2026-07-25]
 
 ### Fixed

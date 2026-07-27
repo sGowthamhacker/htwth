@@ -7,10 +7,12 @@ import CheckCircleIcon from '../components/icons/CheckCircleIcon';
 import XCircleIcon from '../components/icons/XCircleIcon';
 import ActivityLogIcon from '../components/icons/ActivityLogIcon';
 import { getCloudinaryUrl } from '../utils/imageService';
-import { updateUser, getActivityLog, addActivityLog, deleteActivityLog, clearActivityLog, sendGlobalNotifications, getGlobalSettings, updateGlobalSettings, subscribeToGlobalSettings, subscribeToActivityLog, subscribeToUsers, getPosts, getContactRequests, updateContactRequestStatus, deleteUser } from '../services/database';
+import { updateUser, getActivityLog, addActivityLog, deleteActivityLog, clearActivityLog, sendGlobalNotifications, addNotificationToDb, getGlobalSettings, updateGlobalSettings, subscribeToGlobalSettings, subscribeToActivityLog, subscribeToUsers, getPosts, getContactRequests, updateContactRequestStatus, deleteUser } from '../services/database';
 import { getIncidents, addIncident, updateIncident, deleteIncident, type SystemIncident } from '../services/incidents';
 import MailIcon from '../components/icons/MailIcon';
 import UsersIcon from '../components/icons/UsersIcon';
+import UserIcon from '../components/icons/UserIcon';
+import ChevronDownIcon from '../components/icons/ChevronDownIcon';
 import KeyIcon from '../components/icons/KeyIcon';
 import PencilIcon from '../components/icons/PencilIcon';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -30,7 +32,7 @@ import { EMAIL_TEMPLATES, EmailTemplate } from '../utils/emailTemplates';
 import { formatEmailHtml } from '../utils/emailFormatter';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
-import { Server } from 'lucide-react';
+import { Server, Monitor as MonitorIcon, Smartphone as SmartphoneIcon, UserPlus as UserPlusIcon, FileText as DocumentTextIcon, Megaphone as MegaphoneIcon, Settings2 as Settings2Icon, Activity as ActivityIcon, Inbox as InboxIcon, Sparkles as SparklesIcon, X as XIcon, LayoutTemplate as TemplateIcon } from 'lucide-react';
 
 // EyeIcon for Permissions dropdown
 const EyeIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -203,253 +205,236 @@ const BroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({ adm
             role: adminUser.role,
         };
 
-        const filteredUsers = getRecipients(mode, allUsers, selectedUsers);
+        const targetUserIds = mode === 'all'
+            ? allUsers.map(u => u.id)
+            : selectedUsers.map(u => u.id);
 
-        let notificationsToSend: GlobalNotification[] = filteredUsers.map(u => ({
-            id: crypto.randomUUID(),
-            to: u.email,
-            from: fromPayload,
-            type: 'admin_message',
-            title,
-            message,
-        }));
-        
-        if (notificationsToSend.length === 0) {
-            addNotification({ title: 'Info', message: 'No users to send the message to.', type: 'info' });
+        if (targetUserIds.length === 0) {
+            addNotification({ title: 'Error', message: 'No recipients selected.', type: 'error' });
             setIsLoading(false);
             return;
         }
 
-        const success = await sendGlobalNotifications(notificationsToSend);
-        setIsLoading(false);
+        try {
+            const promises = targetUserIds.map(userId => 
+                addNotificationToDb({
+                    userId,
+                    title,
+                    message,
+                    sourceType: 'admin_message',
+                    fromUser: {
+                        email: adminUser.email,
+                        name: adminUser.name,
+                        avatar: adminUser.avatar,
+                        role: adminUser.role
+                    }
+                })
+            );
+            await Promise.all(promises);
 
-        if (success) {
-            addNotification({ title: 'Broadcast Sent', message: `Communique dispatched to ${notificationsToSend.length} user(s).`, type: 'success' });
+            addNotification({ title: 'Success', message: `Broadcast sent to ${targetUserIds.length} users.`, type: 'success' });
             setTitle('');
             setMessage('');
-            setSearchQuery('');
-            setSelectedUsers([]);
-        } else {
-            addNotification({ title: 'Broadcast Failed', message: 'Transmission failed. Please try again.', type: 'error' });
+            if (mode === 'specific') setSelectedUsers([]);
+        } catch (error) {
+            console.error("Error sending broadcast:", error);
+            addNotification({ title: 'Error', message: 'Failed to send broadcast.', type: 'error' });
+        } finally {
+            setIsLoading(false);
         }
     };
-    
-    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement> | React.FocusEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        setSearchQuery(value);
 
-        if (value.trim()) {
-            const filteredUsers = allUsers.filter(user =>
-                user.role !== 'admin' &&
-                !selectedUsers.some(selected => selected.id === user.id) &&
-                ((user.name && user.name.toLowerCase().includes(value.toLowerCase())) ||
-                 (user.email && user.email.toLowerCase().includes(value.toLowerCase())))
-            );
-            setSuggestions(filteredUsers.slice(0, 5));
-            setShowSuggestions(true);
-        } else {
-            setShowSuggestions(false);
-            setSuggestions([]);
-        }
-    };
-    
     const handleSuggestionClick = (user: User) => {
-        if (!selectedUsers.some(u => u.id === user.id)) {
+        if (!selectedUsers.find(u => u.id === user.id)) {
             setSelectedUsers([...selectedUsers, user]);
         }
         setSearchQuery('');
         setShowSuggestions(false);
-        setSuggestions([]);
     };
 
-    const handleRemoveUser = (userId: string) => {
-        setSelectedUsers(selectedUsers.filter(u => u.id !== userId));
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setSearchQuery(value);
+        if (value.trim()) {
+            const filtered = allUsers.filter(u =>
+                 u.role !== 'admin' &&
+                 !selectedUsers.some(s => s.id === u.id) &&
+                ((u.name && u.name.toLowerCase().includes(value.toLowerCase())) || (u.email && u.email.toLowerCase().includes(value.toLowerCase())))
+            );
+            setSuggestions(filtered.slice(0, 5));
+            setShowSuggestions(true);
+        } else {
+            setShowSuggestions(false);
+        }
     };
 
     return (
-        <div ref={broadcastRef} className="space-y-8 animate-fade-in" key="broadcast">
-            <div className="flex flex-col lg:flex-row gap-8">
+        <div ref={broadcastRef} className="space-y-6 animate-fade-in" key="broadcast">
+            
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
-                {/* Left Panel: Settings & Preview */}
-                <div className="lg:w-1/3 space-y-6">
-                    {/* Audience Selector Card */}
-                    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 p-6 z-20 relative">
-                        <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Transmission Scope</h3>
-                        <div className="space-y-3">
-                            <button 
-                                onClick={() => setMode('all')}
-                                className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all duration-300 text-left relative overflow-hidden group ${
-                                    mode === 'all' 
-                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/30' 
-                                    : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-400 text-slate-600 dark:text-slate-300'
-                                }`}
-                            >
-                                <div className={`p-3 rounded-full ${mode === 'all' ? 'bg-white/20' : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'}`}>
-                                    <UsersIcon className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <div className="font-bold text-sm">Global Broadcast</div>
-                                    <div className={`text-xs mt-0.5 ${mode === 'all' ? 'text-indigo-100' : 'text-slate-400'}`}>All registered users</div>
-                                </div>
-                                {mode === 'all' && <div className="absolute right-4 top-1/2 -translate-y-1/2"><CheckIcon className="w-5 h-5"/></div>}
-                            </button>
-                            
-                            <button 
-                                onClick={() => setMode('specific')}
-                                className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all duration-300 text-left relative overflow-hidden group ${
-                                    mode === 'specific' 
-                                    ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-500/30' 
-                                    : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-400 text-slate-600 dark:text-slate-300'
-                                }`}
-                            >
-                                <div className={`p-3 rounded-full ${mode === 'specific' ? 'bg-white/20' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'}`}>
-                                    <MailIcon className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <div className="font-bold text-sm">Direct Line</div>
-                                    <div className={`text-xs mt-0.5 ${mode === 'specific' ? 'text-emerald-100' : 'text-slate-400'}`}>Specific recipient(s)</div>
-                                </div>
-                                {mode === 'specific' && <div className="absolute right-4 top-1/2 -translate-y-1/2"><CheckIcon className="w-5 h-5"/></div>}
-                            </button>
+                {/* Compose & Settings (Left/Main) */}
+                <div className="lg:col-span-8 flex flex-col gap-6">
+                    {/* Settings Row */}
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-lg text-indigo-600 dark:text-indigo-400">
+                                <UsersIcon className="w-5 h-5" />
+                            </div>
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">Transmission Scope</h3>
                         </div>
                         
-                        {/* Conditional Recipient Input */}
-                        <div className={`transition-all duration-300 ease-in-out ${mode === 'specific' ? 'max-h-[500px] opacity-100 mt-4 overflow-visible' : 'max-h-0 opacity-0 mt-0 overflow-hidden'}`}>
-                            <label className="block text-xs font-bold uppercase text-slate-400 mb-2">Recipients</label>
-                            
-                            {/* Selected Chips */}
-                            {selectedUsers.length > 0 && (
-                                <div className="flex flex-wrap gap-2 mb-2">
+                        <div className="flex flex-wrap gap-3">
+                            <button
+                                onClick={() => setMode('all')}
+                                className={`flex-1 min-w-[150px] flex items-center justify-center gap-2 p-3 rounded-xl border transition-all duration-200 ${
+                                    mode === 'all'
+                                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                                        : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700 text-slate-600 dark:text-slate-300'
+                                }`}
+                            >
+                                <UsersIcon className="w-4 h-4" />
+                                <span className="text-sm font-semibold">All Users</span>
+                            </button>
+                            <button
+                                onClick={() => setMode('specific')}
+                                className={`flex-1 min-w-[150px] flex items-center justify-center gap-2 p-3 rounded-xl border transition-all duration-200 ${
+                                    mode === 'specific'
+                                        ? 'bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-500/20'
+                                        : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700 text-slate-600 dark:text-slate-300'
+                                }`}
+                            >
+                                <UserIcon className="w-4 h-4" />
+                                <span className="text-sm font-semibold">Specific Target</span>
+                            </button>
+                        </div>
+
+                        {mode === 'specific' && (
+                            <div className="mt-6 space-y-3 animate-fade-in">
+                                <div className="flex flex-wrap gap-2">
                                     {selectedUsers.map(u => (
-                                        <div key={u.id} className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 px-2 py-1 rounded-full animate-fade-in">
-                                            <img src={getCloudinaryUrl(u.avatar, { width: 20, height: 20, radius: 'max' })} alt={u.name} className="w-5 h-5 rounded-full" />
-                                            <span className="text-xs font-semibold text-indigo-800 dark:text-indigo-200 max-w-[100px] truncate">{u.name}</span>
-                                            <button 
-                                                onClick={() => handleRemoveUser(u.id)}
-                                                className="p-0.5 rounded-full hover:bg-indigo-200 dark:hover:bg-indigo-700 text-indigo-500 hover:text-indigo-800 dark:text-indigo-300 transition-colors"
-                                            >
-                                                <XCircleIcon className="w-4 h-4" />
+                                        <div key={u.id} className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 border border-emerald-100 dark:border-emerald-500/20">
+                                            {u.name}
+                                            <button onClick={() => setSelectedUsers(prev => prev.filter(x => x.id !== u.id))} className="hover:text-emerald-900 dark:hover:text-emerald-100 transition-colors">
+                                                <XCircleIcon className="w-3.5 h-3.5"/>
                                             </button>
                                         </div>
                                     ))}
                                 </div>
-                            )}
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name or email..."
+                                        value={searchQuery}
+                                        onChange={handleSearchChange}
+                                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all dark:text-white"
+                                    />
+                                    {showSuggestions && suggestions.length > 0 && (
+                                        <div className="absolute top-full mt-2 w-full bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
+                                            {suggestions.map(user => (
+                                                <button
+                                                    key={user.id}
+                                                    type="button"
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSuggestionClick(user); }}
+                                                    className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-3 transition-colors border-b border-slate-100 dark:border-slate-700/50 last:border-0"
+                                                >
+                                                    <img src={getCloudinaryUrl(user.avatar, { width: 32, height: 32, radius: 'max' })} alt={user.name} className="w-8 h-8 rounded-full flex-shrink-0" />
+                                                    <div>
+                                                        <div className="text-sm font-semibold text-slate-900 dark:text-white">{user.name}</div>
+                                                        <div className="text-xs text-slate-500">{user.email}</div>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
 
-                            <div className="relative">
+                    {/* Editor Row */}
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 flex-1 flex flex-col">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="p-2 bg-pink-50 dark:bg-pink-500/10 rounded-lg text-pink-600 dark:text-pink-400">
+                                <DocumentTextIcon className="w-5 h-5" />
+                            </div>
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">Compose Message</h3>
+                        </div>
+
+                        <div className="space-y-6 flex-1 flex flex-col">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">Subject</label>
                                 <input
                                     type="text"
-                                    value={searchQuery}
-                                    onChange={handleSearchChange}
-                                    onFocus={handleSearchChange}
-                                    placeholder="Search to add users..."
-                                    className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl p-3 pl-10 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all dark:text-white"
-                                    autoComplete="off"
-                                />
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                                    <SearchIcon className="w-4 h-4" />
-                                </div>
-                                {showSuggestions && suggestions.length > 0 && (
-                                    <div className="absolute left-0 right-0 top-full mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden animate-slide-up max-h-60 overflow-y-auto custom-scrollbar">
-                                        {suggestions.map(user => (
-                                            <button
-                                                key={user.id}
-                                                type="button"
-                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSuggestionClick(user); }}
-                                                className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-3 transition-colors border-b border-slate-100 dark:border-slate-700/50 last:border-0 group"
-                                            >
-                                                <img src={getCloudinaryUrl(user.avatar, { width: 32, height: 32, radius: 'max' })} alt={user.name} className="w-8 h-8 rounded-full group-hover:scale-110 transition-transform flex-shrink-0" />
-                                                <div className="min-w-0">
-                                                    <div className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{user.name}</div>
-                                                    <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</div>
-                                                </div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Preview Card */}
-                    <div className="bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-700/50 z-10 relative">
-                        <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Live Preview
-                        </h3>
-                        {/* Mock Notification */}
-                        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border-l-4 border-blue-500 p-4 relative overflow-hidden">
-                            <div className="flex items-start gap-3 relative z-10">
-                                <div className="flex-shrink-0">
-                                    <div className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-700 overflow-hidden shadow-sm">
-                                        <img src={adminUser.avatar} alt="Admin" className="w-full h-full object-cover" />
-                                    </div>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-1.5 mb-0.5">
-                                        <span className="font-bold text-sm text-slate-900 dark:text-white">{adminUser.name}</span>
-                                        <img src="https://gowthamsportfolio.netlify.app/assets/img/tick.gif" className="w-3.5 h-3.5" alt="Verified" />
-                                        <span className="text-xs text-slate-400 ml-auto">Now</span>
-                                    </div>
-                                    <p className="font-semibold text-sm text-slate-800 dark:text-slate-200 truncate pr-4">{title || "Subject Line"}</p>
-                                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-3 prose prose-xs dark:prose-invert [&_p]:m-0 [&_a]:text-indigo-500 [&_strong]:text-slate-800 dark:[&_strong]:text-slate-200" dangerouslySetInnerHTML={{ __html: parsedMessageHtml }} />
-                                </div>
-                            </div>
-                            {/* Decorative BG Element */}
-                            <div className="absolute -right-4 -top-4 w-16 h-16 bg-blue-500/10 rounded-full blur-xl"></div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right Panel: Composition */}
-                <div className="lg:w-2/3 flex flex-col h-full min-h-[500px] bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 relative overflow-hidden z-0">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
-                    
-                    <div className="p-8 md:p-10 flex-1 flex flex-col">
-                        <h2 className="text-xl font-serif font-bold text-slate-400 uppercase tracking-widest mb-8 flex items-center gap-4">
-                            <span>Communique Details</span>
-                            <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1"></div>
-                        </h2>
-                        
-                        <div className="space-y-8 flex-1">
-                            <div className="group">
-                                <label className="block text-xs font-bold uppercase text-slate-500 mb-2 transition-colors group-focus-within:text-indigo-600">Subject</label>
-                                <input 
-                                    type="text" 
-                                    value={title} 
-                                    onChange={e => setTitle(e.target.value)} 
-                                    className="w-full text-3xl md:text-4xl font-serif font-bold text-slate-900 dark:text-white bg-transparent border-b-2 border-slate-200 dark:border-slate-700 focus:border-indigo-600 dark:focus:border-indigo-500 outline-none py-2 placeholder:text-slate-300 dark:placeholder:text-slate-700 transition-colors"
-                                    placeholder="Enter Subject..."
+                                    value={title}
+                                    onChange={e => setTitle(e.target.value)}
+                                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 transition-all placeholder:font-normal"
+                                    placeholder="Enter announcement subject..."
                                 />
                             </div>
-
-                            <div className="flex-1 flex flex-col group h-full">
-                                <label className="block text-xs font-bold uppercase text-slate-500 mb-2 transition-colors group-focus-within:text-indigo-600">Message Body</label>
-                                <textarea 
-                                    value={message} 
-                                    onChange={e => setMessage(e.target.value)} 
-                                    className="flex-1 w-full bg-slate-50 dark:bg-slate-800/30 rounded-xl p-6 text-base md:text-lg leading-relaxed text-slate-700 dark:text-slate-300 resize-none border-0 focus:ring-2 focus:ring-indigo-500/20 placeholder:text-slate-400 outline-none transition-all"
-                                    placeholder="Type your official message here..."
+                            <div className="flex-1 flex flex-col">
+                                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide flex items-center justify-between">
+                                    <span>Message Body</span>
+                                    <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-400">Markdown Supported</span>
+                                </label>
+                                <textarea
+                                    value={message}
+                                    onChange={e => setMessage(e.target.value)}
+                                    className="flex-1 w-full min-h-[200px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 transition-all resize-none"
+                                    placeholder="Write your message here..."
                                 ></textarea>
                             </div>
                         </div>
 
-                        <div className="mt-8 flex justify-end items-center pt-6 border-t border-slate-100 dark:border-slate-800">
-                             <div className="text-xs text-slate-400 mr-6 italic font-serif">
-                                 Authorized by: {adminUser.name}
-                             </div>
-                            <button 
-                                onClick={handleSend} 
-                                disabled={isLoading} 
-                                className="relative overflow-hidden group bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-3 rounded-lg font-bold text-sm shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:transform-none"
+                        <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                            <button
+                                onClick={handleSend}
+                                disabled={isLoading}
+                                className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-800 dark:hover:bg-slate-100 transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
                             >
-                                <span className="relative z-10 flex items-center gap-2">
-                                    {isLoading ? <SpinnerIcon className="w-4 h-4 animate-spin"/> : <PaperAirplaneIcon className="w-4 h-4 transform group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />}
-                                    <span>Transmit Message</span>
-                                </span>
-                                <div className="absolute inset-0 bg-indigo-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300"></div>
+                                {isLoading ? <SpinnerIcon className="w-4 h-4 animate-spin"/> : <PaperAirplaneIcon className="w-4 h-4" />}
+                                Transmit Now
                             </button>
                         </div>
                     </div>
                 </div>
+
+                {/* Preview Panel (Right) */}
+                <div className="lg:col-span-4 space-y-6">
+                    <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl shadow-inner border border-slate-200 dark:border-slate-800 p-6 sticky top-6 h-[calc(100vh-120px)] overflow-y-auto">
+                        <div className="flex items-center gap-2 mb-6">
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                            </span>
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Live Notification Preview</h3>
+                        </div>
+
+                        {/* App-like notification card preview */}
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200/50 dark:border-slate-700/50 p-4">
+                            <div className="flex items-start gap-3">
+                                <img src={adminUser.avatar} alt="Admin" className="w-10 h-10 rounded-full border ring-2 ring-white dark:ring-slate-800" />
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between gap-2 mb-1">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="font-semibold text-sm text-slate-900 dark:text-white">{adminUser.name}</span>
+                                            <img src="https://gowthamsportfolio.netlify.app/assets/img/tick.gif" className="w-3.5 h-3.5" alt="Verified" />
+                                        </div>
+                                        <span className="text-[10px] text-slate-400">Just now</span>
+                                    </div>
+                                    <p className="font-bold text-sm text-slate-800 dark:text-slate-200 break-words leading-tight mb-2">
+                                        {title || "Notification Subject"}
+                                    </p>
+                                    <div 
+                                        className="text-xs text-slate-600 dark:text-slate-300 prose prose-xs dark:prose-invert max-w-none [&_p]:m-0 [&_p]:mb-2 last:[&_p]:mb-0 [&_a]:text-indigo-500 break-words" 
+                                        dangerouslySetInnerHTML={{ __html: parsedMessageHtml }} 
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     );
@@ -470,7 +455,46 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
     const [suggestions, setSuggestions] = useState<User[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+    const [isTemplateDropdownOpen, setIsTemplateDropdownOpen] = useState<boolean>(false);
+    const [templateSearch, setTemplateSearch] = useState<string>('');
+
+    const filteredTemplates = useMemo(() => {
+        if (!templateSearch.trim()) return EMAIL_TEMPLATES;
+        const q = templateSearch.toLowerCase();
+        return EMAIL_TEMPLATES.filter(t => 
+            t.name.toLowerCase().includes(q) || 
+            t.category.toLowerCase().includes(q) || 
+            t.description.toLowerCase().includes(q)
+        );
+    }, [templateSearch]);
     const broadcastRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        let isMounted = true;
+        const checkSmtp = async () => {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                const response = await fetch('/api/admin/test-smtp', { signal: controller.signal });
+                clearTimeout(timeoutId);
+                if (isMounted) {
+                    if (response.ok) {
+                        setSmtpStatus('success');
+                    } else {
+                        setSmtpStatus('error');
+                    }
+                }
+            } catch (error) {
+                if (isMounted) setSmtpStatus('error');
+            }
+        };
+        checkSmtp();
+        const intervalId = setInterval(checkSmtp, 5 * 60 * 1000);
+        return () => {
+            isMounted = false;
+            clearInterval(intervalId);
+        };
+    }, []);
 
     const renderedLivePreview = useMemo(() => {
         const rawContent = message || 'Your email content will appear here...';
@@ -504,10 +528,8 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
             let finalBody = template.body;
             const appUrl = window.location.origin;
             
-            // Replaces APP_URL
             finalBody = finalBody.replace(/\[APP_URL\]/g, appUrl);
 
-            // Replaces APP_STATS
             if (finalBody.includes('[APP_STATS]')) {
                 const totalMembers = allUsers?.length || 18;
                 const verifiedResearchers = allUsers?.filter(u => u.status === 'verified' || u.admin_verified || u.role === 'admin')?.length || 9;
@@ -534,139 +556,160 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
                 finalBody = finalBody.replace(/\[APP_STATS\]/g, statsHtml);
             }
 
-            // Replaces BLOG_LIST with latest 3 blogs
             if (finalBody.includes('[BLOG_LIST]')) {
                 const blogs = await getPosts('blog');
                 const recentBlogs = (blogs && blogs.length > 0) ? blogs.slice(0, 3) : [
                     { id: '1', title: 'Zero-Trust Architecture in Modern Cloud Infrastructure', summary: 'Architectural guide on adopting zero-trust verification across containerized microservices.', author: { name: 'Gowtham' }, created_at: new Date().toISOString() },
                     { id: '2', title: 'Automating Security Scans with Custom CI/CD Workflows', summary: 'How to inject static code analysis and SAST scanners into release pipelines.', author: { name: 'Security Hub' }, created_at: new Date().toISOString() },
-                    { id: '3', title: 'Deep Dive: Web Security in High-Throughput Node Applications', summary: 'Analyzing memory safety and input validation mitigations.', author: { name: 'Admin Team' }, created_at: new Date().toISOString() }
+                    { id: '3', title: 'The Evolution of Container Orchestration', summary: 'A deep dive into Kubernetes design patterns and resource management.', author: { name: 'Admin' }, created_at: new Date().toISOString() }
                 ];
-
-                const blogListStr = recentBlogs.map(b => `
-                    <div style="margin-bottom: 14px; padding: 16px 18px; background-color: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; text-align: left;">
-                        <div style="color: #0f172a; font-weight: 700; font-size: 14px; margin-bottom: 8px; line-height: 1.4;">✍️ ${b.title}</div>
-                        ${b.summary ? `<div style="color: #475569; font-size: 12px; margin-bottom: 12px; line-height: 1.5;">${b.summary}</div>` : ''}
-                        <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-top: 8px; border-top: 1px dashed #cbd5e1; padding-top: 10px;">
-                            <tr>
-                                <td align="left" style="color: #64748b; font-size: 11px; font-weight: 500; text-align: left; vertical-align: middle; padding-right: 12px;">
-                                    By <strong style="color: #334155;">${b.author?.name || 'Security Hub'}</strong>
-                                </td>
-                                <td align="right" style="text-align: right; vertical-align: middle;">
-                                    <a href="${appUrl}/#/blog/${b.id}" style="color: #4f46e5; text-decoration: none; font-size: 12px; font-weight: 700; white-space: nowrap; display: inline-block;">Read Full Article &rarr;</a>
-                                </td>
-                            </tr>
-                        </table>
+                
+                const blogsHtml = recentBlogs.map((blog: any) => `
+                    <div style="margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid #1e293b;">
+                        <div style="color: #38bdf8; font-size: 12px; font-weight: 600; margin-bottom: 8px;">NEW RESEARCH</div>
+                        <h3 style="color: #f8fafc; font-size: 18px; font-weight: 700; margin: 0 0 8px 0; line-height: 1.4;">${blog.title}</h3>
+                        <p style="color: #94a3b8; font-size: 14px; margin: 0 0 16px 0; line-height: 1.6;">${blog.summary || 'Insightful analysis and strategic recommendations from our cybersecurity research team.'}</p>
+                        <a href="${appUrl}/blog/${blog.id}" style="display: inline-block; background-color: #312e81; color: #818cf8; font-size: 13px; font-weight: 600; text-decoration: none; padding: 8px 16px; border-radius: 6px; border: 1px solid #4338ca;">Read Full Article →</a>
                     </div>
                 `).join('');
-
-                finalBody = finalBody.replace(/\[BLOG_LIST\]/g, blogListStr);
-            }
-            
-            // Replaces WRITEUP_LIST / POST_LIST / LATEST_WRITEUPS
-            if (finalBody.includes('[WRITEUP_LIST]') || finalBody.includes('[POST_LIST]') || finalBody.includes('[LATEST_WRITEUPS]')) {
-                const writeups = await getPosts('writeup');
-                const recentWriteups = (writeups && writeups.length > 0) ? writeups.slice(0, 3) : [
-                    { id: 'w1', title: 'Bypassing OAuth 2.0 State Verification in SSO Implementations', summary: 'Critical advisory regarding CSRF vulnerabilities in single sign-on redirect flows.', author: { name: 'Gowtham' }, created_at: new Date().toISOString() },
-                    { id: 'w2', title: 'SQL Injection Vulnerability in Legacy Reporting Module', summary: 'In-depth analysis of unescaped parameters in SQL query concatenation.', author: { name: 'Research Team' }, created_at: new Date().toISOString() },
-                    { id: 'w3', title: 'Remote Code Execution in Node.js File Processing Engine', summary: 'Demonstrating unsafe command execution through unsanitized user uploads.', author: { name: 'Vulnerability Lab' }, created_at: new Date().toISOString() }
-                ];
-
-                const writeupListStr = recentWriteups.map(p => `
-                    <div style="margin-bottom: 14px; padding: 16px 18px; background-color: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; text-align: left;">
-                        <div style="color: #0f172a; font-weight: 700; font-size: 14px; margin-bottom: 8px; line-height: 1.4;">📍 ${p.title}</div>
-                        ${p.summary ? `<div style="color: #475569; font-size: 12px; margin-bottom: 12px; line-height: 1.5;">${p.summary}</div>` : ''}
-                        <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-top: 8px; border-top: 1px dashed #cbd5e1; padding-top: 10px;">
-                            <tr>
-                                <td align="left" style="color: #64748b; font-size: 11px; font-weight: 500; text-align: left; vertical-align: middle; padding-right: 12px;">
-                                    By <strong style="color: #334155;">${p.author?.name || 'Security Hub'}</strong>
-                                </td>
-                                <td align="right" style="text-align: right; vertical-align: middle;">
-                                    <a href="${appUrl}/#/writeup/${p.id}" style="color: #059669; text-decoration: none; font-size: 12px; font-weight: 700; white-space: nowrap; display: inline-block;">View Security Report &rarr;</a>
-                                </td>
-                            </tr>
-                        </table>
-                    </div>
-                `).join('');
-
-                finalBody = finalBody.replace(/\[WRITEUP_LIST\]/g, writeupListStr);
-                finalBody = finalBody.replace(/\[POST_LIST\]/g, writeupListStr);
-                finalBody = finalBody.replace(/\[LATEST_WRITEUPS\]/g, writeupListStr);
+                
+                finalBody = finalBody.replace(/\[BLOG_LIST\]/g, blogsHtml);
             }
 
             setTitle(template.subject);
             setMessage(finalBody);
-            setSelectedTemplate(templateId);
-            addNotification({ title: 'Template Applied', message: `${template.name} loaded with live platform data.`, type: 'info' });
+            setSelectedTemplate('');
+        }
+    };
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (broadcastRef.current && !broadcastRef.current.contains(event.target as Node)) {
+                setShowSuggestions(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    const handleTestConnection = async () => {
+        setIsTesting(true);
+        setSmtpStatus('unknown');
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            const response = await fetch('/api/admin/test-smtp', { signal: controller.signal });
+            clearTimeout(timeoutId);
+            if (response.ok) {
+                setSmtpStatus('success');
+                addNotification({ title: 'Success', message: 'SMTP connection verified successfully.', type: 'success' });
+            } else {
+                setSmtpStatus('error');
+                addNotification({ title: 'Error', message: 'Failed to verify SMTP connection.', type: 'error' });
+            }
+        } catch (error) {
+            setSmtpStatus('error');
+            addNotification({ title: 'Error', message: 'Network error while testing SMTP.', type: 'error' });
+        } finally {
+            setIsTesting(false);
+        }
+    };
+
+    const getRecipients = (currentMode: string, all: User[], selected: User[]): User[] => {
+        switch (currentMode) {
+            case 'all':
+                return all.filter(u => u.email && u.role !== 'admin');
+            case 'verified':
+                return all.filter(u => u.email && (u.status === 'verified' || u.admin_verified) && u.role !== 'admin');
+            case 'unverified':
+                return all.filter(u => u.email && u.status !== 'verified' && !u.admin_verified && u.role !== 'admin');
+            case 'pending':
+                return all.filter(u => u.email && u.has_requested_writeup_access && u.writeup_access === 'none');
+            case 'specific':
+                return selected;
+            default:
+                return [];
         }
     };
 
     const handleSend = async () => {
         if (!title.trim() || !message.trim()) {
-            addNotification({ title: 'Error', message: 'Subject and message content cannot be empty.', type: 'error' });
+            addNotification({ title: 'Error', message: 'Subject and message body cannot be empty.', type: 'error' });
             return;
         }
 
+        if (smtpStatus !== 'success') {
+             addNotification({ title: 'Warning', message: 'SMTP server is not verified. Proceeding anyway, but emails might fail.', type: 'info' });
+        }
+
         setIsLoading(true);
+        
+        let initialRecipients = getRecipients(mode, allUsers, selectedUsers);
+        let targetUsers = initialRecipients.filter(u => !removedUserIds.includes(u.id));
 
-        const recipients = getRecipients(mode, allUsers, selectedUsers)
-            .filter(u => !removedUserIds.includes(u.id))
-            .map(u => u.email);
-
-        if (recipients.length === 0) {
+        if (targetUsers.length === 0) {
             addNotification({ title: 'Error', message: 'No recipients selected.', type: 'error' });
             setIsLoading(false);
             return;
         }
 
         try {
-            const response = await fetch('/api/admin/send-email', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    to: recipients,
-                    subject: title,
-                    body: message,
-                    senderName: adminUser?.name || 'Gowtham S Admin'
-                })
-            });
+            const BATCH_SIZE = 50; 
+            let successCount = 0;
+            let failureCount = 0;
 
-            const data = await response.json();
+            const finalHtmlContent = formatEmailHtml(message, adminUser.name || 'Gowtham S Admin');
 
-            if (response.ok) {
-                addNotification({ title: 'Email Sent', message: data.message || `Updates sent to ${recipients.length} user(s) via Gmail SMTP.`, type: 'success' });
+            for (let i = 0; i < targetUsers.length; i += BATCH_SIZE) {
+                const batch = targetUsers.slice(i, i + BATCH_SIZE);
+                const toEmails = batch.map(u => u.email).join(',');
+
+                const response = await fetch('/api/admin/send-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        to: toEmails,
+                        subject: title,
+                        body: finalHtmlContent,
+                        senderName: adminUser.name || 'Gowtham S Admin'
+                    })
+                });
+
+                if (response.ok) {
+                    successCount += batch.length;
+                } else {
+                    failureCount += batch.length;
+                }
+            }
+
+            if (failureCount === 0) {
+                addNotification({ title: 'Success', message: `Email campaign sent successfully to ${successCount} recipients.`, type: 'success' });
                 setTitle('');
                 setMessage('');
-                setSelectedUsers([]);
+                setRemovedUserIds([]);
+                if (mode === 'specific') setSelectedUsers([]);
+            } else if (successCount > 0) {
+                 addNotification({ title: 'Warning', message: `Sent to ${successCount} recipients, but failed for ${failureCount}.`, type: 'info' });
             } else {
-                addNotification({ title: 'Error', message: data.error || 'Failed to send emails.', type: 'error' });
+                 addNotification({ title: 'Error', message: 'Failed to send email campaign to all recipients.', type: 'error' });
             }
+
         } catch (error) {
-            addNotification({ title: 'Error', message: 'An error occurred while connecting to the mail server.', type: 'error' });
+            console.error("Error sending email broadcast:", error);
+            addNotification({ title: 'Error', message: 'A critical error occurred while sending emails.', type: 'error' });
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleTestConnection = async () => {
-        setIsTesting(true);
-        setSmtpStatus('unknown');
-        try {
-            const response = await fetch('/api/admin/test-smtp');
-            const data = await response.json();
-            if (response.ok) {
-                setSmtpStatus('success');
-                addNotification({ title: 'Success', message: 'SMTP connection verified successfully.', type: 'success' });
-            } else {
-                setSmtpStatus('error');
-                addNotification({ title: 'SMTP Error', message: data.error || 'Failed to connect to SMTP server.', type: 'error' });
-            }
-        } catch (error) {
-            setSmtpStatus('error');
-            addNotification({ title: 'Error', message: 'Failed to reach backend server.', type: 'error' });
-        } finally {
-            setIsTesting(false);
+    const handleSuggestionClick = (user: User) => {
+        if (!selectedUsers.find(u => u.id === user.id)) {
+            setSelectedUsers([...selectedUsers, user]);
         }
+        setSearchQuery('');
+        setShowSuggestions(false);
     };
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -674,8 +717,8 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
         setSearchQuery(value);
         if (value.trim()) {
             const filtered = allUsers.filter(u => 
-                u.role !== 'admin' && 
-                !selectedUsers.some(s => s.id === u.id) &&
+                 u.role !== 'admin' && 
+                 !selectedUsers.some(s => s.id === u.id) &&
                 ((u.name && u.name.toLowerCase().includes(value.toLowerCase())) || (u.email && u.email.toLowerCase().includes(value.toLowerCase())))
             );
             setSuggestions(filtered.slice(0, 5));
@@ -685,75 +728,143 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
         }
     };
 
+    const filteredRecipients = getRecipients(mode, allUsers, selectedUsers).filter(u => !removedUserIds.includes(u.id));
+
     return (
-        <div ref={broadcastRef} className="space-y-8 animate-fade-in" key="mail-broadcast">
-            <div className="flex flex-col lg:flex-row gap-8">
-                <div className="lg:w-1/3 space-y-6">
-                    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 p-6">
-                        <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">SMTP Delivery Scope</h3>
-                        <div className="space-y-3">
-                            <button onClick={() => setMode('all')} className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all ${mode === 'all' ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}>
-                                <UsersIcon className="w-5 h-5" />
-                                <div className="text-left"><div className="font-bold text-sm">All Registered</div><div className="text-[10px] opacity-70">Send to entire userbase</div></div>
-                            </button>
-                            <button onClick={() => setMode('verified')} className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all ${mode === 'verified' ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}>
-                                <UsersIcon className="w-5 h-5" />
-                                <div className="text-left"><div className="font-bold text-sm">Verified Users</div><div className="text-[10px] opacity-70">Send to verified members</div></div>
-                            </button>
-                            <button onClick={() => setMode('unverified')} className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all ${mode === 'unverified' ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}>
-                                <UsersIcon className="w-5 h-5" />
-                                <div className="text-left"><div className="font-bold text-sm">Unverified Users</div><div className="text-[10px] opacity-70">Send to unverified members</div></div>
-                            </button>
-                            <button onClick={() => setMode('pending')} className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all ${mode === 'pending' ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}>
-                                <UsersIcon className="w-5 h-5" />
-                                <div className="text-left"><div className="font-bold text-sm">Pending Verification</div><div className="text-[10px] opacity-70">Users awaiting approval</div></div>
-                            </button>
-                            <button onClick={() => setMode('specific')} className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all ${mode === 'specific' ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}>
-                                <MailIcon className="w-5 h-5" />
-                                <div className="text-left"><div className="font-bold text-sm">Targeted Users</div><div className="text-[10px] opacity-70">Pick specific emails</div></div>
-                            </button>
+        <div ref={broadcastRef} className="space-y-6 animate-fade-in" key="mail-broadcast">
+            {/* Sleek SMTP Status Indicator */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                    <div className={`p-3 rounded-xl flex items-center justify-center ${
+                        smtpStatus === 'success' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                        smtpStatus === 'error' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400' :
+                        'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                    }`}>
+                        {smtpStatus === 'success' && <CheckCircleIcon className="w-6 h-6" />}
+                        {smtpStatus === 'error' && <XCircleIcon className="w-6 h-6" />}
+                        {smtpStatus === 'unknown' && <RefreshIcon className="w-6 h-6 animate-spin" />}
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                            SMTP Connection Status
+                            {smtpStatus === 'success' && <span className="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-400/10 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-600/20 dark:ring-emerald-400/20">Operational</span>}
+                            {smtpStatus === 'error' && <span className="inline-flex items-center rounded-full bg-rose-50 dark:bg-rose-400/10 px-2 py-1 text-xs font-medium text-rose-700 dark:text-rose-400 ring-1 ring-inset ring-rose-600/10 dark:ring-rose-400/20">Failed</span>}
+                            {smtpStatus === 'unknown' && <span className="inline-flex items-center rounded-full bg-slate-50 dark:bg-slate-400/10 px-2 py-1 text-xs font-medium text-slate-700 dark:text-slate-400 ring-1 ring-inset ring-slate-600/10 dark:ring-slate-400/20 animate-pulse">Checking...</span>}
+                        </h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                            {smtpStatus === 'success' ? 'Connected securely to SMTP server. Ready for broadcasting.' :
+                             smtpStatus === 'error' ? 'Connection failed. Please check your SMTP configuration.' :
+                             'Verifying secure connection to the mail server...'}
+                        </p>
+                    </div>
+                </div>
+                <button
+                    onClick={handleTestConnection}
+                    disabled={isTesting}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors disabled:opacity-50 shadow-sm"
+                >
+                    <RefreshIcon className={`w-4 h-4 ${isTesting ? 'animate-spin' : ''}`} />
+                    {isTesting ? 'Testing...' : 'Test Connection'}
+                </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                {/* Compose & Settings (Left/Main) */}
+                <div className="lg:col-span-7 flex flex-col gap-6">
+                    {/* Settings Row */}
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-lg text-blue-600 dark:text-blue-400">
+                                    <MailIcon className="w-5 h-5" />
+                                </div>
+                                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">Delivery Scope</h3>
+                            </div>
+                            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                {filteredRecipients.length} Recipients
+                            </span>
                         </div>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+                            {[
+                                { id: 'all', label: 'All Users', icon: UsersIcon },
+                                { id: 'verified', label: 'Verified', icon: ShieldIcon },
+                                { id: 'unverified', label: 'Unverified', icon: UserIcon },
+                                { id: 'pending', label: 'Pending', icon: UserPlusIcon },
+                                { id: 'specific', label: 'Targeted', icon: MailIcon }
+                            ].map(option => (
+                                <button
+                                    key={option.id}
+                                    onClick={() => setMode(option.id as any)}
+                                    className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border transition-all duration-200 ${
+                                        mode === option.id
+                                            ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20'
+                                            : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700 text-slate-600 dark:text-slate-300'
+                                    }`}
+                                >
+                                    <option.icon className="w-5 h-5" />
+                                    <span className="text-xs font-semibold">{option.label}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Recipient Details & Exclusions */}
                         {mode !== 'specific' && (
-                            <div className="mt-6 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
-                                {(() => {
-                                    const filteredRecipients = getRecipients(mode, allUsers, selectedUsers).filter(u => !removedUserIds.includes(u.id));
-                                    return (
-                                        <>
-                                            <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Recipients Preview ({filteredRecipients.length} Users)</h4>
-                                            <div className="max-h-40 overflow-y-auto space-y-1">
-                                                {filteredRecipients.slice(0, 50).map(u => (
-                                                    <div key={u.id} className="text-[11px] text-slate-600 dark:text-slate-300 truncate flex items-center justify-between group">
-                                                        <span>{u.name} — <span className="font-mono text-slate-400">{u.email}</span></span>
-                                                        <button onClick={() => setRemovedUserIds(prev => [...prev, u.id])} className="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-700">
-                                                            <XCircleIcon className="w-3.5 h-3.5"/>
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                                {filteredRecipients.length > 50 && (
-                                                    <div className="text-[10px] text-slate-400 pt-1">+ {filteredRecipients.length - 50} more</div>
-                                                )}
-                                            </div>
-                                        </>
-                                    );
-                                })()}
+                            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                                <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3">Target Audience ({filteredRecipients.length})</h4>
+                                <div className="max-h-32 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
+                                    {filteredRecipients.slice(0, 30).map(u => (
+                                        <div key={u.id} className="text-[11px] text-slate-600 dark:text-slate-300 flex items-center justify-between group py-1 border-b border-slate-200/50 dark:border-slate-700/50 last:border-0">
+                                            <span className="truncate pr-4">{u.name} <span className="opacity-50">&lt;{u.email}&gt;</span></span>
+                                            <button onClick={() => setRemovedUserIds(prev => [...prev, u.id])} className="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-700 transition-opacity" title="Exclude user">
+                                                <XCircleIcon className="w-3.5 h-3.5"/>
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {filteredRecipients.length > 30 && (
+                                        <div className="text-[10px] text-slate-400 pt-2 font-medium italic text-center">+ {filteredRecipients.length - 30} more recipients</div>
+                                    )}
+                                </div>
                             </div>
                         )}
+
+                        {/* Specific User Search */}
                         {mode === 'specific' && (
-                            <div className="mt-4 space-y-4">
-                                <div className="flex flex-wrap gap-1">
+                            <div className="space-y-3 animate-fade-in">
+                                <div className="flex flex-wrap gap-2 mb-3">
                                     {selectedUsers.map(u => (
-                                        <div key={u.id} className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded-md text-[10px] flex items-center gap-1">
+                                        <div key={u.id} className="bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 border border-blue-100 dark:border-blue-500/20">
                                             {u.email}
-                                            <button onClick={() => setSelectedUsers(prev => prev.filter(x => x.id !== u.id))}><XCircleIcon className="w-3 h-3"/></button>
+                                            <button onClick={() => setSelectedUsers(prev => prev.filter(x => x.id !== u.id))} className="hover:text-blue-900 dark:hover:text-blue-100 transition-colors">
+                                                <XCircleIcon className="w-3.5 h-3.5"/>
+                                            </button>
                                         </div>
                                     ))}
                                 </div>
                                 <div className="relative">
-                                    <input type="text" value={searchQuery} onChange={handleSearchChange} placeholder="Search users..." className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name or email to add..."
+                                        value={searchQuery}
+                                        onChange={handleSearchChange}
+                                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all dark:text-white"
+                                    />
                                     {showSuggestions && suggestions.length > 0 && (
-                                        <div className="absolute top-full left-0 right-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl rounded-lg mt-1 z-50 overflow-hidden">
-                                            {suggestions.map(u => (
-                                                <button key={u.id} onClick={() => { setSelectedUsers([...selectedUsers, u]); setSearchQuery(''); setShowSuggestions(false); }} className="w-full p-2 text-left text-xs hover:bg-slate-100 dark:hover:bg-slate-700 border-b border-slate-100 dark:border-slate-700 last:border-0">{u.name} ({u.email})</button>
+                                        <div className="absolute top-full mt-2 w-full bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
+                                            {suggestions.map(user => (
+                                                <button
+                                                    key={user.id}
+                                                    type="button"
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSuggestionClick(user); }}
+                                                    className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-3 transition-colors border-b border-slate-100 dark:border-slate-700/50 last:border-0"
+                                                >
+                                                    <img src={getCloudinaryUrl(user.avatar, { width: 32, height: 32, radius: 'max' })} alt={user.name} className="w-8 h-8 rounded-full flex-shrink-0" />
+                                                    <div className="overflow-hidden">
+                                                        <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">{user.name}</div>
+                                                        <div className="text-xs text-slate-500 truncate">{user.email}</div>
+                                                    </div>
+                                                </button>
                                             ))}
                                         </div>
                                     )}
@@ -762,178 +873,233 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
                         )}
                     </div>
 
-                    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 p-6">
-                        <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center justify-between">
-                            Premium Mail Templates
-                            <span className="bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 text-[10px] px-2 py-0.5 rounded-full">{EMAIL_TEMPLATES.length} TEMPLATES</span>
-                        </h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[280px] overflow-y-auto pr-1">
-                             {EMAIL_TEMPLATES.map(t => (
-                                 <button 
-                                    key={t.id}
-                                    onClick={() => applyTemplate(t.id)}
-                                    className={`text-[10px] p-2.5 rounded-lg border text-left flex flex-col gap-1 transition-all ${
-                                        selectedTemplate === t.id 
-                                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-500 shadow-sm' 
-                                        : 'border-slate-100 dark:border-slate-800 hover:border-indigo-300 text-slate-500 dark:text-slate-400'
-                                    }`}
-                                 >
-                                     <div className="flex items-center justify-between w-full">
-                                         <span className="font-bold uppercase tracking-tighter opacity-60 text-[9px]">{t.category}</span>
-                                         <span className={`text-[8px] font-extrabold px-1.5 py-0.2 rounded ${t.format === 'html' ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
-                                             {t.format === 'html' ? 'HTML+CSS' : 'MARKDOWN'}
-                                         </span>
-                                     </div>
-                                     <span className="font-bold truncate text-slate-800 dark:text-slate-200">{t.name}</span>
-                                     <span className="text-[9px] text-slate-400 dark:text-slate-500 line-clamp-1">{t.description}</span>
-                                 </button>
-                             ))}
-                        </div>
-                    </div>
+                    {/* Editor Row */}
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-4 sm:p-6 flex-1 flex flex-col relative overflow-visible">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-amber-50 dark:bg-amber-500/10 rounded-lg text-amber-600 dark:text-amber-400 shrink-0">
+                                    <DocumentTextIcon className="w-5 h-5" />
+                                </div>
+                                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">Email Campaign Content</h3>
+                            </div>
 
-                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700 flex flex-col gap-3">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 text-xs font-bold text-slate-400"><RefreshIcon className="w-3 h-3" /> SMTP SERVER STATUS</div>
-                            <button 
-                                onClick={handleTestConnection}
-                                disabled={isTesting}
-                                className="text-[10px] font-bold text-indigo-500 hover:text-indigo-600 disabled:opacity-50"
-                            >
-                                {isTesting ? 'TESTING...' : 'RE-TEST'}
-                            </button>
+                            {/* Custom Template Chooser Dropdown */}
+                            <div className="relative w-full sm:w-auto z-30">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsTemplateDropdownOpen(!isTemplateDropdownOpen)}
+                                    className="w-full sm:w-auto inline-flex items-center justify-between gap-2.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold py-2 px-3.5 rounded-xl transition-all shadow-xs active:scale-95 cursor-pointer"
+                                >
+                                    <div className="flex items-center gap-2 truncate">
+                                        <SparklesIcon className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                        <span className="truncate max-w-[200px] sm:max-w-[220px]">
+                                            {selectedTemplate 
+                                                ? EMAIL_TEMPLATES.find(t => t.id === selectedTemplate)?.name || 'Load Template...' 
+                                                : 'Load Template...'
+                                            }
+                                        </span>
+                                    </div>
+                                    <ChevronDownIcon className={`w-3.5 h-3.5 text-amber-500 transition-transform duration-200 shrink-0 ${isTemplateDropdownOpen ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                {isTemplateDropdownOpen && (
+                                    <>
+                                        {/* Mobile Backdrop Overlay & Outside Click Handler */}
+                                        <div 
+                                            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs sm:bg-transparent"
+                                            onClick={() => setIsTemplateDropdownOpen(false)}
+                                        />
+
+                                        {/* Popover / Modal List */}
+                                        <div className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 bottom-4 sm:bottom-auto sm:top-full sm:mt-2 z-50 sm:w-96 max-h-[80vh] sm:max-h-[420px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-fade-in">
+                                            {/* Header */}
+                                            <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/60">
+                                                <div className="flex items-center gap-2">
+                                                    <TemplateIcon className="w-4 h-4 text-amber-500 shrink-0" />
+                                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">Select Template</span>
+                                                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-extrabold">
+                                                        {EMAIL_TEMPLATES.length}
+                                                    </span>
+                                                </div>
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setIsTemplateDropdownOpen(false)}
+                                                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors"
+                                                >
+                                                    <XIcon className="w-4 h-4" />
+                                                </button>
+                                            </div>
+
+                                            {/* Search Filter */}
+                                            <div className="p-2.5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+                                                <div className="relative">
+                                                    <SearchIcon className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                                    <input
+                                                        type="text"
+                                                        value={templateSearch}
+                                                        onChange={(e) => setTemplateSearch(e.target.value)}
+                                                        placeholder="Search templates..."
+                                                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Scrollable List */}
+                                            <div className="p-2 overflow-y-auto space-y-1 flex-1 max-h-[300px]">
+                                                {filteredTemplates.length === 0 ? (
+                                                    <div className="p-6 text-center text-xs text-slate-400 italic">
+                                                        No matching templates found
+                                                    </div>
+                                                ) : (
+                                                    filteredTemplates.map(t => {
+                                                        const isSelected = selectedTemplate === t.id;
+                                                        return (
+                                                            <button
+                                                                key={t.id}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    applyTemplate(t.id);
+                                                                    setIsTemplateDropdownOpen(false);
+                                                                    setTemplateSearch('');
+                                                                }}
+                                                                className={`w-full text-left p-2.5 rounded-xl transition-all flex flex-col gap-1 border cursor-pointer ${
+                                                                    isSelected 
+                                                                        ? 'bg-amber-500/10 border-amber-500/40 text-amber-700 dark:text-amber-300' 
+                                                                        : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300'
+                                                                }`}
+                                                            >
+                                                                <div className="flex items-center justify-between gap-2">
+                                                                    <span className="font-bold text-xs truncate text-slate-900 dark:text-white">
+                                                                        {t.name}
+                                                                    </span>
+                                                                    <span className={`text-[9px] font-mono font-extrabold uppercase px-1.5 py-0.5 rounded shrink-0 ${
+                                                                        t.format === 'html' 
+                                                                            ? 'bg-indigo-500/10 text-indigo-500 border border-indigo-500/20' 
+                                                                            : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                                                                    }`}>
+                                                                        {t.format}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                                                                    {t.description}
+                                                                </p>
+                                                                <div className="flex items-center gap-2 mt-0.5">
+                                                                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                                                                        {t.category}
+                                                                    </span>
+                                                                </div>
+                                                            </button>
+                                                        );
+                                                    })
+                                                )}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
-                        <div className="flex items-center justify-between">
-                            <span className="text-[10px] text-slate-500">GMAIL_SMTP:v587</span>
-                            <span className={`text-[10px] font-bold ${
-                                smtpStatus === 'success' ? 'text-green-500' : 
-                                smtpStatus === 'error' ? 'text-red-500' : 
-                                'text-amber-500'
-                            }`}>
-                                {smtpStatus === 'success' ? 'OPERATIONAL' : 
-                                 smtpStatus === 'error' ? 'CONNECTION FAILED' : 
-                                 'NOT TESTED'}
-                            </span>
+
+                        <div className="space-y-6 flex-1 flex flex-col">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">Subject Line</label>
+                                <input
+                                    type="text"
+                                    value={title}
+                                    onChange={e => setTitle(e.target.value)}
+                                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all placeholder:font-normal"
+                                    placeholder="Enter captivating subject..."
+                                />
+                            </div>
+                            <div className="flex-1 flex flex-col">
+                                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                                        Email Body (HTML/Markdown)
+                                    </label>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <button onClick={() => insertFormatting('**', '**')} className="p-1 rounded text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-300 transition-colors" title="Bold">B</button>
+                                        <button onClick={() => insertFormatting('*', '*')} className="p-1 rounded text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-300 transition-colors italic" title="Italic">I</button>
+                                        <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+                                        <button onClick={() => insertSnippet('<a href="https://example.com" style="display:inline-block;background:#4f46e5;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;">Call to Action</a>')} className="text-[10px] uppercase font-bold text-slate-500 hover:text-amber-600 transition-colors px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800" title="Insert Button HTML">CTA</button>
+                                    </div>
+                                </div>
+                                <textarea
+                                    value={message}
+                                    onChange={e => setMessage(e.target.value)}
+                                    className="flex-1 w-full min-h-[300px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all resize-none font-mono"
+                                    placeholder="<h1 style='color: #1e293b;'>Hello World</h1> or standard Markdown..."
+                                ></textarea>
+                            </div>
+                        </div>
+
+                        <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                            <button
+                                onClick={handleSend}
+                                disabled={isLoading || filteredRecipients.length === 0}
+                                className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-3 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-800 dark:hover:bg-slate-100 transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none shadow-lg hover:shadow-xl"
+                            >
+                                {isLoading ? <SpinnerIcon className="w-4 h-4 animate-spin"/> : <PaperAirplaneIcon className="w-4 h-4" />}
+                                Launch Campaign
+                            </button>
                         </div>
                     </div>
                 </div>
-                <div className="lg:w-2/3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden flex flex-col min-h-[500px]">
-                    <div className="p-8 flex-1 flex flex-col">
-                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-6">Internal Update Dispatcher</h2>
-                        <div className="space-y-6 flex-1 flex flex-col">
-                            <div>
-                                <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Subject Line</label>
-                                <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="System Update: v1.0.x is now live!" className="w-full bg-transparent border-b border-slate-200 dark:border-slate-800 py-2 text-lg font-bold outline-none focus:border-indigo-500 transition-colors" />
-                            </div>
-                            <div className="flex-1 flex flex-col">
-                                <div className="flex flex-col gap-2 mb-2">
-                                    <div className="flex items-center justify-between">
-                                        <label className="block text-[10px] font-black uppercase text-slate-400">Email Content (HTML & CSS / Markdown)</label>
-                                        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-                                            <button type="button" onClick={() => insertFormatting('**', '**')} className="px-1.5 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded transition-colors" title="Bold">B</button>
-                                            <button type="button" onClick={() => insertFormatting('*', '*')} className="px-1.5 py-0.5 text-[10px] font-italic text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded transition-colors" title="Italic"><i>I</i></button>
-                                            <button type="button" onClick={() => insertFormatting('## ')} className="px-1.5 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded transition-colors" title="Heading">H2</button>
-                                            <button type="button" onClick={() => insertFormatting('- ')} className="px-1.5 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded transition-colors" title="List">• List</button>
-                                            <button type="button" onClick={() => insertFormatting('[', '](https://)')} className="px-1.5 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded transition-colors" title="Link">Link</button>
-                                            <button type="button" onClick={() => insertFormatting('`', '`')} className="px-1.5 py-0.5 text-[10px] font-mono text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded transition-colors" title="Code">&lt;/&gt;</button>
-                                            <button type="button" onClick={() => insertFormatting('> ')} className="px-1.5 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded transition-colors" title="Quote">Quote</button>
-                                        </div>
-                                    </div>
 
-                                    {/* HTML Component Snippets Bar */}
-                                    <div className="flex items-center gap-1.5 overflow-x-auto py-1 border-t border-b border-slate-100 dark:border-slate-800">
-                                        <span className="text-[9px] font-black uppercase text-indigo-500 dark:text-indigo-400 whitespace-nowrap">Insert HTML UI:</span>
-                                        <button 
-                                            type="button" 
-                                            onClick={() => insertSnippet('<div style="text-align: center; margin: 24px 0;"><a href="https://example.com" style="background-color: #4f46e5; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 700; padding: 12px 28px; border-radius: 8px; display: inline-block;">Action Button &rarr;</a></div>')} 
-                                            className="px-2 py-0.5 text-[9px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-md hover:bg-indigo-100 transition-colors whitespace-nowrap"
-                                        >
-                                            + CTA Button
-                                        </button>
-                                        <button 
-                                            type="button" 
-                                            onClick={() => insertSnippet('<div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 14px 16px; border-radius: 0 8px 8px 0; margin: 16px 0;"><strong style="color: #dc2626; font-size: 13px;">Security Notice:</strong><p style="margin: 4px 0 0 0; color: #7f1d1d; font-size: 13px;">Please verify your account credentials in settings.</p></div>')} 
-                                            className="px-2 py-0.5 text-[9px] font-bold bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-md hover:bg-rose-100 transition-colors whitespace-nowrap"
-                                        >
-                                            + Alert Card
-                                        </button>
-                                        <button 
-                                            type="button" 
-                                            onClick={() => insertSnippet('<div style="background-color: #0f172a; border-radius: 12px; padding: 20px; text-align: center; margin: 16px 0; color: #ffffff;"><div style="color: #38bdf8; font-size: 24px; font-weight: 800;">100%</div><div style="color: #94a3b8; font-size: 11px; font-weight: 600; text-transform: uppercase;">System Operational</div></div>')} 
-                                            className="px-2 py-0.5 text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-200 transition-colors whitespace-nowrap"
-                                        >
-                                            + Metric Card
-                                        </button>
-                                        <button 
-                                            type="button" 
-                                            onClick={() => insertSnippet('<span style="display: inline-block; background-color: rgba(99, 102, 241, 0.15); border: 1px solid #6366f1; color: #6366f1; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 12px; text-transform: uppercase;">VERIFIED</span>')} 
-                                            className="px-2 py-0.5 text-[9px] font-bold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-md hover:bg-emerald-100 transition-colors whitespace-nowrap"
-                                        >
-                                            + Status Badge
-                                        </button>
-                                        <button 
-                                            type="button" 
-                                            onClick={() => insertSnippet('<div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 24px; border-radius: 12px; color: #ffffff; margin-bottom: 16px;"><h2 style="margin: 0 0 6px 0; color: #ffffff; font-size: 18px; font-weight: 800;">Header Banner</h2><p style="margin: 0; color: #94a3b8; font-size: 13px;">Subtitle highlight details...</p></div>')} 
-                                            className="px-2 py-0.5 text-[9px] font-bold bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded-md hover:bg-purple-100 transition-colors whitespace-nowrap"
-                                        >
-                                            + Banner Header
-                                        </button>
-                                        <button 
-                                            type="button" 
-                                            onClick={() => insertSnippet('<hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />')} 
-                                            className="px-2 py-0.5 text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-200 transition-colors whitespace-nowrap"
-                                        >
-                                            + Divider
-                                        </button>
-                                    </div>
-                                </div>
-                                <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Type update details in HTML, CSS or Markdown..." className="flex-1 w-full bg-slate-50 dark:bg-slate-800/20 rounded-xl p-4 text-xs font-mono resize-none outline-none focus:ring-1 focus:ring-indigo-500 min-h-[180px]" />
+                {/* Preview Panel (Right) */}
+                <div className="lg:col-span-5 flex flex-col h-[calc(100vh-120px)] sticky top-6">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col h-full overflow-hidden">
+                        
+                        {/* Browser-like Toolbar */}
+                        <div className="bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center justify-between">
+                            <div className="flex gap-1.5">
+                                <div className="w-3 h-3 rounded-full bg-rose-400"></div>
+                                <div className="w-3 h-3 rounded-full bg-amber-400"></div>
+                                <div className="w-3 h-3 rounded-full bg-emerald-400"></div>
                             </div>
-
-                            {/* Live Email Preview */}
-                            <div className="mt-8 p-5 sm:p-7 border border-slate-200/90 dark:border-slate-800 rounded-2xl bg-slate-100/70 dark:bg-slate-900/50 shadow-inner">
-                                <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-3 border-b border-slate-200/80 dark:border-slate-800">
-                                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50"></span>
-                                        Live Client Inbox Preview (Responsive Render)
-                                    </label>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono font-semibold">Viewport:</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => setPreviewDevice('desktop')}
-                                            className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${previewDevice === 'desktop' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300'}`}
-                                        >
-                                            Desktop (600px)
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setPreviewDevice('mobile')}
-                                            className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${previewDevice === 'mobile' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300'}`}
-                                        >
-                                            Mobile (360px)
-                                        </button>
-                                    </div>
-                                </div>
-                                
-                                <div 
-                                    className="mx-auto transition-all duration-300 py-4 px-4 sm:px-6"
-                                    style={{ maxWidth: previewDevice === 'mobile' ? '360px' : '620px' }}
+                            <div className="flex bg-white dark:bg-slate-900 rounded-md shadow-sm border border-slate-200 dark:border-slate-700 p-0.5">
+                                <button 
+                                    onClick={() => setPreviewDevice('desktop')}
+                                    className={`px-2.5 py-1 rounded-sm flex items-center gap-1 text-[10px] font-bold uppercase transition-colors ${previewDevice === 'desktop' ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
                                 >
+                                    <MonitorIcon className="w-3 h-3" /> Desktop
+                                </button>
+                                <button 
+                                    onClick={() => setPreviewDevice('mobile')}
+                                    className={`px-2.5 py-1 rounded-sm flex items-center gap-1 text-[10px] font-bold uppercase transition-colors ${previewDevice === 'mobile' ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                                >
+                                    <SmartphoneIcon className="w-3 h-3" /> Mobile
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Email Header Preview */}
+                        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+                            <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                                {title || 'Subject will appear here'}
+                            </div>
+                            <div className="text-xs text-slate-500 mt-1 flex items-center justify-between">
+                                <div>From: {adminUser.name} &lt;noreply@app.com&gt;</div>
+                                <div className="text-[10px] text-slate-400">To: {filteredRecipients.length} Recipient(s)</div>
+                            </div>
+                        </div>
+
+                        {/* Email Body Preview Canvas */}
+                        <div className="flex-1 bg-slate-50 dark:bg-[#0a0a0a] overflow-y-auto p-4 md:p-8 flex justify-center custom-scrollbar">
+                            <div className={`w-full transition-all duration-300 ${previewDevice === 'mobile' ? 'max-w-[375px]' : 'max-w-2xl'}`}>
+                                <div 
+                                    className="bg-white dark:bg-[#0f172a] rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-800 dark:text-slate-200 min-h-[400px]"
+                                >
+                                    {/* The rendered HTML */}
                                     <div 
-                                        className="rounded-xl overflow-hidden shadow-xl text-left bg-white border border-slate-200 dark:border-slate-800"
+                                        className="prose prose-sm dark:prose-invert max-w-none break-words"
                                         dangerouslySetInnerHTML={{ __html: renderedLivePreview }}
                                     />
                                 </div>
                             </div>
                         </div>
-                        <div className="mt-6 flex justify-end">
-                            <button onClick={handleSend} disabled={isLoading} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg flex items-center gap-2 text-sm font-bold shadow-lg transition-all disabled:opacity-50">
-                                {isLoading ? <SpinnerIcon className="w-4 h-4 animate-spin" /> : <PaperAirplaneIcon className="w-4 h-4" />}
-                                Send Email Campaign
-                            </button>
-                        </div>
                     </div>
                 </div>
+
             </div>
         </div>
     );

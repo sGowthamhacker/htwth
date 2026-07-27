@@ -38,6 +38,7 @@ import ChevronDownIcon from '../components/icons/ChevronDownIcon';
 import AnimatedSendButton from '../components/AnimatedSendButton';
 import Footer from '../components/Footer';
 import MicrochipLoader from '../components/MicrochipLoader';
+import ElevenLabsWidget from '../components/ElevenLabsWidget';
 import RevealOnScroll, { AnimationType } from '../components/RevealOnScroll';
 import { Menu, X, Cloud, CircleHelp, Rocket, Send, Search, Command, Terminal, Zap, Cpu, Sparkles, ArrowRight, ExternalLink, BookOpen } from 'lucide-react';
 import { sanitizeUrl } from '../utils/sanitizeUrl';
@@ -500,10 +501,14 @@ const ContactSection: React.FC<{ onSendMessage: (name: string, email: string, ms
                 console.error("Failed to generate scanable session QR:", qrErr);
             }
 
-            // Trigger message sending in background and handle failure silently without delaying card display
-            onSendMessage(name, email, message).catch(err => {
-                console.error("Background message transmission failed:", err);
-            });
+            // Await message sending to ensure we can show errors to the user
+            const result = await onSendMessage(name, email, message);
+            if (result && !result.success) {
+                setStatus('idle');
+                setSpamError(result.error || "Failed to send message. Email system is currently offline or experiencing issues.");
+                generateCaptcha();
+                return;
+            }
             
             // Set 30-second cooldown in localStorage to prevent rapid submissions
             const cooldownPeriod = 30 * 1000;
@@ -534,7 +539,7 @@ const ContactSection: React.FC<{ onSendMessage: (name: string, email: string, ms
                 setCardState('hidden');
             }, 10000);
         } catch (err) {
-            setSpamError("Failed to send message. Please try again.");
+            setSpamError("Failed to send message. Email system is currently offline or experiencing issues.");
             setStatus('idle');
             generateCaptcha();
         }
@@ -1406,7 +1411,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
   const [expandedFeatureId, setExpandedFeatureId] = useState<string | null>(null);
   const [showAllFeatures, setShowAllFeatures] = useState(false);
 
-  const handleSendAdminMessage = async (name: string, email: string, message: string): Promise<{success: boolean}> => {
+  const handleSendAdminMessage = async (name: string, email: string, message: string): Promise<{success: boolean, error?: string}> => {
       // Register locally in state
       onContactAdmin(
           { name, email, avatar: `https://i.pravatar.cc/150?u=${email}`, role: 'user' },
@@ -1425,12 +1430,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
           if (!response.ok) {
               const errData = await response.json();
               console.error("SMTP contact route error:", errData.error || response.statusText);
+              return { success: false, error: errData.error || "Email system offline" };
           } else {
               const resData = await response.json();
+              if (resData.mailError) {
+                  return { success: false, error: "Failed to send email." };
+              }
               console.log("SMTP automatic email verification/receipt sent:", resData);
           }
-      } catch (err) {
+      } catch (err: any) {
           console.error("Failed to connect with HTWTH SMTP contact server:", err);
+          return { success: false, error: "Failed to connect to email system." };
       }
 
       return { success: true };
@@ -3129,6 +3139,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
                 </div>
             </div>
         </div>
+      )}
+
+      {activeTab === 'home' && !selectedBlogPost && !showAdminProfile && !showCopyright && !showInnovation && (
+        <ElevenLabsWidget />
       )}
 
     </div>

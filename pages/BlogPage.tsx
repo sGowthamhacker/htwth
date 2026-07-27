@@ -171,7 +171,7 @@ const BlogPostPreviewPanel: React.FC<{ post: Post | Omit<Post, 'id'|'created_at'
             </div>
             <article className="max-w-7xl mx-auto">
                  <header className="p-4 sm:p-6 md:p-8">
-                    <h1 className="text-3xl lg:text-5xl font-extrabold tracking-tight mb-6 text-slate-900 dark:text-white break-words">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight mb-6 text-slate-900 dark:text-white break-words">
                         {post.title || <span className="text-slate-400">[Your Title Here]</span>}
                     </h1>
                     <div className="flex items-center gap-4 mb-6">
@@ -393,7 +393,7 @@ const BlogPage: React.FC<BlogPageProps> = ({ user, posts, onSavePost, onDeletePo
                     <div className="max-w-7xl mx-auto w-full">
                         <article className="animate-fade-in break-words overflow-hidden w-full">
                             <header className="p-4 sm:p-6 md:p-8">
-                                <h1 className="text-3xl lg:text-5xl font-extrabold tracking-tight mb-6 text-slate-900 dark:text-white break-words">{selectedPost.title}</h1>
+                                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight mb-6 text-slate-900 dark:text-white break-words">{selectedPost.title}</h1>
                                 
                                 <div className="flex items-center gap-4 mb-6">
                                     <img src={getCloudinaryUrl(selectedPost.author.avatar, { width: 56, height: 56, radius: 'max' })} alt={selectedPost.author.name} className="w-14 h-14 rounded-full" />

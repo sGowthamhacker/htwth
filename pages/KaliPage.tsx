@@ -204,7 +204,7 @@ const KaliPage: React.FC<{ refreshKey?: number }> = ({ refreshKey }) => {
             <div className="max-w-4xl w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden flex flex-col md:flex-row">
                 
                 {/* Config Section */}
-                <div className="flex-1 p-8">
+                <div className="flex-1 p-4 sm:p-8">
                     <div className="flex flex-col items-center mb-8">
                         <div className="w-20 h-20 bg-slate-100 dark:bg-slate-900 rounded-full flex items-center justify-center mb-4 border border-slate-200 dark:border-slate-700 shadow-inner">
                             <KaliIcon className="w-12 h-12 text-slate-800 dark:text-white" />

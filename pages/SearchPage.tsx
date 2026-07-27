@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PostCard from '../components/PostCard';
 import { AppDefinition, Post, User } from '../types';
 import SearchIcon from '../components/icons/SearchIcon';
@@ -7,33 +7,54 @@ import TvAntenna from '../components/TvAntenna';
 
 interface SearchPageProps {
   user: User;
-  query?: string;
+  query?: string | null;
   allApps?: AppDefinition[];
   allPosts?: Post[];
   onOpenApp?: (appId: string, props?: Record<string, any>, e?: React.MouseEvent<HTMLElement>) => void;
   onClose?: () => void;
+  onNavigateWithinApp?: (path: string) => void;
 }
 
-const SearchPage: React.FC<SearchPageProps> = ({ user, query = '', allApps = [], allPosts = [], onOpenApp = (appId, props, e) => {}, onClose = () => {} }) => {
-  const [searchQuery, setSearchQuery] = useState(query);
+const SearchPage: React.FC<SearchPageProps> = ({ 
+  user, 
+  query = '', 
+  allApps = [], 
+  allPosts = [], 
+  onOpenApp = (appId, props, e) => {}, 
+  onClose = () => {},
+  onNavigateWithinApp
+}) => {
+  const [searchQuery, setSearchQuery] = useState(query || '');
+
+  useEffect(() => {
+    setSearchQuery(query || '');
+  }, [query]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
+    const val = e.target.value;
+    setSearchQuery(val);
+    if (onNavigateWithinApp) {
+      if (val.trim()) {
+        onNavigateWithinApp(`search/${val.trim()}`);
+      } else {
+        onNavigateWithinApp('search');
+      }
+    }
   };
   
-  const normalizedQuery = searchQuery.toLowerCase().trim();
+  const normalizedQuery = (searchQuery || '').toLowerCase().trim();
 
   const filteredPosts = allPosts.filter(post =>
-    normalizedQuery && (
-      post.title.toLowerCase().includes(normalizedQuery) ||
-      post.content.toLowerCase().includes(normalizedQuery) ||
-      post.author.name.toLowerCase().includes(normalizedQuery) ||
-      post.tags.some(tag => tag.toLowerCase().includes(normalizedQuery))
+    normalizedQuery && post && (
+      post.title?.toLowerCase().includes(normalizedQuery) ||
+      post.content?.toLowerCase().includes(normalizedQuery) ||
+      post.author?.name?.toLowerCase().includes(normalizedQuery) ||
+      post.tags?.some(tag => tag?.toLowerCase().includes(normalizedQuery))
     )
   );
 
   const filteredApps = allApps.filter(app =>
-    normalizedQuery && app.name.toLowerCase().includes(normalizedQuery)
+    normalizedQuery && app && app.name?.toLowerCase().includes(normalizedQuery)
   );
   
   const handleOpenApp = (path: string, e: React.MouseEvent<HTMLElement>) => {

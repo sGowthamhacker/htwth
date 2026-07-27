@@ -27,11 +27,19 @@ const HomePage: React.FC<HomePageProps> = ({ user, writeups, blogPosts, isPendin
   
   const handleSearch = (value: string) => {
       setSearchQuery(value);
+      if (value.trim()) {
+          onOpenApp('search', { deepLinkInfo: value.trim() }, undefined);
+      } else {
+          onOpenApp('search', {}, undefined);
+      }
   };
 
   const handleSearchSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter' && searchQuery.trim()) {
-          onOpenApp('search', { deepLinkInfo: searchQuery }, undefined);
+      if (e.key === 'Enter') {
+          e.preventDefault();
+          if (searchQuery.trim()) {
+              onOpenApp('search', { deepLinkInfo: searchQuery.trim() }, undefined);
+          }
       }
   };
 
