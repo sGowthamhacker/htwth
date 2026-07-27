@@ -9,3 +9,6 @@ package = "netlify-plugin-cloudinary"
   # Consider moving TOTP verification to a server-side function.
   SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_EMAILJS_SERVICE_ID,VITE_EMAILJS_TEMPLATE_ID,VITE_CLOUDINARY_CLOUD_NAME,VITE_DEFAULT_TOTP_SECRET,VITE_SUPABASE_ANON_KEY,VITE_EMAILJS_PUBLIC_KEY,SMTP_USER,SMTP_FROM_NAME,APP_URL,API_KEY,SMTP_HOST"
 
+[functions]
+  directory = "netlify/functions"
+
