@@ -261,13 +261,20 @@ async function startServer() {
       const { transporter, user } = getSmtpTransporter();
       console.log(`[SMTP SEND DEBUG] User: ${user.substring(0,3)}... (len:${user.length})`);
 
-      const recipients = Array.isArray(to) ? to : [to];
+      let recipients: string[] = [];
+      if (Array.isArray(to)) {
+        recipients = to;
+      } else if (typeof to === 'string') {
+        recipients = to.split(',').map(e => e.trim()).filter(Boolean);
+      } else {
+        recipients = [to];
+      }
       const results = [];
 
       const rawSender = senderName || process.env.SENDER_NAME || process.env.SMTP_FROM_NAME;
-      let actualSenderName = rawSender ? rawSender.trim() : 'Gowtham S Admin';
-      if (actualSenderName === 'HTWTH' || actualSenderName === 'HTWTH System' || actualSenderName === 'System' || actualSenderName === 'admin' || !actualSenderName) {
-        actualSenderName = 'Gowtham S Admin';
+      let actualSenderName = rawSender ? rawSender.trim() : 'HTWTH';
+      if (actualSenderName === 'Gowtham S Admin' || actualSenderName === 'Gowtham S Admin System' || actualSenderName === 'System' || actualSenderName === 'admin' || !actualSenderName) {
+        actualSenderName = 'HTWTH';
       }
       const htmlFormattedContent = formatEmailHtml(body || '', actualSenderName);
 

@@ -17,6 +17,13 @@ const systems = [
   { name: 'Background Workers', status: 'operational', icon: <Cpu className="w-5 h-5" /> },
 ];
 
+const getLocalDateStr = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const getHistory = () => {
   return Array.from({ length: 90 }).map((_, i) => ({
     date: new Date(Date.now() - (89 - i) * 24 * 60 * 60 * 1000).toISOString(),
@@ -28,6 +35,12 @@ const StatusPage: React.FC<StatusPageProps> = ({ onNavigateHome, isDarkMode }) =
   const [incidents, setIncidents] = useState<SystemIncident[]>([]);
   const [showFullHistory, setShowFullHistory] = useState(false);
   
+  const localDays = Array.from({ length: 90 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (89 - i));
+    return d;
+  });
+
   // Dynamically calculate uptime percentage based on incidents
   const calculateUptime = (incidentList: SystemIncident[]) => {
     if (!incidentList || incidentList.length === 0) return '100.00';
@@ -55,24 +68,18 @@ const StatusPage: React.FC<StatusPageProps> = ({ onNavigateHome, isDarkMode }) =
   };
 
   // Dynamically calculate overall 90-day history array
-  const history = Array.from({ length: 90 }).map((_, i) => {
-    const dateObj = new Date(Date.now() - (89 - i) * 24 * 60 * 60 * 1000);
-    const dateStr = dateObj.toISOString().split('T')[0];
+  // An incident is active on day D if it started on day D or started before day D and is not yet resolved.
+  const history = localDays.map((dateObj, i) => {
+    const dateStr = getLocalDateStr(dateObj);
     
     const matching = incidents.filter(inc => {
-      const incDateStr = new Date(inc.date).toISOString().split('T')[0];
-      return incDateStr === dateStr;
+      const incDateStr = getLocalDateStr(new Date(inc.date));
+      return incDateStr === dateStr || (incDateStr < dateStr && inc.status !== 'resolved');
     });
 
     if (matching.length > 0) {
       if (matching.some(inc => inc.impact === 'critical')) return { date: dateObj.toISOString(), status: 'outage' };
       if (matching.some(inc => inc.impact === 'major' || inc.status !== 'resolved')) return { date: dateObj.toISOString(), status: 'degraded' };
-      return { date: dateObj.toISOString(), status: 'degraded' };
-    }
-
-    if (i === 89 && incidents.some(inc => inc.status !== 'resolved')) {
-      const active = incidents.filter(inc => inc.status !== 'resolved');
-      if (active.some(a => a.impact === 'critical')) return { date: dateObj.toISOString(), status: 'outage' };
       return { date: dateObj.toISOString(), status: 'degraded' };
     }
 
@@ -470,14 +477,14 @@ const StatusPage: React.FC<StatusPageProps> = ({ onNavigateHome, isDarkMode }) =
                   const compUptime = calculateComponentUptime(system.name, incidents);
                   
                   // Generate an independent 90-day history for this component
-                  const sysHistory = Array.from({ length: 90 }).map((_, i) => {
-                    const dateObj = new Date(Date.now() - (89 - i) * 24 * 60 * 60 * 1000);
-                    const dateStr = dateObj.toISOString().split('T')[0];
+                  // Checks both started incidents on day D and older active unresolved incidents affecting this component.
+                  const sysHistory = localDays.map((dateObj, i) => {
+                    const dateStr = getLocalDateStr(dateObj);
                     
                     const compIncidentsOnDate = incidents.filter(inc => {
-                      const incDateStr = new Date(inc.date).toISOString().split('T')[0];
+                      const incDateStr = getLocalDateStr(new Date(inc.date));
                       const isComp = !inc.affectedComponent || inc.affectedComponent === 'All Systems' || inc.affectedComponent === system.name;
-                      return isComp && incDateStr === dateStr;
+                      return isComp && (incDateStr === dateStr || (incDateStr < dateStr && inc.status !== 'resolved'));
                     });
 
                     if (compIncidentsOnDate.length > 0) {
@@ -485,9 +492,6 @@ const StatusPage: React.FC<StatusPageProps> = ({ onNavigateHome, isDarkMode }) =
                       return { date: dateObj.toISOString(), status: 'degraded' };
                     }
 
-                    if (i === 89) {
-                      return { date: dateObj.toISOString(), status: compInfo.statusKey };
-                    }
                     return { date: dateObj.toISOString(), status: 'operational' };
                   });
                   

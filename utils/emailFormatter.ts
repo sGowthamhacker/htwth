@@ -1,12 +1,12 @@
 import { marked } from 'marked';
 
-export function formatEmailHtml(rawBody: string, senderName: string = 'Gowtham S Admin'): string {
+export function formatEmailHtml(rawBody: string, senderName: string = 'HTWTH'): string {
   if (!rawBody) return '';
 
-  // Clean senderName if it is generic like HTWTH
-  let cleanSender = senderName ? senderName.trim() : 'Gowtham S Admin';
-  if (cleanSender === 'HTWTH' || cleanSender === 'HTWTH System' || cleanSender === 'System' || cleanSender === 'admin' || !cleanSender) {
-    cleanSender = 'Gowtham S Admin';
+  // Clean senderName to default to HTWTH
+  let cleanSender = senderName ? senderName.trim() : 'HTWTH';
+  if (cleanSender === 'Gowtham S Admin' || cleanSender === 'Gowtham S Admin System' || cleanSender === 'System' || cleanSender === 'admin' || !cleanSender) {
+    cleanSender = 'HTWTH';
   }
 
   const trimmed = rawBody.trim();

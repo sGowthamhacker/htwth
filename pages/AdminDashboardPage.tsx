@@ -465,6 +465,14 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
     const [isLoading, setIsLoading] = useState(false);
     const [isTesting, setIsTesting] = useState(false);
     const [smtpStatus, setSmtpStatus] = useState<'unknown' | 'success' | 'error'>('unknown');
+    const [progress, setProgress] = useState<{
+        current: number;
+        total: number;
+        active: boolean;
+        currentEmail: string;
+        successCount: number;
+        failureCount: number;
+    } | null>(null);
     const { addNotification } = useNotificationState();
     const [suggestions, setSuggestions] = useState<User[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -513,7 +521,7 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
     const renderedLivePreview = useMemo(() => {
         const rawContent = message || 'Your email content will appear here...';
         try {
-            const formatted = formatEmailHtml(rawContent, adminUser?.name || 'Gowtham S Admin');
+            const formatted = formatEmailHtml(rawContent, adminUser?.name || 'HTWTH');
             return DOMPurify.sanitize(formatted, {
                 ADD_ATTR: ['style', 'target', 'cellspacing', 'cellpadding', 'border', 'align', 'valign', 'width', 'height', 'class', 'box-sizing'],
                 ADD_TAGS: ['style']
@@ -669,32 +677,61 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
             return;
         }
 
+        // Initialize progress state
+        setProgress({
+            current: 0,
+            total: targetUsers.length,
+            active: true,
+            currentEmail: targetUsers[0].email || '',
+            successCount: 0,
+            failureCount: 0
+        });
+
         try {
-            const BATCH_SIZE = 50; 
             let successCount = 0;
             let failureCount = 0;
 
-            const finalHtmlContent = formatEmailHtml(message, adminUser.name || 'Gowtham S Admin');
+            const finalHtmlContent = formatEmailHtml(message, adminUser.name || 'HTWTH');
 
-            for (let i = 0; i < targetUsers.length; i += BATCH_SIZE) {
-                const batch = targetUsers.slice(i, i + BATCH_SIZE);
-                const toEmails = batch.map(u => u.email).join(',');
+            for (let i = 0; i < targetUsers.length; i++) {
+                const user = targetUsers[i];
+                if (!user.email) continue;
 
-                const response = await fetch('/api/admin/send-email', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        to: toEmails,
-                        subject: title,
-                        body: finalHtmlContent,
-                        senderName: adminUser.name || 'Gowtham S Admin'
-                    })
-                });
+                // Update current progress state
+                setProgress(prev => prev ? {
+                    ...prev,
+                    current: i + 1,
+                    currentEmail: user.email || ''
+                } : null);
 
-                if (response.ok) {
-                    successCount += batch.length;
-                } else {
-                    failureCount += batch.length;
+                try {
+                    const response = await fetch('/api/admin/send-email', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            to: user.email,
+                            subject: title,
+                            body: finalHtmlContent,
+                            senderName: adminUser.name || 'HTWTH'
+                        })
+                    });
+
+                    if (response.ok) {
+                        successCount++;
+                        setProgress(prev => prev ? { ...prev, successCount } : null);
+                    } else {
+                        failureCount++;
+                        setProgress(prev => prev ? { ...prev, failureCount } : null);
+                    }
+                } catch (err) {
+                    console.error("Failed sending email to", user.email, err);
+                    failureCount++;
+                    setProgress(prev => prev ? { ...prev, failureCount } : null);
+                }
+
+                // Small delay to prevent SMTP server rate-limiting/overload
+                if (i < targetUsers.length - 1) {
+                    await new Promise(r => setTimeout(r, 400));
                 }
             }
 
@@ -715,6 +752,10 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
             addNotification({ title: 'Error', message: 'A critical error occurred while sending emails.', type: 'error' });
         } finally {
             setIsLoading(false);
+            // Hide progress after 5 seconds so the admin can review the final outcome
+            setTimeout(() => {
+                setProgress(prev => prev ? { ...prev, active: false } : null);
+            }, 6000);
         }
     };
 
@@ -1066,6 +1107,40 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
                                 ></textarea>
                             </div>
                         </div>
+
+                        {progress && progress.active && (
+                            <div className="mt-6 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 space-y-3">
+                                <div className="flex items-center justify-between text-xs font-semibold">
+                                    <span className="text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                        <span className="flex h-2 w-2 relative">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                                        </span>
+                                        Sending Campaign ({progress.current} of {progress.total})
+                                    </span>
+                                    <span className="text-slate-500 font-mono">
+                                        {Math.round((progress.current / progress.total) * 100)}%
+                                    </span>
+                                </div>
+                                <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                                    <div 
+                                        className="h-full bg-blue-600 rounded-full transition-all duration-300"
+                                        style={{ width: `${(progress.current / progress.total) * 100}%` }}
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between text-[11px] text-slate-500">
+                                    <span className="truncate max-w-[280px]">
+                                        Current: <span className="font-mono text-slate-700 dark:text-slate-300">{progress.currentEmail}</span>
+                                    </span>
+                                    <span className="flex items-center gap-2 font-medium shrink-0">
+                                        <span className="text-emerald-600 dark:text-emerald-400">✓ {progress.successCount}</span>
+                                        {progress.failureCount > 0 && (
+                                            <span className="text-rose-600 dark:text-rose-400">✗ {progress.failureCount}</span>
+                                        )}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
                             <button
@@ -1437,6 +1512,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
     const [newIncidentImpact, setNewIncidentImpact] = useState<SystemIncident['impact']>('minor');
     const [newIncidentComponent, setNewIncidentComponent] = useState<string>('All Systems');
     const [newIncidentPercentage, setNewIncidentPercentage] = useState<number>(0.5);
+    const [newIncidentDate, setNewIncidentDate] = useState('');
 
     const toLocalDatetimeString = (isoString: string | null | undefined) => {
         if (!isoString) return '';
@@ -2875,9 +2951,21 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
                                             </select>
                                         </div>
                                     </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Incident Date/Time (Optional - Leave blank for current time)</label>
+                                        <input 
+                                            type="datetime-local" 
+                                            value={newIncidentDate}
+                                            onChange={(e) => setNewIncidentDate(e.target.value)}
+                                            className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs"
+                                        />
+                                    </div>
                                     <button
                                         onClick={async () => {
                                             if (!newIncidentTitle || !newIncidentDesc) return addNotification({ title: 'Error', message: 'Title and description required.', type: 'error' });
+                                            const incidentDate = newIncidentDate 
+                                                ? new Date(newIncidentDate).toISOString() 
+                                                : new Date().toISOString();
                                             const newIncident = {
                                                 id: crypto.randomUUID(),
                                                 title: newIncidentTitle,
@@ -2886,12 +2974,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
                                                 impact: newIncidentImpact,
                                                 impactPercentage: newIncidentPercentage,
                                                 affectedComponent: newIncidentComponent,
-                                                date: new Date().toISOString()
+                                                date: incidentDate
                                             } as SystemIncident;
                                             await addIncident(newIncident);
                                             setIncidents(await getIncidents());
                                             setNewIncidentTitle('');
                                             setNewIncidentDesc('');
+                                            setNewIncidentDate('');
                                             addNotification({ title: 'Success', message: `Incident published with -${newIncidentPercentage}% impact!`, type: 'success' });
                                         }}
                                         className="w-full p-2.5 bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 rounded-lg font-bold text-xs uppercase tracking-wider hover:opacity-90 transition-opacity"
@@ -3101,6 +3190,24 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
                                                             <option value={2.5}>2.50% Impact</option>
                                                             <option value={5.0}>5.00% Impact</option>
                                                         </select>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase">Date/Time:</span>
+                                                        <input 
+                                                            type="datetime-local" 
+                                                            value={toLocalDatetimeString(inc.date)} 
+                                                            onChange={async (e) => {
+                                                                const selectedLocal = e.target.value;
+                                                                if (selectedLocal) {
+                                                                    const dateObj = new Date(selectedLocal);
+                                                                    await updateIncident(inc.id, { date: dateObj.toISOString() });
+                                                                    setIncidents(await getIncidents());
+                                                                    addNotification({title: 'Success', message: 'Incident date updated.', type: 'success'});
+                                                                }
+                                                            }}
+                                                            className="p-1 rounded bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-[10px] font-semibold text-slate-700 dark:text-slate-300"
+                                                        />
                                                     </div>
                                                 </div>
                                             </div>
