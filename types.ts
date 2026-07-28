@@ -2,7 +2,7 @@
 
 import React from "react";
 
-export type ThemeStyle = 'windows' | 'mac';
+export type ThemeStyle = 'windows' | 'mac' | 'webapp';
 export type ThemeMode = 'light' | 'dark';
 export type TimeFormat = '12hr' | '24hr';
 export type Timezone = 'local' | 'IST' | 'UTC';

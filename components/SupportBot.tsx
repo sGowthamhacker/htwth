@@ -432,7 +432,7 @@ const SupportBot: React.FC<SupportBotProps> = ({ onSendAdminMessage }) => {
     const isInputDisabled = isLoading || flowState !== 'idle';
 
     return (
-        <div className={`support-bot-window fixed bottom-6 right-6 z-[9999] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 ${!isClosing ? 'animate-window-slide-up' : 'animate-slide-down-and-fade'}`}>
+        <div className={`support-bot-window fixed bottom-6 right-6 z-[9999] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 transform-gpu will-change-transform ${!isClosing ? 'animate-window-slide-up' : 'animate-slide-down-and-fade'}`}>
             <header className="flex-shrink-0 p-3 bg-slate-100 dark:bg-slate-900/50 rounded-t-2xl flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center">

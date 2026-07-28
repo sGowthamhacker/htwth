@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Rocket, Cloud, CircleHelp, Zap, ExternalLink } from 'lucide-react';
 import TwitterIcon from './icons/TwitterIcon';
 import GithubIcon from './icons/GithubIcon';

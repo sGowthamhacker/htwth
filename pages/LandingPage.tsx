@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../contexts/ThemeContext';
 import AdminNameButton from '../components/AdminNameButton';
 import RotatingTextButton from '../components/RotatingTextButton';

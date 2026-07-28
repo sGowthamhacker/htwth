@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { buildResumeHTML } from '../src/services/resumeTemplates';
 import { ResumeData } from '../src/services/templates/types';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { ChevronDown, Download, X } from 'lucide-react';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';

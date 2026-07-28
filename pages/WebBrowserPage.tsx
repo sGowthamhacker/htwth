@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Globe, ArrowLeft, ArrowRight, RotateCcw, Home, X, Lock, ShieldCheck, Plus } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { User } from '../types';

@@ -10,7 +10,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useTime } from '../contexts/TimeContext';
 import NotificationBellIcon from './icons/NotificationBellIcon';
 import AppsIcon from './icons/AppsIcon';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 
 interface TaskbarProps {
     position: TaskbarPosition;

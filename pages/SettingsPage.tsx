@@ -728,13 +728,15 @@ const AppearanceSettings: React.FC<{
     };
 
     const handleLayoutChange = (mode: 'desktop' | 'webapp', style?: ThemeStyle) => {
-        if (setDisplayMode) {
-            setDisplayMode(mode);
-        }
-        if (style) {
-            setThemeStyle(style);
-            onProfileUpdate({ desktop_preferences: { theme_style: style } });
-        }
+        triggerTransition(() => {
+            if (setDisplayMode) {
+                setDisplayMode(mode);
+            }
+            if (style) {
+                setThemeStyle(style, true);
+                onProfileUpdate({ desktop_preferences: { theme_style: style } });
+            }
+        });
     };
 
     const handleThemeModeChange = (mode: ThemeMode) => {

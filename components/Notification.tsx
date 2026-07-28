@@ -82,8 +82,10 @@ const Notification: React.FC<NotificationProps> = ({ notification, onClose }) =>
         <>
             <style>{animationStyle}</style>
             <div
-                className="flex items-start w-full max-w-sm bg-white dark:bg-slate-800 shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden"
+                className="flex items-start w-full max-w-sm bg-white dark:bg-slate-800 shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden transform-gpu will-change-transform"
                 style={{ 
+                    backfaceVisibility: 'hidden',
+                    willChange: 'transform, opacity',
                     animation: exiting 
                         ? `slideOutToRight ${animationDuration}ms ease-in forwards` 
                         : `slideInFromRight ${animationDuration}ms ease-out forwards` 

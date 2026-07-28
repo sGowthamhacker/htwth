@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GlobalSettings } from '../types';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { WrenchIcon, ClockIcon, CalendarIcon, RefreshCwIcon, MessageCircleIcon, XIcon, SendIcon, Settings, Server, User, Terminal, ShieldAlert } from 'lucide-react';
 import Footer from '../components/Footer';
 import RevealOnScroll from '../components/RevealOnScroll';

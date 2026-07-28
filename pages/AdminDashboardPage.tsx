@@ -1,5 +1,5 @@
 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { User, ActivityLog, ContactRequest, GlobalNotification } from '../types';
 import { useNotificationState } from '../contexts/NotificationContext';
@@ -274,9 +274,9 @@ const BroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({ adm
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
                 {/* Compose & Settings (Left/Main) */}
-                <div className="lg:col-span-8 flex flex-col gap-6">
+                <div className="lg:col-span-8 flex flex-col gap-6 relative overflow-visible">
                     {/* Settings Row */}
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 relative overflow-visible">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-lg text-indigo-600 dark:text-indigo-400">
                                 <UsersIcon className="w-5 h-5" />
@@ -309,9 +309,15 @@ const BroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({ adm
                             </button>
                         </div>
 
-                        {mode === 'specific' && (
-                            <div className="mt-6 space-y-3 animate-fade-in">
-                                <div className="flex flex-wrap gap-2">
+                        <AnimatePresence>
+                            {mode === 'specific' && (
+                                <motion.div 
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="mt-6 space-y-3 relative overflow-visible"
+                                >
+                                    <div className="flex flex-wrap gap-2">
                                     {selectedUsers.map(u => (
                                         <div key={u.id} className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 border border-emerald-100 dark:border-emerald-500/20">
                                             {u.name}
@@ -321,7 +327,7 @@ const BroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({ adm
                                         </div>
                                     ))}
                                 </div>
-                                <div className="relative">
+                                <div className="relative overflow-visible">
                                     <input
                                         type="text"
                                         placeholder="Search by name or email..."
@@ -329,27 +335,35 @@ const BroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({ adm
                                         onChange={handleSearchChange}
                                         className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all dark:text-white"
                                     />
-                                    {showSuggestions && suggestions.length > 0 && (
-                                        <div className="absolute top-full mt-2 w-full bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
-                                            {suggestions.map(user => (
-                                                <button
-                                                    key={user.id}
-                                                    type="button"
-                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSuggestionClick(user); }}
-                                                    className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-3 transition-colors border-b border-slate-100 dark:border-slate-700/50 last:border-0"
-                                                >
-                                                    <img src={getCloudinaryUrl(user.avatar, { width: 32, height: 32, radius: 'max' })} alt={user.name} className="w-8 h-8 rounded-full flex-shrink-0" />
-                                                    <div>
-                                                        <div className="text-sm font-semibold text-slate-900 dark:text-white">{user.name}</div>
-                                                        <div className="text-xs text-slate-500">{user.email}</div>
-                                                    </div>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
+                                    <AnimatePresence>
+                                        {showSuggestions && suggestions.length > 0 && (
+                                            <motion.div 
+                                                initial={{ opacity: 0, y: -10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: -10 }}
+                                                className="absolute top-full mt-2 w-full bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-[100]"
+                                            >
+                                                {suggestions.map(user => (
+                                                    <button
+                                                        key={user.id}
+                                                        type="button"
+                                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSuggestionClick(user); }}
+                                                        className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-3 transition-colors border-b border-slate-100 dark:border-slate-700/50 last:border-0"
+                                                    >
+                                                        <img src={getCloudinaryUrl(user.avatar, { width: 32, height: 32, radius: 'max' })} alt={user.name} className="w-8 h-8 rounded-full flex-shrink-0" />
+                                                        <div>
+                                                            <div className="text-sm font-semibold text-slate-900 dark:text-white">{user.name}</div>
+                                                            <div className="text-xs text-slate-500">{user.email}</div>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
-                            </div>
-                        )}
+                            </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
 
                     {/* Editor Row */}
@@ -771,9 +785,9 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
                 {/* Compose & Settings (Left/Main) */}
-                <div className="lg:col-span-7 flex flex-col gap-6">
+                <div className="lg:col-span-7 flex flex-col gap-6 relative overflow-visible">
                     {/* Settings Row */}
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 relative overflow-visible">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-lg text-blue-600 dark:text-blue-400">
@@ -809,9 +823,16 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
                             ))}
                         </div>
 
-                        {/* Recipient Details & Exclusions */}
-                        {mode !== 'specific' && (
-                            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                        <AnimatePresence mode="wait">
+                            {/* Recipient Details & Exclusions */}
+                            {mode !== 'specific' && (
+                                <motion.div 
+                                    key="audience"
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700"
+                                >
                                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3">Target Audience ({filteredRecipients.length})</h4>
                                 <div className="max-h-32 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
                                     {filteredRecipients.slice(0, 30).map(u => (
@@ -826,14 +847,20 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
                                         <div className="text-[10px] text-slate-400 pt-2 font-medium italic text-center">+ {filteredRecipients.length - 30} more recipients</div>
                                     )}
                                 </div>
-                            </div>
-                        )}
+                                </motion.div>
+                            )}
 
-                        {/* Specific User Search */}
-                        {mode === 'specific' && (
-                            <div className="space-y-3 animate-fade-in">
-                                <div className="flex flex-wrap gap-2 mb-3">
-                                    {selectedUsers.map(u => (
+                            {/* Specific User Search */}
+                            {mode === 'specific' && (
+                                <motion.div 
+                                    key="specific"
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="space-y-3 relative overflow-visible"
+                                >
+                                    <div className="flex flex-wrap gap-2 mb-3">
+                                        {selectedUsers.map(u => (
                                         <div key={u.id} className="bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 border border-blue-100 dark:border-blue-500/20">
                                             {u.email}
                                             <button onClick={() => setSelectedUsers(prev => prev.filter(x => x.id !== u.id))} className="hover:text-blue-900 dark:hover:text-blue-100 transition-colors">
@@ -842,7 +869,7 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
                                         </div>
                                     ))}
                                 </div>
-                                <div className="relative">
+                                <div className="relative overflow-visible">
                                     <input
                                         type="text"
                                         placeholder="Search by name or email to add..."
@@ -850,8 +877,14 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
                                         onChange={handleSearchChange}
                                         className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all dark:text-white"
                                     />
-                                    {showSuggestions && suggestions.length > 0 && (
-                                        <div className="absolute top-full mt-2 w-full bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
+                                    <AnimatePresence>
+                                        {showSuggestions && suggestions.length > 0 && (
+                                            <motion.div 
+                                                initial={{ opacity: 0, y: -10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: -10 }}
+                                                className="absolute top-full mt-2 w-full bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-[100]"
+                                            >
                                             {suggestions.map(user => (
                                                 <button
                                                     key={user.id}
@@ -866,11 +899,13 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
                                                     </div>
                                                 </button>
                                             ))}
-                                        </div>
-                                    )}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
-                            </div>
-                        )}
+                            </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
 
                     {/* Editor Row */}
@@ -1896,10 +1931,17 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 pt-6">
-                {view === 'management' && (
-                    <div className="space-y-6 animate-fade-in" key="management">
-                        <p className="text-slate-500 dark:text-slate-400">Approve, reject, or manage user access permissions.</p>
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 md:p-8 pt-6 relative overflow-visible">
+                <AnimatePresence mode="wait">
+                    {view === 'management' && (
+                        <motion.div 
+                            key="management"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="space-y-6"
+                        >
+                            <p className="text-slate-500 dark:text-slate-400">Approve, reject, or manage user access permissions.</p>
                         
                         {/* Improved Stat Cards with visual flair */}
                         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -2115,11 +2157,17 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
                 )}
                 
                 {view === 'requests' && (
-                    <div className="space-y-6 animate-fade-in" key="requests">
+                    <motion.div 
+                        key="requests"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="space-y-6"
+                    >
                         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
                            <header className="p-4 border-b border-slate-200 dark:border-slate-700">
                                <div className="flex items-center gap-2">
@@ -2151,11 +2199,17 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
                                )}
                            </div>
                         </div>
-                    </div>
+                    </motion.div>
                 )}
 
                 {view === 'inquiries' && (
-                    <div className="space-y-6 animate-fade-in" key="inquiries">
+                    <motion.div 
+                        key="inquiries"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="space-y-6"
+                    >
                         <div className="flex items-center justify-between gap-4">
                             <div>
                                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">Support Inquiries</h2>
@@ -2225,11 +2279,17 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
                                 })
                             )}
                         </div>
-                    </div>
+                    </motion.div>
                 )}
 
                 {view === 'live' && (
-                    <div className="space-y-6 animate-fade-in" key="live">
+                    <motion.div 
+                        key="live"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="space-y-6"
+                    >
                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <div className="lg:col-span-1 space-y-6">
                                 <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
@@ -2434,16 +2494,38 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
                                 </div>
                             </div>
                          </div>
-                    </div>
+                    </motion.div>
                 )}
                  {view === 'broadcast' && (
-                    <BroadcastChannel adminUser={user} allUsers={allUsers} />
+                    <motion.div
+                        key="broadcast"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="relative overflow-visible"
+                    >
+                        <BroadcastChannel adminUser={user} allUsers={allUsers} />
+                    </motion.div>
                 )}
                 {view === 'mail_broadcast' && (
-                    <MailBroadcastChannel adminUser={user} allUsers={allUsers} />
+                    <motion.div
+                        key="mail_broadcast"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="relative overflow-visible"
+                    >
+                        <MailBroadcastChannel adminUser={user} allUsers={allUsers} />
+                    </motion.div>
                 )}
                 {view === 'controller' && (
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <motion.div
+                        key="controller"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden"
+                    >
                         <div className="p-6 border-b border-slate-200 dark:border-slate-700">
                             <h2 className="text-xl font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                                 <ShieldIcon className="w-6 h-6 text-indigo-500" />
@@ -2755,8 +2837,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
                 )}
+                </AnimatePresence>
             </div>
         </div>
     );

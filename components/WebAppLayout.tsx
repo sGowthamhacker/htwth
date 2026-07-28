@@ -54,6 +54,37 @@ export const WebAppLayout: React.FC<WebAppLayoutProps> = ({
   const { themeMode, setThemeMode, themeStyle, setThemeStyle, triggerTransition } = useTheme();
   const [showDesktopMenu, setShowDesktopMenu] = useState(false);
   const desktopMenuRef = useRef<HTMLDivElement>(null);
+  
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const scrollLeft = useRef(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    isDragging.current = true;
+    if (scrollContainerRef.current) {
+      startX.current = e.pageX - scrollContainerRef.current.offsetLeft;
+      scrollLeft.current = scrollContainerRef.current.scrollLeft;
+    }
+  };
+
+  const handleMouseLeave = () => {
+    isDragging.current = false;
+  };
+
+  const handleMouseUp = () => {
+    isDragging.current = false;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current) return;
+    e.preventDefault();
+    if (scrollContainerRef.current) {
+      const x = e.pageX - scrollContainerRef.current.offsetLeft;
+      const walk = (x - startX.current) * 1.5;
+      scrollContainerRef.current.scrollLeft = scrollLeft.current - walk;
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -345,8 +376,8 @@ export const WebAppLayout: React.FC<WebAppLayoutProps> = ({
                   }} 
                 />
                 
-                {/* Notification Dropdown Panel */}
-                <div className="absolute right-[-60px] sm:right-0 mt-2 w-[calc(100vw-24px)] xs:w-[350px] sm:w-[420px] h-[450px] sm:h-[480px] z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col animate-fade-in origin-top-right">
+                {/* Notification Dropdown Panel - Fixed on mobile to stay 100% visible below header */}
+                <div className="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 top-16 sm:top-full mt-0 sm:mt-2 w-auto sm:w-[420px] h-[450px] sm:h-[480px] max-h-[80vh] z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col animate-fade-in origin-top-right">
                   <NotificationCenterPage onNavigateWithinApp={(path) => {
                     onNavigate(path);
                     setIsNotificationOpen(false);
@@ -400,7 +431,11 @@ export const WebAppLayout: React.FC<WebAppLayoutProps> = ({
                   </button>
 
                   <button
-                    onClick={onSwitchToDesktopMode}
+                    onClick={() => {
+                        triggerTransition(() => {
+                            onSwitchToDesktopMode();
+                        });
+                    }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors text-left cursor-pointer"
                   >
                     <Monitor className="w-4 h-4 text-indigo-500" />
@@ -478,34 +513,44 @@ export const WebAppLayout: React.FC<WebAppLayoutProps> = ({
             </div>
 
             {/* Mobile Category Tab Controls for Fast Section Filtering */}
-            <div className="p-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-1 overflow-x-auto no-scrollbar shrink-0 bg-slate-50/50 dark:bg-slate-900/50">
-              <button
-                onClick={() => setActiveCategoryFilter('all')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer ${
-                  activeCategoryFilter === 'all'
-                    ? 'bg-amber-500 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
-                }`}
+            <div className="p-2 border-b border-slate-100 dark:border-slate-800 shrink-0 bg-slate-50/50 dark:bg-slate-800/20 sticky top-0 z-20 w-full overflow-hidden">
+              <div 
+                ref={scrollContainerRef}
+                onMouseDown={handleMouseDown}
+                onMouseLeave={handleMouseLeave}
+                onMouseUp={handleMouseUp}
+                onMouseMove={handleMouseMove}
+                className="flex items-center gap-2 w-full overflow-x-auto no-scrollbar pb-1 px-1 cursor-grab active:cursor-grabbing select-none"
               >
-                All
-              </button>
-              {sidebarCategories.map((cat) => (
                 <button
-                  key={cat.id}
-                  onClick={() => setActiveCategoryFilter(cat.id)}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1 ${
-                    activeCategoryFilter === cat.id
-                      ? 'bg-amber-500 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                  onClick={() => setActiveCategoryFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all cursor-pointer shadow-sm border shrink-0 ${
+                    activeCategoryFilter === 'all'
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700'
                   }`}
                 >
-                  <span>{cat.title}</span>
+                  All
                 </button>
-              ))}
+                {sidebarCategories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveCategoryFilter(cat.id)}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 shadow-sm border shrink-0 ${
+                      activeCategoryFilter === cat.id
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700'
+                    }`}
+                  >
+                    <span className="shrink-0">{cat.icon}</span>
+                    <span>{cat.title}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Sidebar Nav Content - Dedicated Vertical Scroll Container */}
-            <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4">
+            <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar hover:custom-scrollbar p-3 space-y-4 pb-12 overflow-x-hidden">
               {filteredApps ? (
                 <div className="space-y-1">
                   <p className="px-3 text-[10px] font-bold text-slate-400 uppercase mb-2">Search Results</p>
@@ -592,7 +637,7 @@ export const WebAppLayout: React.FC<WebAppLayoutProps> = ({
         <main className="flex-1 min-w-0 h-full bg-slate-50 dark:bg-slate-950 p-0 sm:p-2 md:p-4 flex flex-col gap-2 transition-all duration-300">
           
           {/* Active Page Card Container - Responsive layout with no duplicate borders on mobile */}
-          <div className={`w-full mx-auto flex-1 min-h-0 overflow-y-auto bg-white dark:bg-slate-900 rounded-none sm:rounded-2xl shadow-none sm:shadow-xs p-3 sm:p-4 md:p-6 flex flex-col transition-all duration-300 ${
+          <div className={`w-full mx-auto flex-1 min-h-0 overflow-y-auto custom-scrollbar bg-white dark:bg-slate-900 rounded-none sm:rounded-2xl shadow-none sm:shadow-xs p-3 sm:p-4 md:p-6 flex flex-col transition-all duration-300 relative ${
             isSidebarOpen ? 'max-w-7xl' : 'max-w-none lg:px-6'
           }`}>
             {renderAppContent(activeAppId)}
@@ -627,11 +672,11 @@ export const WebAppLayout: React.FC<WebAppLayoutProps> = ({
                       <button
                         onClick={() => {
                           setShowDesktopMenu(false);
-                          setThemeStyle('windows', true);
-                          if (onProfileUpdate) {
-                            onProfileUpdate({ desktop_preferences: { theme_style: 'windows' } });
-                          }
                           triggerTransition(() => {
+                            setThemeStyle('windows', true);
+                            if (onProfileUpdate) {
+                              onProfileUpdate({ desktop_preferences: { theme_style: 'windows' } });
+                            }
                             onSwitchToDesktopMode();
                           });
                         }}
@@ -651,11 +696,11 @@ export const WebAppLayout: React.FC<WebAppLayoutProps> = ({
                       <button
                         onClick={() => {
                           setShowDesktopMenu(false);
-                          setThemeStyle('mac', true);
-                          if (onProfileUpdate) {
-                            onProfileUpdate({ desktop_preferences: { theme_style: 'mac' } });
-                          }
                           triggerTransition(() => {
+                            setThemeStyle('mac', true);
+                            if (onProfileUpdate) {
+                              onProfileUpdate({ desktop_preferences: { theme_style: 'mac' } });
+                            }
                             onSwitchToDesktopMode();
                           });
                         }}

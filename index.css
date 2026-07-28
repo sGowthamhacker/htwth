@@ -23,7 +23,49 @@
 @layer base {
   :root {
     --font-sans: 'Inter';
+    --theme-transition-duration: 0.35s;
+    --theme-transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
   }
+
+  /* Windows OS theme timing: precise, responsive, snappy */
+  html.windows {
+    --theme-transition-duration: 0.28s;
+    --theme-transition-timing: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Mac OS theme timing: smooth, weighted, fluid */
+  html.mac {
+    --theme-transition-duration: 0.45s;
+    --theme-transition-timing: cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  /* Dark mode timing adjustment */
+  html.dark {
+    --theme-transition-duration: 0.4s;
+    --theme-transition-timing: cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  body {
+    transition: background-color var(--theme-transition-duration) var(--theme-transition-timing),
+                color var(--theme-transition-duration) var(--theme-transition-timing),
+                border-color var(--theme-transition-duration) var(--theme-transition-timing),
+                box-shadow var(--theme-transition-duration) var(--theme-transition-timing);
+  }
+}
+
+/* Theme transition smooth component overrides for cards, headers, buttons & containers without forced * selector */
+.theme-transitioning body,
+.theme-transitioning header,
+.theme-transitioning main,
+.theme-transitioning nav,
+.theme-transitioning aside,
+.theme-transitioning section,
+.theme-transitioning div,
+.theme-transitioning button,
+.theme-transitioning input {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: var(--theme-transition-duration);
+  transition-timing-function: var(--theme-transition-timing);
 }
 
 .marquee-animation {
@@ -33,6 +75,51 @@
 /* ElevenLabs ConvAI & Support Chat Agent Responsive & Mobile Menu Rules */
 elevenlabs-convai {
   transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+}
+
+/* Microchip Loader Dark Mode White Color Overrides */
+.dark .microchip {
+  color: #ffffff !important;
+}
+.dark .microchip__core,
+.dark .microchip__dot {
+  fill: #ffffff !important;
+}
+.dark .microchip__line {
+  stroke: #f1f5f9 !important;
+}
+.dark .microchip__spark,
+.dark .microchip__wave {
+  stroke: #ffffff !important;
+}
+
+/* Notification Container and Support Bot Window High Z-Index & Hardware Acceleration */
+.notification-container {
+  z-index: 10000 !important;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.notification-container > * {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.support-bot-window {
+  z-index: 9999 !important;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+/* Mobile Menu Active Layout & Scroll Behavior Management */
+[data-mobile-menu-open="true"],
+html[data-mobile-menu-open="true"],
+body.mobile-menu-open {
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 /* Hide chat agents when mobile view menu bar is open */
@@ -49,6 +136,42 @@ body.mobile-menu-open button[aria-label="Open support chat"] {
   opacity: 0 !important;
   pointer-events: none !important;
   visibility: hidden !important;
+}
+
+/* Custom Scrollbar Utilities */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera on mobile screens */
