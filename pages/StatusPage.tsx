@@ -25,10 +25,61 @@ const getHistory = () => {
 };
 
 const StatusPage: React.FC<StatusPageProps> = ({ onNavigateHome, isDarkMode }) => {
-  const [uptime] = useState(100.00);
-  const [history] = useState(getHistory());
   const [incidents, setIncidents] = useState<SystemIncident[]>([]);
   const [showFullHistory, setShowFullHistory] = useState(false);
+  
+  // Dynamically calculate uptime percentage based on incidents
+  const calculateUptime = (incidentList: SystemIncident[]) => {
+    if (!incidentList || incidentList.length === 0) return '100.00';
+    let deduction = 0;
+    const now = new Date().getTime();
+    const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
+    
+    incidentList.forEach(inc => {
+      const incTime = new Date(inc.date).getTime();
+      if (now - incTime <= ninetyDaysMs) {
+        if (inc.status !== 'resolved') {
+          if (inc.impact === 'critical') deduction += 1.45;
+          else if (inc.impact === 'major') deduction += 0.75;
+          else deduction += 0.35;
+        } else {
+          if (inc.impact === 'critical') deduction += 0.18;
+          else if (inc.impact === 'major') deduction += 0.09;
+          else deduction += 0.04;
+        }
+      }
+    });
+
+    const finalUptime = Math.max(92.00, 100 - deduction);
+    return finalUptime.toFixed(2);
+  };
+
+  // Dynamically calculate overall 90-day history array
+  const history = Array.from({ length: 90 }).map((_, i) => {
+    const dateObj = new Date(Date.now() - (89 - i) * 24 * 60 * 60 * 1000);
+    const dateStr = dateObj.toISOString().split('T')[0];
+    
+    const matching = incidents.filter(inc => {
+      const incDateStr = new Date(inc.date).toISOString().split('T')[0];
+      return incDateStr === dateStr;
+    });
+
+    if (matching.length > 0) {
+      if (matching.some(inc => inc.impact === 'critical')) return { date: dateObj.toISOString(), status: 'outage' };
+      if (matching.some(inc => inc.impact === 'major' || inc.status !== 'resolved')) return { date: dateObj.toISOString(), status: 'degraded' };
+      return { date: dateObj.toISOString(), status: 'degraded' };
+    }
+
+    if (i === 89 && incidents.some(inc => inc.status !== 'resolved')) {
+      const active = incidents.filter(inc => inc.status !== 'resolved');
+      if (active.some(a => a.impact === 'critical')) return { date: dateObj.toISOString(), status: 'outage' };
+      return { date: dateObj.toISOString(), status: 'degraded' };
+    }
+
+    return { date: dateObj.toISOString(), status: 'operational' };
+  });
+
+  const uptime = calculateUptime(incidents);
   
   // Realtime Simulation State
   const [livePing, setLivePing] = useState(42);
@@ -47,6 +98,7 @@ const StatusPage: React.FC<StatusPageProps> = ({ onNavigateHome, isDarkMode }) =
     };
     
     window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('incidents_updated', handleStorageChange);
     
     // Simulate real-time metric fluctuations
     const interval = setInterval(() => {
@@ -59,10 +111,120 @@ const StatusPage: React.FC<StatusPageProps> = ({ onNavigateHome, isDarkMode }) =
     return () => {
         clearInterval(interval);
         window.removeEventListener('storage', handleStorageChange);
+        window.removeEventListener('incidents_updated', handleStorageChange);
     };
   }, []);
 
   const visibleIncidents = showFullHistory ? incidents : incidents.slice(0, 5);
+
+  // Active unresolved incidents
+  const activeIncidents = incidents.filter(inc => inc.status !== 'resolved');
+
+  // Calculate component status based on incidents
+  const getComponentInfo = (componentName: string) => {
+    const compIncidents = activeIncidents.filter(inc => 
+      !inc.affectedComponent || inc.affectedComponent === 'All Systems' || inc.affectedComponent === componentName
+    );
+
+    if (compIncidents.length === 0) {
+      return { 
+        statusKey: 'operational', 
+        label: 'Operational', 
+        badgeBg: 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400',
+        dotBg: 'bg-emerald-500',
+        icon: <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+      };
+    }
+
+    if (compIncidents.some(i => i.impact === 'critical')) {
+      return { 
+        statusKey: 'outage', 
+        label: 'Major Outage', 
+        badgeBg: 'bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400',
+        dotBg: 'bg-rose-500 animate-pulse',
+        icon: <XCircle className="w-3.5 h-3.5 text-rose-500" />
+      };
+    }
+
+    if (compIncidents.some(i => i.impact === 'major')) {
+      return { 
+        statusKey: 'degraded', 
+        label: 'Partial Outage', 
+        badgeBg: 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400',
+        dotBg: 'bg-amber-500 animate-pulse',
+        icon: <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+      };
+    }
+
+    return { 
+      statusKey: 'degraded', 
+      label: 'Degraded Performance', 
+      badgeBg: 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400',
+      dotBg: 'bg-amber-500 animate-pulse',
+      icon: <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+    };
+  };
+
+  // Overall system banner
+  const getOverallBanner = () => {
+    if (activeIncidents.length === 0) {
+      return {
+        label: 'All Systems Operational',
+        colorClass: 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400',
+        dotClass: 'bg-emerald-500'
+      };
+    }
+    if (activeIncidents.some(i => i.impact === 'critical')) {
+      return {
+        label: 'Major System Outage',
+        colorClass: 'bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400',
+        dotClass: 'bg-rose-500'
+      };
+    }
+    if (activeIncidents.some(i => i.impact === 'major')) {
+      return {
+        label: 'Partial System Outage',
+        colorClass: 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400',
+        dotClass: 'bg-amber-500'
+      };
+    }
+    return {
+      label: 'Degraded System Performance',
+      colorClass: 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400',
+      dotClass: 'bg-amber-500'
+    };
+  };
+
+  const banner = getOverallBanner();
+
+  const calculateComponentUptime = (componentName: string, incidentList: SystemIncident[]) => {
+    if (!incidentList || incidentList.length === 0) return '100.00';
+    let deduction = 0;
+    const now = new Date().getTime();
+    const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
+    
+    const compIncidents = incidentList.filter(inc => 
+      !inc.affectedComponent || inc.affectedComponent === 'All Systems' || inc.affectedComponent === componentName
+    );
+
+    compIncidents.forEach(inc => {
+      const incTime = new Date(inc.date).getTime();
+      if (now - incTime <= ninetyDaysMs) {
+        if (inc.status !== 'resolved') {
+          if (inc.impact === 'critical') deduction += 2.50;
+          else if (inc.impact === 'major') deduction += 1.20;
+          else deduction += 0.50;
+        } else {
+          if (inc.impact === 'critical') deduction += 0.35;
+          else if (inc.impact === 'major') deduction += 0.15;
+          else deduction += 0.05;
+        }
+      }
+    });
+
+    const finalUptime = Math.max(90.00, 100 - deduction);
+    return finalUptime.toFixed(2);
+  };
 
   return (
     <div className={`min-h-screen bg-slate-50 dark:bg-[#050505] font-sans transition-colors duration-300 text-slate-900 dark:text-slate-100 ${isDarkMode ? 'dark' : ''}`}>
@@ -88,9 +250,9 @@ const StatusPage: React.FC<StatusPageProps> = ({ onNavigateHome, isDarkMode }) =
                 <h1 className="text-3xl sm:text-4xl font-black mb-3 tracking-tight">HTWTH Status</h1>
                 <p className="text-slate-500 text-base max-w-xl">Real-time performance and historical uptime data for all core systems and infrastructure.</p>
             </div>
-            <div className="flex gap-2 items-center bg-emerald-50 dark:bg-emerald-500/10 px-4 py-2 rounded-full border border-emerald-200 dark:border-emerald-500/20 shadow-sm shadow-emerald-500/10">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-emerald-700 dark:text-emerald-400 font-bold text-sm uppercase tracking-wider">All Systems Operational</span>
+            <div className={`flex gap-2 items-center px-4 py-2 rounded-full border shadow-sm ${banner.colorClass}`}>
+                <div className={`w-2 h-2 rounded-full ${banner.dotClass} animate-pulse`} />
+                <span className="font-bold text-sm uppercase tracking-wider">{banner.label}</span>
             </div>
           </div>
         </RevealOnScroll>
@@ -303,15 +465,34 @@ const StatusPage: React.FC<StatusPageProps> = ({ onNavigateHome, isDarkMode }) =
           <div className="mb-16">
               <h2 className="text-2xl font-bold mb-6 tracking-tight flex items-center gap-2">System Components</h2>
               <div className="flex flex-col gap-4">
-                {systems.map((system, idx) => {
-                  // Generate an independent minor history for each system showing 100% operational status
-                  const sysHistory = Array.from({ length: 90 }).map((_, i) => ({
-                    date: new Date(Date.now() - (89 - i) * 24 * 60 * 60 * 1000).toISOString(),
-                    status: 'operational'
-                  }));
+                {systems.map((system) => {
+                  const compInfo = getComponentInfo(system.name);
+                  const compUptime = calculateComponentUptime(system.name, incidents);
+                  
+                  // Generate an independent 90-day history for this component
+                  const sysHistory = Array.from({ length: 90 }).map((_, i) => {
+                    const dateObj = new Date(Date.now() - (89 - i) * 24 * 60 * 60 * 1000);
+                    const dateStr = dateObj.toISOString().split('T')[0];
+                    
+                    const compIncidentsOnDate = incidents.filter(inc => {
+                      const incDateStr = new Date(inc.date).toISOString().split('T')[0];
+                      const isComp = !inc.affectedComponent || inc.affectedComponent === 'All Systems' || inc.affectedComponent === system.name;
+                      return isComp && incDateStr === dateStr;
+                    });
+
+                    if (compIncidentsOnDate.length > 0) {
+                      if (compIncidentsOnDate.some(inc => inc.impact === 'critical')) return { date: dateObj.toISOString(), status: 'outage' };
+                      return { date: dateObj.toISOString(), status: 'degraded' };
+                    }
+
+                    if (i === 89) {
+                      return { date: dateObj.toISOString(), status: compInfo.statusKey };
+                    }
+                    return { date: dateObj.toISOString(), status: 'operational' };
+                  });
                   
                   return (
-                  <div key={system.name} className="flex flex-col p-5 sm:p-6 bg-white dark:bg-[#0a0a0a] border border-slate-200/70 dark:border-slate-800 rounded-2xl hover:border-slate-300 dark:hover:border-slate-700 transition-colors shadow-sm gap-4">
+                  <div key={system.name} className="flex flex-col p-5 sm:p-6 bg-white dark:bg-[#0a0a0a] border border-slate-200/70 dark:border-slate-800 rounded-2xl hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm gap-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                           <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl text-indigo-500">
@@ -321,9 +502,9 @@ const StatusPage: React.FC<StatusPageProps> = ({ onNavigateHome, isDarkMode }) =
                               <span className="font-bold text-lg text-slate-800 dark:text-slate-100 block">{system.name}</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-100 dark:border-emerald-500/20 self-start sm:self-auto">
-                          <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-                          <span className="text-emerald-700 dark:text-emerald-400 font-bold text-[10px] tracking-widest uppercase">Operational</span>
+                        <div className={`flex items-center gap-2 px-3 py-1 rounded-full border self-start sm:self-auto ${compInfo.badgeBg}`}>
+                          {compInfo.icon}
+                          <span className="font-bold text-[10px] tracking-widest uppercase">{compInfo.label}</span>
                         </div>
                     </div>
                     
@@ -347,7 +528,7 @@ const StatusPage: React.FC<StatusPageProps> = ({ onNavigateHome, isDarkMode }) =
                         </div>
                         <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
                              <span>90 days ago</span>
-                             <span>100% uptime</span>
+                             <span>{compUptime}% Uptime</span>
                              <span>Today</span>
                         </div>
                     </div>

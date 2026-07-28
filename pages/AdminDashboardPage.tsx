@@ -1141,6 +1141,55 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
 };
 
 
+
+// Custom hook for mouse drag-to-scroll functionality on desktop
+const useDragToScroll = () => {
+    const ref = React.useRef<HTMLElement | null>(null);
+
+    const onMouseDown = (e: React.MouseEvent<HTMLElement>) => {
+        const el = ref.current || e.currentTarget;
+        if (!el) return;
+
+        // Only handle primary click
+        if (e.button !== 0) return;
+
+        const startX = e.pageX - el.offsetLeft;
+        const startScrollLeft = el.scrollLeft;
+        let isDragging = false;
+
+        const onMouseMove = (eMove: MouseEvent) => {
+            const x = eMove.pageX - el.offsetLeft;
+            const walk = (x - startX) * 1.5;
+            if (Math.abs(x - startX) > 5) {
+                isDragging = true;
+            }
+            el.scrollLeft = startScrollLeft - walk;
+            // Prevent text selection during drag
+            eMove.preventDefault();
+        };
+
+        const onMouseUp = () => {
+            document.removeEventListener("mousemove", onMouseMove);
+            document.removeEventListener("mouseup", onMouseUp);
+
+            if (isDragging) {
+                const preventClick = (eClick: MouseEvent) => {
+                    eClick.stopImmediatePropagation();
+                    eClick.preventDefault();
+                    el.removeEventListener("click", preventClick, true);
+                };
+                el.addEventListener("click", preventClick, true);
+            }
+        };
+
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+    };
+
+    return { ref, onMouseDown };
+};
+
+
 // AdminNav Component - Updated for Classic Mobile Hamburger Menu
 const AdminNav: React.FC<{
     currentView: string;
@@ -1150,6 +1199,7 @@ const AdminNav: React.FC<{
     liveCount: number;
 }> = ({ currentView, onNavigate, requestsCount, inquiriesCount, liveCount }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const dragScroll = useDragToScroll();
 
     const navItems = [
         { id: 'management', label: 'User Management', icon: <UsersIcon className="w-5 h-5"/> },
@@ -1257,12 +1307,17 @@ const AdminNav: React.FC<{
             )}
 
             {/* Desktop Tabs (Unchanged) */}
-            <nav className="hidden md:flex -mb-px space-x-6 overflow-x-auto hide-scrollbar" aria-label="Tabs">
+            <nav 
+                ref={dragScroll.ref}
+                onMouseDown={dragScroll.onMouseDown}
+                className="-mb-px flex space-x-3 sm:space-x-6 overflow-x-auto hide-scrollbar no-scrollbar scroll-smooth snap-x touch-pan-x py-0.5 cursor-grab active:cursor-grabbing select-none" 
+                aria-label="Tabs"
+            >
                 {navItems.map(item => (
                     <button
                         key={item.id}
-                        onClick={() => onNavigate(`admin/${item.id}`)}
-                        className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
+                        onClick={(e) => { e.currentTarget.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" }); onNavigate(`admin/${item.id}`); }}
+                        className={`whitespace-nowrap py-3 px-1.5 sm:px-2 border-b-2 font-medium text-xs sm:text-sm transition-all flex items-center gap-2 shrink-0 snap-align-start ${
                             currentView === item.id
                                 ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
                                 : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-600'
@@ -1308,6 +1363,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
     }
 
     const [view, setView] = useState<'management' | 'live' | 'requests' | 'inquiries' | 'broadcast' | 'mail_broadcast' | 'controller'>('management');
+    const dragScroll = useDragToScroll();
     const [searchQuery, setSearchQuery] = useState('');
     const [sortBy, setSortBy] = useState<'created_at' | 'name'>('created_at');
     const [activeFilter, setActiveFilter] = useState<UserFilter>('pending');
@@ -1379,6 +1435,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
     const [newIncidentDesc, setNewIncidentDesc] = useState('');
     const [newIncidentStatus, setNewIncidentStatus] = useState<SystemIncident['status']>('investigating');
     const [newIncidentImpact, setNewIncidentImpact] = useState<SystemIncident['impact']>('minor');
+    const [newIncidentComponent, setNewIncidentComponent] = useState<string>('All Systems');
+    const [newIncidentPercentage, setNewIncidentPercentage] = useState<number>(0.5);
 
     const toLocalDatetimeString = (isoString: string | null | undefined) => {
         if (!isoString) return '';
@@ -1873,7 +1931,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
                     {navItems.map(item => (
                         <button
                             key={item.id}
-                            onClick={() => onNavigateWithinApp(`admin/${item.id}`)}
+                            onClick={(e) => { e.currentTarget.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" }); onNavigateWithinApp(`admin/${item.id}`); }}
                             className={`w-full flex items-center justify-between px-3 py-3 rounded-lg text-sm font-medium transition-all ${
                                 view === item.id
                                     ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300'
@@ -1902,17 +1960,22 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
             )}
 
             {/* Desktop Header & Nav */}
-            <div className="hidden md:block flex-shrink-0 p-4 sm:p-6 md:p-8 pb-0">
-                <header>
-                    <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+            <div className="flex-shrink-0 p-4 sm:p-6 md:p-8 pb-0">
+                <header className="flex items-center justify-between">
+                    <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">Admin Dashboard</h1>
                 </header>
-                <div className="mt-4 border-b border-slate-200 dark:border-slate-700">
-                    <nav className="-mb-px flex space-x-6 overflow-x-auto hide-scrollbar" aria-label="Tabs">
+                <div className="mt-3 sm:mt-4 border-b border-slate-200 dark:border-slate-700">
+                    <nav 
+                        ref={dragScroll.ref}
+                        onMouseDown={dragScroll.onMouseDown}
+                        className="-mb-px flex space-x-3 sm:space-x-6 overflow-x-auto hide-scrollbar no-scrollbar scroll-smooth snap-x touch-pan-x py-0.5 cursor-grab active:cursor-grabbing select-none" 
+                        aria-label="Tabs"
+                    >
                         {navItems.map(item => (
                             <button
                                 key={item.id}
                                 onClick={() => onNavigateWithinApp(`admin/${item.id}`)}
-                                className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
+                                className={`whitespace-nowrap py-3 px-1.5 sm:px-2 border-b-2 font-medium text-xs sm:text-sm transition-all flex items-center gap-2 shrink-0 snap-align-start ${
                                     view === item.id
                                         ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
                                         : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-600'
@@ -2749,12 +2812,27 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
                                         onChange={(e) => setNewIncidentDesc(e.target.value)}
                                         className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm h-20 resize-none"
                                     />
-                                    <div className="flex gap-4">
-                                        <div className="flex-1">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                        <div>
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Affected Component</label>
+                                            <select 
+                                                value={newIncidentComponent} 
+                                                onChange={(e) => setNewIncidentComponent(e.target.value)}
+                                                className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-semibold"
+                                            >
+                                                <option value="All Systems">All Systems</option>
+                                                <option value="Core Application">Core Application</option>
+                                                <option value="Database Clusters">Database Clusters</option>
+                                                <option value="API Endpoints">API Endpoints</option>
+                                                <option value="Background Workers">Background Workers</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Status</label>
                                             <select 
                                                 value={newIncidentStatus} 
                                                 onChange={(e) => setNewIncidentStatus(e.target.value as any)}
-                                                className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
+                                                className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-semibold"
                                             >
                                                 <option value="investigating">Investigating</option>
                                                 <option value="identified">Identified</option>
@@ -2762,15 +2840,38 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
                                                 <option value="resolved">Resolved</option>
                                             </select>
                                         </div>
-                                        <div className="flex-1">
+                                        <div>
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Impact Level</label>
                                             <select 
                                                 value={newIncidentImpact} 
-                                                onChange={(e) => setNewIncidentImpact(e.target.value as any)}
-                                                className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
+                                                onChange={(e) => {
+                                                    const val = e.target.value as any;
+                                                    setNewIncidentImpact(val);
+                                                    if (val === 'critical') setNewIncidentPercentage(2.5);
+                                                    else if (val === 'major') setNewIncidentPercentage(1.2);
+                                                    else setNewIncidentPercentage(0.5);
+                                                }}
+                                                className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-semibold"
                                             >
-                                                <option value="minor">Minor Impact</option>
-                                                <option value="major">Major Impact</option>
-                                                <option value="critical">Critical Outage</option>
+                                                <option value="minor">Minor Impact (Degraded)</option>
+                                                <option value="major">Major Impact (Partial Outage)</option>
+                                                <option value="critical">Critical Outage (Major Outage)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Uptime Impact % Option</label>
+                                            <select 
+                                                value={newIncidentPercentage} 
+                                                onChange={(e) => setNewIncidentPercentage(parseFloat(e.target.value))}
+                                                className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-bold text-indigo-600 dark:text-indigo-400"
+                                            >
+                                                <option value={0.25}>0.25% (Low Deduction)</option>
+                                                <option value={0.5}>0.50% (Minor Default)</option>
+                                                <option value={1.0}>1.00% (Moderate)</option>
+                                                <option value={1.2}>1.20% (Major Default)</option>
+                                                <option value={2.0}>2.00% (High Outage)</option>
+                                                <option value={2.5}>2.50% (Critical Default)</option>
+                                                <option value={5.0}>5.00% (Severe Outage)</option>
                                             </select>
                                         </div>
                                     </div>
@@ -2783,18 +2884,100 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
                                                 description: newIncidentDesc,
                                                 status: newIncidentStatus,
                                                 impact: newIncidentImpact,
+                                                impactPercentage: newIncidentPercentage,
+                                                affectedComponent: newIncidentComponent,
                                                 date: new Date().toISOString()
                                             } as SystemIncident;
                                             await addIncident(newIncident);
                                             setIncidents(await getIncidents());
                                             setNewIncidentTitle('');
                                             setNewIncidentDesc('');
-                                            addNotification({ title: 'Success', message: 'Incident posted.', type: 'success' });
+                                            addNotification({ title: 'Success', message: `Incident published with -${newIncidentPercentage}% impact!`, type: 'success' });
                                         }}
-                                        className="w-full p-2 bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 rounded-lg font-medium text-sm hover:opacity-90 transition-opacity"
+                                        className="w-full p-2.5 bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 rounded-lg font-bold text-xs uppercase tracking-wider hover:opacity-90 transition-opacity"
                                     >
-                                        Publish Incident
+                                        Publish Incident & Update Status Page
                                     </button>
+                                </div>
+
+                                {/* Component Health & Incident Impact Breakdown */}
+                                <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700/80 mb-6">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h3 className="font-semibold text-xs uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                                            <ActivityIcon className="w-3.5 h-3.5 text-indigo-500" />
+                                            Component Health & Incident Percentage Analytics
+                                        </h3>
+                                        <span className="text-[10px] font-bold text-slate-400">Total Incidents: {incidents.length}</span>
+                                    </div>
+
+                                    {/* Component level percentage health */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                                        {['Core Application', 'Database Clusters', 'API Endpoints', 'Background Workers'].map(compName => {
+                                            const compIncs = incidents.filter(i => !i.affectedComponent || i.affectedComponent === 'All Systems' || i.affectedComponent === compName);
+                                            const activeIncs = compIncs.filter(i => i.status !== 'resolved');
+                                            const criticalActive = activeIncs.some(i => i.impact === 'critical');
+                                            const majorActive = activeIncs.some(i => i.impact === 'major');
+                                            
+                                            let deduction = 0;
+                                            compIncs.forEach(i => {
+                                                const perc = typeof i.impactPercentage === 'number' ? i.impactPercentage : (i.impact === 'critical' ? 2.5 : i.impact === 'major' ? 1.2 : 0.5);
+                                                if (i.status !== 'resolved') deduction += perc;
+                                                else deduction += (perc * 0.15);
+                                            });
+                                            const compUptime = Math.max(90, 100 - deduction).toFixed(2);
+
+                                            return (
+                                                <div key={compName} className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{compName}</span>
+                                                        <span className={`w-2 h-2 rounded-full ${
+                                                            criticalActive ? 'bg-rose-500 animate-pulse' :
+                                                            majorActive ? 'bg-amber-500 animate-pulse' :
+                                                            activeIncs.length > 0 ? 'bg-amber-400' : 'bg-emerald-500'
+                                                        }`} />
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-lg font-black text-slate-900 dark:text-white">{compUptime}%</div>
+                                                        <div className="text-[10px] text-slate-400 flex justify-between items-center mt-0.5">
+                                                            <span>{compIncs.length} incident{compIncs.length !== 1 ? 's' : ''}</span>
+                                                            <span className={activeIncs.length > 0 ? 'text-amber-500 font-bold' : 'text-emerald-500 font-bold'}>
+                                                                {activeIncs.length > 0 ? (criticalActive ? 'Major Outage' : 'Degraded') : 'Operational'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Percentage Breakdown by Impact & Status */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-200 dark:border-slate-700/60 text-xs">
+                                        <div>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Impact Level Breakdown</span>
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="px-2 py-0.5 bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 rounded font-bold text-[10px]">
+                                                    Critical: {incidents.length > 0 ? Math.round((incidents.filter(i => i.impact === 'critical').length / incidents.length) * 100) : 0}%
+                                                </span>
+                                                <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded font-bold text-[10px]">
+                                                    Major: {incidents.length > 0 ? Math.round((incidents.filter(i => i.impact === 'major').length / incidents.length) * 100) : 0}%
+                                                </span>
+                                                <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded font-bold text-[10px]">
+                                                    Minor: {incidents.length > 0 ? Math.round((incidents.filter(i => !i.impact || i.impact === 'minor').length / incidents.length) * 100) : 0}%
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Status Breakdown</span>
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded font-bold text-[10px]">
+                                                    Resolved: {incidents.length > 0 ? Math.round((incidents.filter(i => i.status === 'resolved').length / incidents.length) * 100) : 0}%
+                                                </span>
+                                                <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded font-bold text-[10px]">
+                                                    Active: {incidents.length > 0 ? Math.round((incidents.filter(i => i.status !== 'resolved').length / incidents.length) * 100) : 0}%
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Incident List */}
@@ -2804,32 +2987,121 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
                                         <p className="text-sm text-slate-500 italic">No incidents recorded.</p>
                                     ) : (
                                         incidents.map(inc => (
-                                            <div key={inc.id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col gap-2 relative">
-                                                <div className="flex justify-between items-start">
+                                            <div key={inc.id} className={`p-4 rounded-xl border bg-white dark:bg-slate-800 flex flex-col gap-2 relative transition-all ${
+                                                inc.status !== 'resolved' ? 'border-amber-300 dark:border-amber-500/50 shadow-xs' : 'border-slate-200 dark:border-slate-700'
+                                            }`}>
+                                                <div className="flex justify-between items-start gap-2">
                                                     <div className="flex-1">
-                                                        <h4 className="font-bold text-sm">{inc.title}</h4>
-                                                        <p className="text-[11px] text-slate-500 mb-2">{new Date(inc.date).toLocaleString()}</p>
+                                                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                                                            <h4 className="font-bold text-sm text-slate-900 dark:text-white">{inc.title}</h4>
+                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                                                inc.affectedComponent === 'Core Application' ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300' :
+                                                                inc.affectedComponent === 'Database Clusters' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' :
+                                                                inc.affectedComponent === 'API Endpoints' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' :
+                                                                inc.affectedComponent === 'Background Workers' ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' :
+                                                                'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
+                                                            }`}>
+                                                                {inc.affectedComponent || 'All Systems'}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-[11px] text-slate-500">{new Date(inc.date).toLocaleString()}</p>
                                                     </div>
-                                                    <button onClick={async () => { await deleteIncident(inc.id); setIncidents(await getIncidents()); addNotification({title:'Success', message: 'Incident deleted.', type:'success'}) }} className="text-rose-500 hover:text-rose-600 p-1">
-                                                        <TrashIcon className="w-4 h-4" />
-                                                    </button>
+                                                    <div className="flex items-center gap-2">
+                                                        {inc.status !== 'resolved' && (
+                                                            <button 
+                                                                onClick={async () => {
+                                                                    await updateIncident(inc.id, { status: 'resolved' });
+                                                                    setIncidents(await getIncidents());
+                                                                    addNotification({title:'Resolved', message: 'Incident marked as resolved!', type:'success'});
+                                                                }} 
+                                                                className="px-2.5 py-1 rounded bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold uppercase tracking-wider transition-colors"
+                                                            >
+                                                                Mark Resolved
+                                                            </button>
+                                                        )}
+                                                        <button onClick={async () => { await deleteIncident(inc.id); setIncidents(await getIncidents()); addNotification({title:'Success', message: 'Incident deleted.', type:'success'}) }} className="text-rose-500 hover:text-rose-600 p-1">
+                                                            <TrashIcon className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                                 <p className="text-xs text-slate-600 dark:text-slate-300">{inc.description}</p>
-                                                <div className="flex items-center gap-2 mt-2">
-                                                    <select 
-                                                        value={inc.status} 
-                                                        onChange={async (e) => {
-                                                            await updateIncident(inc.id, { status: e.target.value as any });
-                                                            setIncidents(await getIncidents());
-                                                            addNotification({title:'Success', message: 'Status updated.', type:'success'});
-                                                        }}
-                                                        className="p-1 rounded bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-[10px] font-bold uppercase tracking-wider"
-                                                    >
-                                                        <option value="investigating">Investigating</option>
-                                                        <option value="identified">Identified</option>
-                                                        <option value="monitoring">Monitoring</option>
-                                                        <option value="resolved">Resolved</option>
-                                                    </select>
+                                                
+                                                <div className="flex flex-wrap items-center gap-3 mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/50">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-[10px] text-slate-400 uppercase font-bold">Status:</span>
+                                                        <select 
+                                                            value={inc.status} 
+                                                            onChange={async (e) => {
+                                                                await updateIncident(inc.id, { status: e.target.value as any });
+                                                                setIncidents(await getIncidents());
+                                                                addNotification({title:'Success', message: 'Status updated on Status Page.', type:'success'});
+                                                            }}
+                                                            className="p-1 rounded bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-[10px] font-bold uppercase tracking-wider"
+                                                        >
+                                                            <option value="investigating">Investigating</option>
+                                                            <option value="identified">Identified</option>
+                                                            <option value="monitoring">Monitoring</option>
+                                                            <option value="resolved">Resolved</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-[10px] text-slate-400 uppercase font-bold">Impact:</span>
+                                                        <select 
+                                                            value={inc.impact || 'minor'} 
+                                                            onChange={async (e) => {
+                                                                await updateIncident(inc.id, { impact: e.target.value as any });
+                                                                setIncidents(await getIncidents());
+                                                                addNotification({title:'Success', message: 'Impact level updated.', type:'success'});
+                                                            }}
+                                                            className="p-1 rounded bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-[10px] font-bold uppercase tracking-wider"
+                                                        >
+                                                            <option value="minor">Minor (Degraded)</option>
+                                                            <option value="major">Major (Partial Outage)</option>
+                                                            <option value="critical">Critical (Major Outage)</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-[10px] text-slate-400 uppercase font-bold">Component:</span>
+                                                        <select 
+                                                            value={inc.affectedComponent || 'All Systems'} 
+                                                            onChange={async (e) => {
+                                                                await updateIncident(inc.id, { affectedComponent: e.target.value as any });
+                                                                setIncidents(await getIncidents());
+                                                                addNotification({title:'Success', message: 'Component updated.', type:'success'});
+                                                            }}
+                                                            className="p-1 rounded bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-[10px] font-bold uppercase tracking-wider"
+                                                        >
+                                                            <option value="All Systems">All Systems</option>
+                                                            <option value="Core Application">Core Application</option>
+                                                            <option value="Database Clusters">Database Clusters</option>
+                                                            <option value="API Endpoints">API Endpoints</option>
+                                                            <option value="Background Workers">Background Workers</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-[10px] font-bold text-indigo-500 uppercase">% Impact Option:</span>
+                                                        <select 
+                                                            value={typeof inc.impactPercentage === "number" ? inc.impactPercentage : (inc.impact === "critical" ? 2.5 : inc.impact === "major" ? 1.2 : 0.5)} 
+                                                            onChange={async (e) => {
+                                                                const val = parseFloat(e.target.value);
+                                                                await updateIncident(inc.id, { impactPercentage: val });
+                                                                setIncidents(await getIncidents());
+                                                                addNotification({title:"Success", message: `Impact percentage updated to -${val}%`, type:"success"});
+                                                            }}
+                                                            className="p-1 rounded bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider"
+                                                        >
+                                                            <option value={0.25}>0.25% Impact</option>
+                                                            <option value={0.5}>0.50% Impact</option>
+                                                            <option value={1.0}>1.00% Impact</option>
+                                                            <option value={1.2}>1.20% Impact</option>
+                                                            <option value={2.0}>2.00% Impact</option>
+                                                            <option value={2.5}>2.50% Impact</option>
+                                                            <option value={5.0}>5.00% Impact</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))

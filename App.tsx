@@ -1794,6 +1794,12 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
       if (appUserRef.current) {
           localStorage.removeItem(`2fa_verified_${appUserRef.current.email}`);
       }
+      setShowLanding(true);
+      setAuthPage(null);
+      setIs404(false);
+      if (window.location.hash) {
+          window.location.hash = '';
+      }
       signOut(auth); 
       is2FASignOutRef.current = false;
   };

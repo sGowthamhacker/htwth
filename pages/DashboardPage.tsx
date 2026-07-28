@@ -1576,6 +1576,47 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
         pinnedAppIds.map(id => apps.find(app => app.id === id)).filter((app): app is AppDefinition => !!app),
     [pinnedAppIds, apps]);
 
+    const renderWebAppContent = useCallback((appId: string) => {
+        const targetId = appId || 'home';
+        const appDef = apps.find(a => a.id === targetId);
+        if (!appDef) return <NotFoundPage />;
+
+        const baseComponent = appComponentMap[targetId];
+        if (!baseComponent) return <NotFoundPage />;
+
+        let props: Record<string, any> = {
+            onOpenApp: (nextAppId: string, extraProps?: Record<string, any>) => {
+                if (extraProps && extraProps.deepLinkInfo) {
+                    handleNavigate(`${nextAppId}/${extraProps.deepLinkInfo}`);
+                } else {
+                    handleNavigate(nextAppId);
+                }
+            },
+            onNavigateWithinApp: (path: string) => handleNavigate(path),
+            user: currentUser,
+            onClose: () => handleNavigate('home'),
+        };
+
+        if (targetId === 'home') props = { ...props, writeups, blogPosts, isPending };
+        if (targetId === 'settings') props = { ...props, allUsers, setAllUsers, taskbarPosition, setTaskbarPosition, mobileTaskbarPosition, setMobileTaskbarPosition, pinnedAppIds, setPinnedAppIds: handleSetPinnedApps, allApps: userApps, desktopIconSize, setDesktopIconSize, onAcceptFriendRequest, onRejectFriendRequest, onRemoveFriend, onSendFriendRequest, onLogout: handleRequestLogout, onProfileUpdate: handleSettingsProfileUpdate, onDeleteAccount, onVerifyPassword, onEmailChange, displayMode, setDisplayMode };
+        if (targetId === 'search') props = { ...props, allApps: userApps, allPosts: [...writeups, ...blogPosts], query: urlState.deepLinkInfo };
+        if (targetId === 'start') props = { ...props, onSearch: handleSearch, pinnedAppIds, setPinnedAppIds: handleSetPinnedApps, allApps: userApps, onLogout: handleRequestLogout, searchablePosts: [...writeups, ...blogPosts], addNotification, isWorkMode, onToggleWorkMode: () => setIsWorkMode(prev => !prev), onRestart: handleRequestRestart }; 
+        if (targetId === 'chat') props = { ...props, messages: chatMessages, onSendMessage: handleSendMessage, onEditMessage: handleEditMessage, onDeleteMessage: handleDeleteMessage, onReaction: handleReaction, allUsers, onClearChat: handleClearChatMessages };
+        if (targetId === 'admin') props = { ...props, allUsers, setAllUsers, user: currentUser, onApproveWriteupAccess, onRejectWriteupAccess, liveUsers, deepLinkInfo: urlState.deepLinkInfo };
+        if (targetId === 'writeup') props = { ...props, posts: writeups, onSavePost: handleSaveWriteup, onDeletePost, onLikePost, onAddCommentToPost, onDeleteCommentFromPost, onRequestAccess: onRequestWriteupAccess, deepLinkInfo: urlState.deepLinkInfo };
+        if (targetId === 'blog') props = { ...props, posts: blogPosts, onSavePost: handleSaveBlog, onDeletePost, onLikePost, onAddCommentToPost, onDeleteCommentFromPost, deepLinkInfo: urlState.deepLinkInfo };
+        if (targetId === 'mywork') props = { ...props, writeups, blogPosts, allUsers };
+        if (targetId === 'gowthamprofile') props = { ...props, writeups, blogPosts, allUsers, profileUserEmail: 'ragow49@gmail.com' };
+        if (targetId === 'about') props = { ...props, writeups, blogPosts, allUsers, profileUserEmail: urlState.deepLinkInfo };
+        if (targetId === 'kali') props = { ...props };
+        if (targetId === 'consistency') props = { ...props };
+        if (targetId === 'resources') props = { ...props };
+        if (targetId === 'docs') props = { ...props };
+        if (targetId === 'copyright') props = { ...props };
+
+        return React.cloneElement(baseComponent as any, props);
+    }, [userApps, apps, appComponentMap, handleNavigate, currentUser, writeups, blogPosts, isPending, allUsers, setAllUsers, taskbarPosition, setTaskbarPosition, mobileTaskbarPosition, setMobileTaskbarPosition, pinnedAppIds, handleSetPinnedApps, desktopIconSize, setDesktopIconSize, onAcceptFriendRequest, onRejectFriendRequest, onRemoveFriend, onSendFriendRequest, handleRequestLogout, handleSettingsProfileUpdate, onDeleteAccount, onVerifyPassword, onEmailChange, urlState.deepLinkInfo, handleSearch, addNotification, isWorkMode, handleRequestRestart, chatMessages, handleSendMessage, handleEditMessage, handleDeleteMessage, handleReaction, handleClearChatMessages, onApproveWriteupAccess, onRejectWriteupAccess, liveUsers, handleSaveWriteup, onDeletePost, onLikePost, onAddCommentToPost, onDeleteCommentFromPost, onRequestWriteupAccess, handleSaveBlog, displayMode, setDisplayMode]);
+
     if (isSyncingProfile) {
         return (
             <div className="h-full w-full flex flex-col items-center justify-center text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-900">
@@ -1741,62 +1782,43 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
         );
     }
 
-    const renderWebAppContent = useCallback((appId: string) => {
-        const targetId = appId || 'home';
-        const appDef = apps.find(a => a.id === targetId);
-        if (!appDef) return <NotFoundPage />;
-
-        const baseComponent = appComponentMap[targetId];
-        if (!baseComponent) return <NotFoundPage />;
-
-        let props: Record<string, any> = {
-            onOpenApp: (nextAppId: string, extraProps?: Record<string, any>) => {
-                if (extraProps && extraProps.deepLinkInfo) {
-                    handleNavigate(`${nextAppId}/${extraProps.deepLinkInfo}`);
-                } else {
-                    handleNavigate(nextAppId);
-                }
-            },
-            onNavigateWithinApp: (path: string) => handleNavigate(path),
-            user: currentUser,
-            onClose: () => handleNavigate('home'),
-        };
-
-        if (targetId === 'home') props = { ...props, writeups, blogPosts, isPending };
-        if (targetId === 'settings') props = { ...props, allUsers, setAllUsers, taskbarPosition, setTaskbarPosition, mobileTaskbarPosition, setMobileTaskbarPosition, pinnedAppIds, setPinnedAppIds: handleSetPinnedApps, allApps: userApps, desktopIconSize, setDesktopIconSize, onAcceptFriendRequest, onRejectFriendRequest, onRemoveFriend, onSendFriendRequest, onLogout: handleRequestLogout, onProfileUpdate: handleSettingsProfileUpdate, onDeleteAccount, onVerifyPassword, onEmailChange, displayMode, setDisplayMode };
-        if (targetId === 'search') props = { ...props, allApps: userApps, allPosts: [...writeups, ...blogPosts], query: urlState.deepLinkInfo };
-        if (targetId === 'start') props = { ...props, onSearch: handleSearch, pinnedAppIds, setPinnedAppIds: handleSetPinnedApps, allApps: userApps, onLogout: handleRequestLogout, searchablePosts: [...writeups, ...blogPosts], addNotification, isWorkMode, onToggleWorkMode: () => setIsWorkMode(prev => !prev), onRestart: handleRequestRestart }; 
-        if (targetId === 'chat') props = { ...props, messages: chatMessages, onSendMessage: handleSendMessage, onEditMessage: handleEditMessage, onDeleteMessage: handleDeleteMessage, onReaction: handleReaction, allUsers, onClearChat: handleClearChatMessages };
-        if (targetId === 'admin') props = { ...props, allUsers, setAllUsers, user: currentUser, onApproveWriteupAccess, onRejectWriteupAccess, liveUsers, deepLinkInfo: urlState.deepLinkInfo };
-        if (targetId === 'writeup') props = { ...props, posts: writeups, onSavePost: handleSaveWriteup, onDeletePost, onLikePost, onAddCommentToPost, onDeleteCommentFromPost, onRequestAccess: onRequestWriteupAccess, deepLinkInfo: urlState.deepLinkInfo };
-        if (targetId === 'blog') props = { ...props, posts: blogPosts, onSavePost: handleSaveBlog, onDeletePost, onLikePost, onAddCommentToPost, onDeleteCommentFromPost, deepLinkInfo: urlState.deepLinkInfo };
-        if (targetId === 'mywork') props = { ...props, writeups, blogPosts, allUsers };
-        if (targetId === 'gowthamprofile') props = { ...props, writeups, blogPosts, allUsers, profileUserEmail: 'ragow49@gmail.com' };
-        if (targetId === 'about') props = { ...props, writeups, blogPosts, allUsers, profileUserEmail: urlState.deepLinkInfo };
-        if (targetId === 'kali') props = { ...props };
-        if (targetId === 'consistency') props = { ...props };
-        if (targetId === 'resources') props = { ...props };
-        if (targetId === 'docs') props = { ...props };
-        if (targetId === 'copyright') props = { ...props };
-
-        return React.cloneElement(baseComponent as any, props);
-    }, [userApps, apps, appComponentMap, handleNavigate, currentUser, writeups, blogPosts, isPending, allUsers, setAllUsers, taskbarPosition, setTaskbarPosition, mobileTaskbarPosition, setMobileTaskbarPosition, pinnedAppIds, handleSetPinnedApps, desktopIconSize, setDesktopIconSize, onAcceptFriendRequest, onRejectFriendRequest, onRemoveFriend, onSendFriendRequest, handleRequestLogout, handleSettingsProfileUpdate, onDeleteAccount, onVerifyPassword, onEmailChange, urlState.deepLinkInfo, handleSearch, addNotification, isWorkMode, handleRequestRestart, chatMessages, handleSendMessage, handleEditMessage, handleDeleteMessage, handleReaction, handleClearChatMessages, onApproveWriteupAccess, onRejectWriteupAccess, liveUsers, handleSaveWriteup, onDeletePost, onLikePost, onAddCommentToPost, onDeleteCommentFromPost, onRequestWriteupAccess, handleSaveBlog, displayMode, setDisplayMode]);
-
     if (displayMode === 'webapp') {
         return (
-            <WebAppLayout
-                user={currentUser}
-                allApps={userApps}
-                currentAppId={urlState.appId || 'home'}
-                onNavigate={(appId) => handleNavigate(appId)}
-                onSwitchToDesktopMode={() => setDisplayMode('desktop')}
-                onLogout={handleRequestLogout}
-                unreadNotificationCount={unreadNotificationCount}
-                renderAppContent={renderWebAppContent}
-                isPending={isPending}
-                searchQuery={urlState.appId === 'search' ? (urlState.deepLinkInfo || '') : ''}
-                onProfileUpdate={handleSettingsProfileUpdate}
-            />
+            <>
+                <WebAppLayout
+                    user={currentUser}
+                    allApps={userApps}
+                    currentAppId={urlState.appId || 'home'}
+                    onNavigate={(appId) => handleNavigate(appId)}
+                    onSwitchToDesktopMode={() => setDisplayMode('desktop')}
+                    onLogout={handleRequestLogout}
+                    unreadNotificationCount={unreadNotificationCount}
+                    renderAppContent={renderWebAppContent}
+                    isPending={isPending}
+                    searchQuery={urlState.appId === 'search' ? (urlState.deepLinkInfo || '') : ''}
+                    onProfileUpdate={handleSettingsProfileUpdate}
+                />
+
+                <ConfirmationModal
+                    isOpen={isLogoutModalOpen}
+                    onClose={() => setIsLogoutModalOpen(false)}
+                    onConfirm={handleConfirmLogout}
+                    title="Confirm Sign Out"
+                    confirmText="Sign Out"
+                >
+                    <p>Are you sure you want to sign out from your account?</p>
+                </ConfirmationModal>
+
+                <ConfirmationModal
+                    isOpen={isRestartModalOpen}
+                    onClose={() => setIsRestartModalOpen(false)}
+                    onConfirm={handleConfirmRestart}
+                    title="Confirm Restart"
+                    confirmText="Restart"
+                >
+                    <p>Are you sure you want to restart the system?</p>
+                </ConfirmationModal>
+            </>
         );
     }
 

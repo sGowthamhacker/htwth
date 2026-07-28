@@ -282,7 +282,7 @@ export const WebAppLayout: React.FC<WebAppLayoutProps> = ({
                 HTWTH
               </span>
               <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium hidden md:inline">
-                SaaS Security Platform
+                Security Platform
               </span>
             </div>
           </button>
@@ -445,7 +445,10 @@ export const WebAppLayout: React.FC<WebAppLayoutProps> = ({
                   <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
 
                   <button
-                    onClick={onLogout}
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      onLogout();
+                    }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors text-left cursor-pointer"
                   >
                     <LogOut className="w-4 h-4" />
@@ -464,10 +467,11 @@ export const WebAppLayout: React.FC<WebAppLayoutProps> = ({
         
         {/* COLLAPSIBLE SIDEBAR */}
         <aside
-          className={`fixed lg:static inset-y-0 left-0 z-50 lg:z-20 h-full shrink-0 bg-white dark:bg-slate-900 flex flex-col transition-all duration-300 ease-in-out ${
+          style={{ willChange: 'transform, width, opacity' }}
+          className={`fixed lg:static inset-y-0 left-0 z-50 lg:z-20 h-full shrink-0 bg-white dark:bg-slate-900 flex flex-col transform-gpu transition-[transform,width,opacity] duration-300 ease-out ${
             isSidebarOpen 
-              ? 'w-72 sm:w-80 lg:w-64 translate-x-0 shadow-2xl lg:shadow-none border-r border-slate-200 dark:border-slate-800 opacity-100' 
-              : 'w-72 sm:w-80 lg:w-0 -translate-x-full lg:translate-x-0 lg:opacity-0 overflow-hidden lg:overflow-hidden pointer-events-none lg:pointer-events-none border-r-0 border-transparent'
+              ? 'w-72 sm:w-80 lg:w-64 translate-x-0 shadow-2xl lg:shadow-none border-r border-slate-200 dark:border-slate-800 opacity-100 pointer-events-auto' 
+              : 'w-72 sm:w-80 lg:w-0 -translate-x-full lg:translate-x-0 lg:opacity-0 pointer-events-none lg:pointer-events-none border-r-0 border-transparent overflow-hidden'
           }`}
         >
           {/* Stable-width wrapper to prevent content wrapping/distortion during width collapse animation */}
@@ -626,18 +630,18 @@ export const WebAppLayout: React.FC<WebAppLayoutProps> = ({
         </aside>
 
         {/* Mobile Overlay when Sidebar Drawer is Open */}
-        {isSidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-40 lg:hidden transition-opacity"
-            onClick={() => setIsSidebarOpen(false)}
-          />
-        )}
+        <div 
+          className={`fixed inset-0 bg-slate-900/50 z-40 lg:hidden transition-opacity duration-300 ease-out ${
+            isSidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+          onClick={() => setIsSidebarOpen(false)}
+        />
 
         {/* DEDICATED MAIN SCROLLABLE VIEWPORT */}
-        <main className="flex-1 min-w-0 h-full bg-slate-50 dark:bg-slate-950 p-0 sm:p-2 md:p-4 flex flex-col gap-2 transition-all duration-300">
+        <main className="flex-1 min-w-0 h-full bg-slate-50 dark:bg-slate-950 p-0 sm:p-2 md:p-4 flex flex-col gap-2 transition-[padding,margin] duration-300 ease-out">
           
           {/* Active Page Card Container - Responsive layout with no duplicate borders on mobile */}
-          <div className={`w-full mx-auto flex-1 min-h-0 overflow-y-auto custom-scrollbar bg-white dark:bg-slate-900 rounded-none sm:rounded-2xl shadow-none sm:shadow-xs p-3 sm:p-4 md:p-6 flex flex-col transition-all duration-300 relative ${
+          <div className={`w-full mx-auto flex-1 min-h-0 overflow-y-auto custom-scrollbar bg-white dark:bg-slate-900 rounded-none sm:rounded-2xl shadow-none sm:shadow-xs p-3 sm:p-4 md:p-6 flex flex-col transition-[max-width,padding] duration-300 ease-out relative ${
             isSidebarOpen ? 'max-w-7xl' : 'max-w-none lg:px-6'
           }`}>
             {renderAppContent(activeAppId)}
