@@ -40,7 +40,11 @@ import Footer from '../components/Footer';
 import MicrochipLoader from '../components/MicrochipLoader';
 import ElevenLabsWidget from '../components/ElevenLabsWidget';
 import RevealOnScroll, { AnimationType } from '../components/RevealOnScroll';
-import { Menu, X, Cloud, CircleHelp, Rocket, Send, Search, Command, Terminal, Zap, Cpu, Sparkles, ArrowRight, ExternalLink, BookOpen } from 'lucide-react';
+import LandingHeroShowcase from '../components/LandingHeroShowcase';
+import LandingResourceHub from '../components/LandingResourceHub';
+import LandingCommunityHub from '../components/LandingCommunityHub';
+import LandingPricingSection from '../components/LandingPricingSection';
+import { Menu, X, Cloud, CircleHelp, Rocket, Send, Search, Command, Terminal, Zap, Cpu, Sparkles, ArrowRight, ExternalLink, BookOpen, Folder, FileText, Users, Award, Check } from 'lucide-react';
 import { sanitizeUrl } from '../utils/sanitizeUrl';
 import QRCode from 'qrcode';
 
@@ -2090,180 +2094,432 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
 
         {activeTab === 'home' && (
         <div className="animate-fade-in relative">
-          {/* Ultra-premium background effects */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80vw] h-[500px] bg-gradient-to-b from-indigo-500/20 via-purple-500/10 to-transparent blur-[100px] rounded-full pointer-events-none -mr-[20vw]"></div>
-          
-          <div className="text-center max-w-7xl mx-auto px-4 pt-10 sm:pt-20 relative z-10">
-            <RevealOnScroll animation="fade-down" duration={1200}>
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900/5 dark:bg-white/5 backdrop-blur-xl border border-slate-900/10 dark:border-white/10 text-slate-800 dark:text-slate-200 text-xs sm:text-sm font-semibold tracking-wide uppercase mb-10 shadow-sm relative overflow-hidden group">
-                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-20 transition-opacity duration-500"></div>
-                <span className="flex h-2 w-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 animate-pulse shadow-[0_0_10px_rgba(99,102,241,0.5)]"></span>
-                The Next Generation Security Workspace
-              </div>
-              <h1 className="text-5xl sm:text-7xl lg:text-[5.5rem] font-extrabold tracking-tighter text-slate-900 dark:text-white mb-8 leading-[1.05] drop-shadow-sm">
-                  Elevate Your <br className="hidden sm:block" />
-                  <span className="relative inline-block mt-2">
-                    <span className="absolute -inset-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 blur-xl opacity-20 dark:opacity-40 animate-pulse"></span>
-                    <span className="relative text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-500 dark:from-indigo-400 dark:to-purple-400">
-                      Security Research
-                    </span>
-                  </span>
-              </h1>
-            </RevealOnScroll>
-  
-            <RevealOnScroll animation="fade-up" delay={200} duration={1000}>
-              <p className="mt-8 text-lg sm:text-xl text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl mx-auto font-medium">
-                  Streamline your bug bounty workflow. Write professional reports with AI assistance, collaborate in real-time, and showcase your achievements in a stunning portfolio.
-              </p>
-            </RevealOnScroll>
-            
-            <RevealOnScroll animation="zoom-in" delay={400} duration={800}>
-              <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-6">
-                  <button 
-                    onClick={onGetStarted}
-                    className="w-full sm:w-auto px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-bold text-lg hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-[0_10px_30px_-10px_rgba(0,0,0,0.3)] dark:shadow-[0_10px_30px_-10px_rgba(255,255,255,0.3)] hover:-translate-y-1 flex items-center justify-center gap-2 group relative overflow-hidden"
-                  >
-                    <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 dark:via-black/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out"></div>
-                    Start Learnup
-                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                  </button>
-                  <button 
-                    onClick={() => setShowAdminProfile(true)}
-                    className="w-full sm:w-auto px-8 py-4 bg-transparent text-slate-900 dark:text-white border-2 border-indigo-500/30 dark:border-indigo-400/30 hover:border-indigo-500 dark:hover:border-indigo-400 rounded-2xl font-bold text-lg transition-all flex items-center justify-center gap-3 relative shadow-[0_0_20px_-5px_rgba(99,102,241,0.2)] hover:shadow-[0_0_30px_-5px_rgba(99,102,241,0.4)] group overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-indigo-500/5 dark:bg-indigo-400/5 group-hover:bg-indigo-500/10 dark:group-hover:bg-indigo-400/10 transition-colors"></div>
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-500 to-purple-500"></div>
-                    <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                       <Sparkles className="w-4 h-4" />
+          <div className="max-w-7xl mx-auto px-4 pt-12 sm:pt-20 relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center">
+              
+              {/* Left Column: SaaS Copy */}
+              <div className="text-left space-y-8">
+                <RevealOnScroll animation="fade-right" duration={800}>
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-medium text-xs mb-4">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Interactive Workspace Edition
+                  </div>
+                </RevealOnScroll>
+    
+                <RevealOnScroll animation="fade-right" delay={100} duration={900}>
+                  <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-slate-900 dark:text-white leading-[1.1]">
+                    Streamline your security <br className="hidden sm:block" />
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-cyan-500">reporting workflow.</span>
+                  </h1>
+                </RevealOnScroll>
+      
+                <RevealOnScroll animation="fade-right" delay={200} duration={800}>
+                  <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 leading-relaxed max-w-lg">
+                    Build, track, and manage your vulnerability reports with a highly interactive dashboard. Collaborate seamlessly with your team in real-time.
+                  </p>
+                </RevealOnScroll>
+                
+                <RevealOnScroll animation="fade-up" delay={300} duration={800}>
+                  <div className="mt-8 flex flex-col sm:flex-row items-center gap-4">
+                      <button 
+                        onClick={onGetStarted}
+                        className="w-full sm:w-auto px-6 py-3.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 rounded-xl font-semibold text-sm transition-all duration-300 shadow-lg hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                      >
+                        Start Interactive Demo
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => setShowAdminProfile(true)}
+                        className="w-full sm:w-auto px-6 py-3.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-semibold text-sm transition-all duration-300 shadow-sm flex items-center justify-center gap-2 group"
+                      >
+                        <svg className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        Watch Product Video
+                      </button>
+                  </div>
+
+                  {/* Trust & Proof Points Bar */}
+                  <div className="mt-10 pt-6 border-t border-slate-200/60 dark:border-slate-800/60 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-medium text-slate-600 dark:text-slate-400">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      <span><strong className="text-slate-900 dark:text-white">5,000+</strong> Reports</span>
                     </div>
-                    <span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-300 dark:to-purple-300">View Creator Profile</span>
-                  </button>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                      <span><strong className="text-slate-900 dark:text-white">100%</strong> Verified</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-cyan-500"></span>
+                      <span><strong className="text-slate-900 dark:text-white">Cloud</strong> Kali Linux</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                      <span><strong className="text-slate-900 dark:text-white">Realtime</strong> Sync</span>
+                    </div>
+                  </div>
+                </RevealOnScroll>
               </div>
-              <p className="mt-8 text-sm text-slate-500 dark:text-slate-400 font-medium tracking-wide uppercase">No credit card required <span className="mx-2 opacity-50">•</span> Community Access Free</p>
-            </RevealOnScroll>
-          </div>
-  
-          {/* Dashboard Preview Mockup */}
-          <RevealOnScroll animation="fade-up" delay={600} duration={1200} className="mt-28 relative max-w-[90rem] mx-auto px-4 sm:px-6 z-20">
-            <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-[3rem] blur-3xl opacity-20 dark:opacity-30 transition duration-1000 -z-10"></div>
-            <div className="relative rounded-3xl overflow-hidden border border-slate-200/50 dark:border-white/10 shadow-[0_20px_50px_-10px_rgba(0,0,0,0.2)] dark:shadow-[0_20px_50px_-10px_rgba(0,0,0,0.5)] bg-slate-100 dark:bg-[#0c0c0e]">
-              {/* Ultra-Premium Glass Mockup Header */}
-              <div className="h-14 border-b border-slate-200/50 dark:border-white/5 flex items-center px-6 gap-4 bg-white/50 dark:bg-black/20 backdrop-blur-md">
-                <div className="flex gap-2">
-                  <div className="w-3.5 h-3.5 rounded-full bg-rose-500/80 shadow-[0_0_10px_rgba(244,63,94,0.5)]"></div>
-                  <div className="w-3.5 h-3.5 rounded-full bg-amber-500/80 shadow-[0_0_10px_rgba(245,158,11,0.5)]"></div>
-                  <div className="w-3.5 h-3.5 rounded-full bg-emerald-500/80 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-                </div>
-                <div className="mx-auto px-6 py-1.5 rounded-full bg-slate-200/50 dark:bg-white/5 border border-slate-300/50 dark:border-white/10 text-xs text-slate-600 dark:text-slate-300 font-mono flex items-center gap-3 shadow-inner">
-                  <LockIcon className="w-3.5 h-3.5 text-indigo-500" /> <span className="opacity-80">workspace.htwth.com</span>
-                </div>
-              </div>
-              <img 
-                src="https://images.unsplash.com/photo-1555949963-aa79dcee981c?q=80&w=2070&auto=format&fit=crop" 
-                alt="HTWTH Application Interface" 
-                title="Premium Dashboard Workspace"
-                className="w-full aspect-[16/10] lg:aspect-[21/9] object-cover opacity-95 transition-transform duration-1000 hover:scale-[1.02]"
-                loading="lazy"
-              />
+
+              {/* Right Column: Interactive Showcase Widget */}
+              <RevealOnScroll animation="fade-left" delay={200} duration={1000} className="relative z-20 mt-8 lg:mt-0">
+                <LandingHeroShowcase onStartDemo={onGetStarted} />
+              </RevealOnScroll>
             </div>
-          </RevealOnScroll>
+          </div>
         </div>
         )}
 
         {(activeTab === 'home' || activeTab === 'features') && (
-        <div className="animate-fade-in">
-        {/* Features Section */}
-        <div className="mt-32 mb-24">
+          <div className="animate-fade-in max-w-7xl mx-auto px-4 sm:px-6 mt-32 mb-24">
             <RevealOnScroll animation="fade-up">
-                 <div className="text-center max-w-3xl mx-auto mb-16">
-                   <h2 className="text-indigo-600 dark:text-indigo-400 font-bold tracking-wide uppercase text-sm mb-3">Everything you need</h2>
-                   <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white mb-6">
-                     {showAllFeatures ? 'All Powerful Features' : 'Top Security Features'} for Professionals
-                   </h2>
-                   <p className="text-slate-600 dark:text-slate-400 text-lg">A complete ecosystem designed specifically for security researchers and ethical hackers. HTWTH provides an integrated environment to document complex vulnerabilities, automate reporting, map CVEs, and collaborate in real-time, helping you secure the digital world faster and more efficiently.</p>
-                 </div>
+              <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
+                <span className="font-mono text-xs text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">[ CAPABILITIES ]</span>
+                <h2 className="text-3xl sm:text-5xl font-light text-slate-950 dark:text-white tracking-tight">
+                  A structured system <br />
+                  <span className="font-serif italic font-semibold text-indigo-600 dark:text-indigo-400">built for technical depth.</span>
+                </h2>
+              </div>
             </RevealOnScroll>
-            
+
+            {/* Bento Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {FEATURES.slice(0, showAllFeatures ? FEATURES.length : 10).map((feature, index) => {
-                    const isExpanded = expandedFeatureId === feature.id;
+              {/* Feature 1 (Spans 2 columns on lg) */}
+              <RevealOnScroll animation="zoom-in" delay={100} className="lg:col-span-2">
+                <div className="group h-full relative rounded-3xl overflow-hidden bg-white dark:bg-[#121215] border border-slate-200/80 dark:border-slate-800/80 transition-all duration-500 hover:shadow-2xl hover:border-indigo-500/40 flex flex-col justify-between">
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                  
+                  <div className="p-8 h-full flex flex-col justify-between relative z-10">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                          <FileText className="w-6 h-6" />
+                        </div>
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-md border border-indigo-100 dark:border-indigo-900/40">
+                          AI REPORT STUDIO
+                        </span>
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-bold text-slate-950 dark:text-white mb-2">Smart Writeup Editor & AI Remediation</h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-lg">
+                          Markdown-based editor with automated CVSS v3.1 scoring, AI patch recommendations, and instant one-click executive PDF exports.
+                        </p>
+                      </div>
+                    </div>
 
-                    return (
-                        <RevealOnScroll key={feature.id} animation="fade-up" delay={index * 50}>
-                             <div 
-                                className={`relative rounded-2xl border transition-all duration-300 flex flex-col group overflow-hidden cursor-pointer ${
-                                   isExpanded 
-                                   ? 'bg-white dark:bg-slate-900 border-indigo-500 shadow-xl ring-1 ring-indigo-500/50' 
-                                   : 'bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700'
-                                }`}
-                                onClick={() => setExpandedFeatureId(isExpanded ? null : feature.id)}
-                             >
-                                <div className="p-6 relative z-10 flex flex-col h-full">
-                                    <div className="flex items-center gap-4 mb-4">
-                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 ${feature.bg} ${feature.color}`}>
-                                            {feature.icon}
-                                        </div>
-                                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">{feature.title}</h3>
-                                    </div>
-                                    
-                                    <p className={`text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-4 transition-all duration-300 ${isExpanded ? 'opacity-100' : 'opacity-90 line-clamp-2'}`}>
-                                        {feature.description}
-                                    </p>
-
-                                    {/* Expandable Section */}
-                                    <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-                                        <div className="overflow-hidden">
-                                            <div className={`pt-4 border-t border-slate-100 dark:border-slate-800 opacity-0 transition-opacity duration-300 delay-100 ${isExpanded ? 'opacity-100' : ''}`}>
-                                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Why It Matters</h4>
-                                                <div className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
-                                                    {feature.purpose}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className={`mt-auto pt-4 flex items-center text-sm font-semibold transition-colors ${isExpanded ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 group-hover:text-indigo-500'}`}>
-                                        {isExpanded ? 'Show less' : 'Learn more'} 
-                                        <ChevronDownIcon className={`w-4 h-4 ml-1 transition-transform duration-300 ${isExpanded ? 'rotate-180' : '-rotate-90'}`} />
-                                    </div>
-                                </div>
-                            </div>
-                        </RevealOnScroll>
-                    );
-                })}
-            </div>
-
-            {!showAllFeatures && FEATURES.length > 10 && (
-                <div className="mt-12 text-center">
-                    <button 
-                        onClick={() => setShowAllFeatures(true)}
-                        className="inline-flex items-center gap-2 px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/25 transition-all hover:-translate-y-0.5 group"
-                    >
-                        View More Features
-                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                    </button>
-                    <p className="mt-4 text-sm text-slate-500 dark:text-slate-400 font-medium">Explore all 20+ power tools in our ecosystem</p>
+                    {/* Interactive UI Mock inside card */}
+                    <div className="mt-8 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0c0c0e] shadow-sm overflow-hidden group-hover:translate-y-[-4px] transition-transform duration-500 relative">
+                       <div className="h-8 bg-slate-100 dark:bg-slate-900/80 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800">
+                         <div className="flex items-center gap-1.5">
+                           <div className="w-2.5 h-2.5 rounded-full bg-rose-400" />
+                           <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                           <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                           <span className="ml-2 font-mono text-[10px] text-slate-400 font-bold">report_cve_2024.md</span>
+                         </div>
+                         <span className="text-[9px] font-mono font-bold text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">CVSS 9.8 Critical</span>
+                       </div>
+                       <div className="p-4 font-mono text-xs text-slate-600 dark:text-slate-300 space-y-2.5 relative">
+                         <div className="text-indigo-600 dark:text-indigo-400 font-bold text-sm"># Remote Command Execution in Auth Handler</div>
+                         <div className="text-slate-500 dark:text-slate-400 text-[11px] leading-relaxed">
+                           An unauthenticated attacker can inject arbitrary shell payloads via the callback parameter...
+                         </div>
+                         <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-800/60">
+                           <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-900/40 text-[10px] font-bold">
+                             <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+                             <span>AI Fix Suggested: Sanitize Callback URI String</span>
+                           </div>
+                           <span className="text-[10px] text-slate-400 font-mono">1-Click PDF</span>
+                         </div>
+                       </div>
+                    </div>
+                  </div>
                 </div>
+              </RevealOnScroll>
+
+              {/* Feature 2 (Spans 1 column): Hacker Community */}
+              <RevealOnScroll animation="zoom-in" delay={200} className="lg:col-span-1">
+                <div className="group h-full relative rounded-3xl overflow-hidden bg-white dark:bg-[#121215] border border-slate-200/80 dark:border-slate-800/80 transition-all duration-500 hover:shadow-2xl hover:border-pink-500/40 flex flex-col justify-between">
+                  <div className="p-8 h-full flex flex-col justify-between relative z-10">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="w-12 h-12 rounded-2xl bg-pink-100 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400 flex items-center justify-center">
+                          <Users className="w-6 h-6" />
+                        </div>
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950/40 px-2.5 py-1 rounded-md border border-pink-100 dark:border-pink-900/40">
+                          NETWORKING
+                        </span>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-slate-950 dark:text-white mb-2">Hacker Community</h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                          Connect with vulnerability hunters, exchange verified payloads, and collaborate on finding zero-days.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-8 pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-3">
+                       <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800 flex items-center justify-between">
+                         <div className="flex items-center gap-2.5">
+                           <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white font-bold text-xs flex items-center justify-center">
+                             0x
+                           </div>
+                           <div>
+                             <div className="text-xs font-bold text-slate-900 dark:text-white">0xAlice</div>
+                             <div className="text-[10px] text-indigo-500 font-mono">Found $5K SSRF</div>
+                           </div>
+                         </div>
+                         <span className="text-[9px] font-extrabold bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded">Online</span>
+                       </div>
+
+                       <div className="flex -space-x-2 pt-1 items-center justify-between">
+                         <div className="flex -space-x-2">
+                           <div className="w-8 h-8 rounded-full border-2 border-white dark:border-[#121215] bg-indigo-600 text-white flex items-center justify-center text-[10px] font-bold">0x</div>
+                           <div className="w-8 h-8 rounded-full border-2 border-white dark:border-[#121215] bg-pink-600 text-white flex items-center justify-center text-[10px] font-bold">AL</div>
+                           <div className="w-8 h-8 rounded-full border-2 border-white dark:border-[#121215] bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">GS</div>
+                           <div className="w-8 h-8 rounded-full border-2 border-white dark:border-[#121215] bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center text-[10px] font-bold">+1.2k</div>
+                         </div>
+                         <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">Join Chat →</span>
+                       </div>
+                    </div>
+                  </div>
+                </div>
+              </RevealOnScroll>
+
+              {/* Feature 3 (Spans 1 column): Cloud Security Workspace */}
+              <RevealOnScroll animation="zoom-in" delay={300} className="lg:col-span-1">
+                <div className="group h-full relative rounded-3xl overflow-hidden bg-white dark:bg-[#121215] border border-slate-200/80 dark:border-slate-800/80 transition-all duration-500 hover:shadow-2xl hover:border-emerald-500/40 flex flex-col justify-between">
+                  <div className="p-8 h-full flex flex-col justify-between relative z-10">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                          <Terminal className="w-6 h-6" />
+                        </div>
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-md border border-emerald-100 dark:border-emerald-900/40">
+                          CLOUD SHELL
+                        </span>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-slate-950 dark:text-white mb-2">Cloud Security Terminal</h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                          Browser-based interactive security terminal equipped with payload generators, header inspectors, and code sanitizers.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-8">
+                       <div className="bg-[#0c0c0e] rounded-2xl p-3.5 font-mono text-[11px] text-emerald-400 border border-slate-800 group-hover:-translate-y-1 transition-transform duration-500 shadow-xl space-y-2">
+                         <div className="flex items-center justify-between text-[9px] text-slate-500 border-b border-slate-800 pb-1.5">
+                           <span>user@htwth-shell:~#</span>
+                           <span className="text-emerald-500">ACTIVE</span>
+                         </div>
+                         <div className="text-slate-300">htwth-cli analyze --target api.domain.com</div>
+                         <div className="text-emerald-500 text-[10px]">
+                           [+] Analyzing HTTP Headers & Security Policies...<br/>
+                           [+] Generated Report ID: RPT-9942
+                         </div>
+                         <div className="flex gap-1.5 items-center text-[10px] text-emerald-400 pt-1">
+                            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+                            <span>Analysis Ready in Editor</span>
+                         </div>
+                       </div>
+                    </div>
+                  </div>
+                </div>
+              </RevealOnScroll>
+
+              {/* Feature 4 (Spans 2 columns): Verified Security Portfolio & Publishing */}
+              <RevealOnScroll animation="zoom-in" delay={400} className="lg:col-span-2">
+                <div className="group h-full relative rounded-3xl overflow-hidden bg-white dark:bg-[#121215] border border-slate-200/80 dark:border-slate-800/80 transition-all duration-500 hover:shadow-2xl hover:border-blue-500/40 flex flex-col justify-between">
+                  <div className="absolute top-0 left-0 w-72 h-72 bg-blue-500/10 blur-3xl rounded-full -translate-x-1/3 -translate-y-1/3 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                  <div className="absolute bottom-0 right-0 w-64 h-64 bg-indigo-500/10 blur-3xl rounded-full translate-x-1/3 translate-y-1/3 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                  
+                  <div className="p-8 h-full flex flex-col lg:flex-row gap-8 items-stretch justify-between relative z-10">
+                    <div className="flex-1 space-y-5 flex flex-col justify-between">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/15 to-indigo-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/20 shadow-inner">
+                            <Award className="w-6 h-6" />
+                          </div>
+                          <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-3 py-1 rounded-full border border-blue-200 dark:border-blue-800/60 shadow-xs">
+                            PLATFORM PUBLISHING
+                          </span>
+                        </div>
+                        <div>
+                          <h3 className="text-2xl font-bold text-slate-950 dark:text-white tracking-tight mb-2">Verified Security Portfolio</h3>
+                          <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                            Publish cryptographically signed research writeups, create interactive documentation, and compile a verified showcase of your technical work.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 text-xs text-slate-600 dark:text-slate-400 font-medium pt-2">
+                        <div className="flex items-center gap-1.5">
+                          <Check className="w-4 h-4 text-emerald-500" />
+                          <span>PGP Verified</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Check className="w-4 h-4 text-emerald-500" />
+                          <span>PDF Studio</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Check className="w-4 h-4 text-emerald-500" />
+                          <span>Automated CVSS</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Side: Sleek Verified Portfolio Showcase */}
+                    <div className="flex-1 w-full max-w-md">
+                      <div className="bg-slate-950 rounded-2xl p-4 sm:p-5 border border-slate-800 shadow-2xl relative z-20 space-y-4 text-slate-100">
+                        {/* Profile Header Bar */}
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
+                          <div className="flex items-center gap-3">
+                            <div className="relative">
+                              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-500 text-white font-bold text-xs flex items-center justify-center shadow-md">
+                                GS
+                              </div>
+                              <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-slate-950 flex items-center justify-center">
+                                <span className="w-1 h-1 rounded-full bg-white animate-ping" />
+                              </span>
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                                Gowtham S
+                                <span className="px-1.5 py-0.2 text-[9px] font-mono font-semibold bg-blue-500/20 text-blue-400 rounded border border-blue-500/30">AUTHOR</span>
+                              </div>
+                              <div className="text-[10px] text-slate-400 font-mono">PGP: 0x7F90...A2E1</div>
+                            </div>
+                          </div>
+
+                          <div className="text-right">
+                            <div className="text-xs font-bold text-emerald-400 font-mono">48 Reports</div>
+                            <div className="text-[9px] text-slate-400 uppercase font-mono">Published</div>
+                          </div>
+                        </div>
+
+                        {/* Recent Published Writeups Feed */}
+                        <div className="space-y-2">
+                          <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                            <span>Published Reports</span>
+                            <span className="text-emerald-400">100% Verified</span>
+                          </div>
+
+                          <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800/90 hover:border-slate-700 transition-colors flex items-center justify-between gap-2">
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-[10px] font-bold text-indigo-400">REPORT-2024-08</span>
+                                <span className="px-1.5 py-0.5 text-[8px] font-bold bg-indigo-500/20 text-indigo-300 rounded border border-indigo-500/30">TECHNICAL</span>
+                              </div>
+                              <div className="text-[11px] text-slate-300 font-medium">Remote Command Execution Analysis</div>
+                            </div>
+                            <span className="text-[9px] font-mono text-slate-400 shrink-0">Peer Reviewed</span>
+                          </div>
+
+                          <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800/90 hover:border-slate-700 transition-colors flex items-center justify-between gap-2">
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-[10px] font-bold text-indigo-400">REPORT-2024-03</span>
+                                <span className="px-1.5 py-0.5 text-[8px] font-bold bg-amber-500/20 text-amber-400 rounded border border-amber-500/30">ADVISORY</span>
+                              </div>
+                              <div className="text-[11px] text-slate-300 font-medium">Tenant Isolation Security Audit</div>
+                            </div>
+                            <span className="text-[9px] font-mono text-slate-400 shrink-0">Verified Note</span>
+                          </div>
+                        </div>
+
+                        {/* Bottom Stats Grid */}
+                        <div className="grid grid-cols-3 gap-2 pt-1">
+                          <div className="bg-slate-900/80 p-2 rounded-xl border border-slate-800/80 text-center">
+                            <div className="text-xs font-black text-indigo-400 font-mono">48</div>
+                            <div className="text-[9px] text-slate-400 font-mono">Writeups</div>
+                          </div>
+                          <div className="bg-slate-900/80 p-2 rounded-xl border border-slate-800/80 text-center">
+                            <div className="text-xs font-black text-emerald-400 font-mono">1.2K</div>
+                            <div className="text-[9px] text-slate-400 font-mono">Reads</div>
+                          </div>
+                          <div className="bg-slate-900/80 p-2 rounded-xl border border-slate-800/80 text-center">
+                            <div className="text-xs font-black text-amber-400 font-mono">Top 1%</div>
+                            <div className="text-[9px] text-slate-400 font-mono">Author Rank</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </RevealOnScroll>
+            </div>
+            
+            {showAllFeatures && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className="mt-12 pt-12 border-t border-slate-200 dark:border-slate-800/80"
+              >
+                <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
+                  <span className="font-mono text-xs text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">[ FULL ARCHITECTURE & MODULES ]</span>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Complete System Specifications</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Detailed overview of core modules, utilities, and developer capabilities built into the platform.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {FEATURES.map((feature) => (
+                    <div 
+                      key={feature.id}
+                      className="p-6 rounded-2xl bg-white dark:bg-[#121215] border border-slate-200/80 dark:border-slate-800/80 hover:border-indigo-500/40 transition-all duration-300 shadow-sm hover:shadow-xl flex flex-col justify-between"
+                    >
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className={`p-3 rounded-xl ${feature.bg} ${feature.color}`}>
+                            {feature.icon}
+                          </div>
+                          <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">MODULE :: {feature.id}</span>
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1.5">{feature.title}</h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-3">{feature.description}</p>
+                          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                            <span className="text-indigo-600 dark:text-indigo-400 block text-[9px] font-mono font-bold uppercase tracking-widest mb-1">Impact & Purpose</span>
+                            {feature.purpose}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
             )}
-        </div>
-        </div>
+
+            <div className="mt-12 text-center">
+              <button 
+                onClick={() => setShowAllFeatures(!showAllFeatures)}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-transparent border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-900 dark:text-white rounded-lg font-medium transition-colors group text-sm cursor-pointer shadow-sm"
+              >
+                {showAllFeatures ? 'Collapse System Specifications' : 'View Full Specifications'}
+                <ArrowRight className={`w-4 h-4 transition-transform ${showAllFeatures ? '-rotate-90' : 'group-hover:translate-x-1'}`} />
+              </button>
+            </div>
+          </div>
         )}
 
         {activeTab === 'home' && (
         <div className="animate-fade-in">
         {/* CTA Section */}
-        <RevealOnScroll animation="zoom-in" className="mb-24">
-            <div className="relative rounded-3xl overflow-hidden bg-slate-900 py-16 px-6 sm:px-12 text-center border border-slate-800">
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/20 via-purple-600/20 to-pink-600/20"></div>
-                <div className="relative z-10 max-w-2xl mx-auto">
-                    <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">Ready to upgrade your workflow?</h2>
-                    <p className="text-slate-300 mb-8 text-lg">Join hundreds of ethical hackers who are already using HTWTH to document, collaborate, and succeed.</p>
-                    <button 
-                        onClick={onGetStarted}
-                        className="px-8 py-4 bg-white text-slate-900 rounded-xl font-bold text-lg hover:bg-slate-100 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
-                    >
-                        Create Your Free Account
-                    </button>
+        <RevealOnScroll animation="fade-up" className="mb-24">
+            <div className="relative rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 py-16 px-6 sm:px-12 text-center shadow-2xl">
+                {/* Clean, premium grid overlay */}
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f29370a_1px,transparent_1px),linear-gradient(to_bottom,#1f29370a_1px,transparent_1px)] bg-[size:24px_24px] opacity-20 pointer-events-none"></div>
+                <div className="relative z-10 max-w-2xl mx-auto space-y-6">
+                    <span className="font-mono text-xs text-indigo-450 uppercase tracking-[0.25em]">[ INITIALIZE WORKSPACE ]</span>
+                    <h2 className="text-3xl sm:text-4xl font-light text-white tracking-tight leading-tight">Ready to document with precision?</h2>
+                    <p className="text-slate-400 text-sm sm:text-base leading-relaxed">Join professional security researchers who are already using HTWTH to draft writeups, map vulnerability flows, and optimize reporting.</p>
+                    <div className="pt-4">
+                      <button 
+                          onClick={onGetStarted}
+                          className="px-8 py-4 bg-white hover:bg-slate-100 text-slate-950 rounded-lg font-medium text-base transition-all duration-300 shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                      >
+                          Create Free Account
+                      </button>
+                    </div>
                 </div>
             </div>
         </RevealOnScroll>
@@ -2277,210 +2533,53 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
         </div>
         )}
 
-        {activeTab === 'community' && (
-            <div className="animate-fade-in text-center py-20">
-                <h2 className="text-4xl font-bold mb-6 text-slate-900 dark:text-white">Join the Elite Hacker Community</h2>
-                <p className="text-xl text-slate-500 dark:text-slate-400 mb-12 max-w-2xl mx-auto">Connect, collaborate, and learn with top security researchers around the globe.</p>
-                <div className="max-w-7xl mx-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-2xl px-4">
-                    <div className="text-left space-y-6">
-                        <div className="flex items-start gap-4">
-                            <div className="w-10 h-10 bg-indigo-500 rounded-full flex-shrink-0"></div>
-                            <div>
-                                <div className="font-bold text-slate-900 dark:text-white">0xAlice</div>
-                                <div className="text-slate-600 dark:text-slate-400 text-sm mt-1">Just found a critical IDOR! Anyone want to collaborate on the impact?</div>
-                            </div>
-                        </div>
-                        <div className="flex items-start gap-4">
-                            <div className="w-10 h-10 bg-pink-500 rounded-full flex-shrink-0"></div>
-                            <div>
-                                <div className="font-bold text-slate-900 dark:text-white">BobTheBuilder</div>
-                                <div className="text-slate-600 dark:text-slate-400 text-sm mt-1">Nice find! I have a payload that might escalate that to RCE.</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <button onClick={onGetStarted} className="mt-12 px-8 py-4 bg-indigo-600 text-white rounded-xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5">Join the Chat</button>
-            </div>
-        )}
+        {activeTab === 'community' && <LandingCommunityHub />}
 
-        {activeTab === 'resources' && (
-            <div className="animate-fade-in text-center py-20">
-                <h2 className="text-4xl font-bold mb-6 text-slate-900 dark:text-white">Hacker Resource Hub</h2>
-                <p className="text-xl text-slate-500 dark:text-slate-400 mb-12 max-w-2xl mx-auto">Access our curated library of payloads, cheatsheets, and methodologies.</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg hover:-translate-y-1 transition-transform">
-                        <h3 className="text-2xl font-bold mb-4 text-indigo-600 dark:text-indigo-400">Payload Library</h3>
-                        <p className="text-slate-600 dark:text-slate-400">Over 5,000+ tested payloads for XSS, SQLi, SSRF, and more.</p>
-                    </div>
-                    <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg hover:-translate-y-1 transition-transform">
-                        <h3 className="text-2xl font-bold mb-4 text-pink-600 dark:text-pink-400">Cheat Sheets</h3>
-                        <p className="text-slate-600 dark:text-slate-400">Quick reference guides for Nmap, Burp Suite, Metasploit, and more.</p>
-                    </div>
-                    <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg hover:-translate-y-1 transition-transform">
-                        <h3 className="text-2xl font-bold mb-4 text-emerald-600 dark:text-emerald-400">Methodologies</h3>
-                        <p className="text-slate-600 dark:text-slate-400">Step-by-step guides for approaching different types of targets.</p>
-                    </div>
-                </div>
-            </div>
-        )}
+        {activeTab === 'resources' && <LandingResourceHub />}
 
-        {activeTab === 'pricing' && (
-            <div className="animate-fade-in py-24 w-full px-6 sm:px-12 relative">
-                {/* Background Glow */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/20 dark:bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
-                
-                <div className="text-center mb-20 relative z-10">
-                    <h2 className="text-5xl sm:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 mb-6 tracking-tight">Pricing Plans</h2>
-                    <p className="text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">Choose the plan that fits your hacking journey. Upgrade anytime as your skills grow.</p>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10 items-center">
-                    {[
-                        { 
-                            name: 'Free', 
-                            price: '$0', 
-                            period: 'forever',
-                            description: 'Perfect for beginners starting their journey.',
-                            features: ['Basic Writeups', 'Community Access', 'Limited Portfolio', 'Standard Support'],
-                            buttonText: 'Get Started',
-                            highlight: false,
-                            tag: 'Starter',
-                            tagClass: 'bg-indigo-50/50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/50'
-                        },
-                        { 
-                            name: 'Pro', 
-                            price: 'Soon', 
-                            period: 'coming',
-                            description: 'For active hunters needing more power.',
-                            features: ['Advanced Analytics', 'Unlimited Writeups', 'PDF Export', 'Priority Support'],
-                            buttonText: 'Coming Soon',
-                            highlight: false,
-                            tag: 'Advanced',
-                            tagClass: 'bg-indigo-50/50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/50'
-                        },
-                        { 
-                            name: 'Hacker', 
-                            price: 'Soon', 
-                            period: 'coming',
-                            description: 'The ultimate toolkit for serious professionals.',
-                            features: ['Kali Integration', 'Automated Scans', 'Payload Generator', 'API Access'],
-                            buttonText: 'Coming Soon',
-                            highlight: true,
-                            tag: 'Most Popular',
-                            tagClass: 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md shadow-indigo-500/20 border border-indigo-400/50'
-                        },
-                        { 
-                            name: 'Enterprise', 
-                            price: 'Soon', 
-                            period: 'coming',
-                            description: 'Custom solutions for security teams.',
-                            features: ['Team Workspaces', 'SSO/MFA', 'Dedicated Support', 'Custom Domains'],
-                            buttonText: 'Coming Soon',
-                            highlight: false,
-                            tag: 'Ultimate',
-                            tagClass: 'bg-indigo-50/50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/50'
-                        },
-                    ].map((plan, idx) => (
-                        <div 
-                            key={idx} 
-                            className={`group relative flex flex-col p-8 rounded-3xl transition-all duration-500 ease-out hover:-translate-y-2 ${
-                                plan.highlight 
-                                    ? 'bg-gradient-to-b from-indigo-900/90 to-slate-900/90 dark:from-indigo-950/90 dark:to-slate-950/90 border border-indigo-500/50 shadow-[0_0_40px_rgba(99,102,241,0.3)] lg:-mt-8 lg:mb-8 z-10 backdrop-blur-xl' 
-                                    : 'bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 shadow-xl hover:shadow-[0_10px_40px_rgba(99,102,241,0.15)] hover:border-indigo-500/50'
-                            }`}
-                        >
-                            <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
-                                <h3 className={`text-2xl font-bold transition-colors duration-300 ${plan.highlight ? 'text-white' : 'text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400'}`}>{plan.name}</h3>
-                                <span className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-widest py-1 px-2 sm:px-3 rounded-full whitespace-nowrap ${plan.tagClass}`}>
-                                    {plan.tag}
-                                </span>
-                            </div>
-                            
-                            <p className={`text-sm mb-6 h-10 ${plan.highlight ? 'text-indigo-200' : 'text-slate-500 dark:text-slate-400'}`}>{plan.description}</p>
-                            
-                            <div className="mb-8 flex items-baseline gap-2">
-                                <span className={`text-4xl sm:text-5xl font-black tracking-tight ${plan.highlight ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
-                                    {plan.price}
-                                </span>
-                                <span className={`text-xs sm:text-sm font-medium uppercase tracking-wider ${plan.highlight ? 'text-indigo-300' : 'text-slate-400 dark:text-slate-500'}`}>
-                                    /{plan.period}
-                                </span>
-                            </div>
-                            
-                            <ul className="space-y-4 mb-8 flex-grow">
-                                {plan.features.map((feature, fIdx) => (
-                                    <li key={fIdx} className="flex items-start">
-                                        <div className={`mt-1 mr-3 shrink-0 rounded-full p-1 ${plan.highlight ? 'bg-indigo-500/20 text-indigo-300' : 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'}`}>
-                                            <CheckIcon className="w-3 h-3" />
-                                        </div>
-                                        <span className={`text-sm font-medium ${plan.highlight ? 'text-slate-200' : 'text-slate-600 dark:text-slate-300'}`}>
-                                            {feature}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                            
-                            <button 
-                                onClick={onGetStarted} 
-                                className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all duration-300 ${
-                                    plan.highlight 
-                                        ? 'bg-indigo-500 hover:bg-indigo-400 text-white shadow-[0_0_20px_rgba(99,102,241,0.4)] hover:shadow-[0_0_30px_rgba(99,102,241,0.6)]' 
-                                        : plan.price === 'Soon'
-                                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed border border-slate-200 dark:border-slate-700'
-                                            : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 shadow-lg hover:shadow-xl'
-                                }`}
-                                disabled={plan.price === 'Soon'}
-                            >
-                                {plan.buttonText}
-                            </button>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        )}
+        {activeTab === 'pricing' && <LandingPricingSection onGetStarted={onGetStarted} />}
 
         {activeTab === 'resumeai' && (
-            <div className="animate-fade-in text-center py-24 max-w-7xl mx-auto px-4">
+            <div className="animate-fade-in text-center py-24 max-w-6xl mx-auto px-4">
                 <RevealOnScroll animation="fade-down">
-                    <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 mb-8 shadow-2xl shadow-purple-500/30 animate-pulse">
-                        <svg className="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 mb-8">
+                        <svg className="w-10 h-10 text-slate-900 dark:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     </div>
                 </RevealOnScroll>
                 
                 <RevealOnScroll animation="fade-up" delay={100}>
-                    <h2 className="text-5xl sm:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 mb-6">
+                    <h2 className="text-5xl sm:text-6xl font-extrabold text-slate-900 dark:text-white mb-6 tracking-tight">
                         ResumeAI
                     </h2>
-                    <h3 className="text-3xl font-bold text-slate-900 dark:text-white mb-8">
+                    <h3 className="text-2xl font-bold text-slate-700 dark:text-slate-300 mb-8">
                         Coming Soon: The Grand Launch
                     </h3>
-                    <p className="text-xl text-slate-600 dark:text-slate-300 mb-12 max-w-2xl mx-auto leading-relaxed">
+                    <p className="text-lg text-slate-600 dark:text-slate-400 mb-12 max-w-2xl mx-auto leading-relaxed">
                         Get ready for one of our beast products. ResumeAI will revolutionize how you present your skills, automatically tailoring your hacker portfolio into ATS-beating resumes.
                     </p>
                 </RevealOnScroll>
 
                 <RevealOnScroll animation="zoom-in" delay={200}>
-                    <div className="relative group">
-                        <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-                        <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 sm:p-12 shadow-2xl">
+                    <div className="relative max-w-4xl mx-auto">
+                        <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 sm:p-12 shadow-sm">
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
                                 <div>
-                                    <div className="w-12 h-12 mx-auto bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center mb-4">
-                                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                    <div className="w-12 h-12 mx-auto bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center mb-4">
+                                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                                     </div>
                                     <h4 className="font-bold text-slate-900 dark:text-white mb-2">AI-Powered</h4>
                                     <p className="text-sm text-slate-500 dark:text-slate-400">Smart keyword optimization</p>
                                 </div>
                                 <div>
-                                    <div className="w-12 h-12 mx-auto bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-xl flex items-center justify-center mb-4">
-                                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" /></svg>
+                                    <div className="w-12 h-12 mx-auto bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center mb-4">
+                                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" /></svg>
                                     </div>
                                     <h4 className="font-bold text-slate-900 dark:text-white mb-2">ATS-Friendly</h4>
                                     <p className="text-sm text-slate-500 dark:text-slate-400">Beat the resume robots</p>
                                 </div>
                                 <div>
-                                    <div className="w-12 h-12 mx-auto bg-pink-50 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 rounded-xl flex items-center justify-center mb-4">
-                                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                    <div className="w-12 h-12 mx-auto bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center mb-4">
+                                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                     </div>
                                     <h4 className="font-bold text-slate-900 dark:text-white mb-2">1-Click Export</h4>
                                     <p className="text-sm text-slate-500 dark:text-slate-400">PDF and Word formats</p>
@@ -2488,7 +2587,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
                             </div>
                             
                             <div className="mt-12 pt-8 border-t border-slate-100 dark:border-slate-800">
-                                <a href="/resume.html" className="px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-bold text-lg hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-lg w-full sm:w-auto flex items-center justify-center gap-2 mx-auto inline-flex">
+                                <a href="/resume.html" className="px-8 py-3.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg font-semibold text-base hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors shadow-sm w-full sm:w-auto flex items-center justify-center gap-2 mx-auto inline-flex">
                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                                     Launch ResumeAI
                                 </a>

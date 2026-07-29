@@ -5,6 +5,7 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-serif: "Playfair Display", ui-serif, Georgia, serif;
 
   --animate-marquee: marquee 60s linear infinite;
   --animate-shimmer-slide: shimmer-slide 2.5s infinite;
