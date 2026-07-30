@@ -1431,20 +1431,27 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, onCon
               },
               body: JSON.stringify({ name, email, message })
           });
+
+          let resData: any = null;
+          try {
+              resData = await response.json();
+          } catch {
+              resData = null;
+          }
+
           if (!response.ok) {
-              const errData = await response.json();
-              console.error("SMTP contact route error:", errData.error || response.statusText);
-              return { success: false, error: errData.error || "Email system offline" };
+              const errMsg = resData?.error || `Server returned ${response.status} ${response.statusText}`;
+              console.error("SMTP contact route error:", errMsg);
+              return { success: false, error: errMsg };
           } else {
-              const resData = await response.json();
-              if (resData.mailError) {
-                  return { success: false, error: "Failed to send email." };
+              if (resData?.mailError) {
+                  return { success: false, error: resData.mailError || "Failed to send email." };
               }
               console.log("SMTP automatic email verification/receipt sent:", resData);
           }
       } catch (err: any) {
           console.error("Failed to connect with HTWTH SMTP contact server:", err);
-          return { success: false, error: "Failed to connect to email system." };
+          return { success: false, error: err?.message || "Failed to connect to email system." };
       }
 
       return { success: true };

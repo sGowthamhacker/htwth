@@ -3,45 +3,60 @@ import nodemailer from 'nodemailer';
 import { formatEmailHtml } from '../utils/emailFormatter';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Ensure JSON content-type header is always set
+  res.setHeader('Content-Type', 'application/json');
+
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
-
-  const { name, email, message } = req.body;
-
-  if (!name || !email || !message) {
-    return res.status(400).json({ error: "Missing required fields: name, email, message." });
-  }
-
-  const { SMTP_USER, SMTP_PASS, SMTP_HOST, SMTP_PORT, SMTP_FROM_NAME, APP_URL } = process.env;
-
-  const smtpUser = (SMTP_USER || '').trim().replace(/^["']|["']$/g, '');
-  const smtpPass = (SMTP_PASS || '').trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '');
-
-  if (!smtpUser || !smtpPass) {
-    console.warn("SMTP_USER or SMTP_PASS environment variables are not configured correctly.");
-    return res.status(500).json({ 
-      success: false, 
-      error: "Email system is not configured." 
-    });
-  }
-
-  const host = (SMTP_HOST || 'smtp.gmail.com').trim().replace(/^["']|["']$/g, '');
-  const portStr = (SMTP_PORT || '465').trim().replace(/^["']|["']$/g, '');
-  const port = parseInt(portStr, 10);
-
-  const transporter = nodemailer.createTransport({
-    host,
-    port: port || 465,
-    secure: (port || 465) === 465,
-    auth: { user: smtpUser, pass: smtpPass },
-    tls: { rejectUnauthorized: false }
-  });
 
   try {
+    let body = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch {
+        body = {};
+      }
+    }
+    const { name, email, message } = body || {};
+
+    if (!name || !email || !message) {
+      return res.status(400).json({ success: false, error: "Missing required fields: name, email, message." });
+    }
+
+    const { SMTP_USER, SMTP_PASS, SMTP_HOST, SMTP_PORT, SMTP_FROM_NAME, APP_URL } = process.env;
+
+    const smtpUser = (SMTP_USER || '').trim().replace(/^["']|["']$/g, '');
+    const smtpPass = (SMTP_PASS || '').trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '');
+
+    if (!smtpUser || !smtpPass) {
+      console.warn("SMTP_USER or SMTP_PASS environment variables are not configured correctly on Vercel.");
+      return res.status(500).json({ 
+        success: false, 
+        error: "Email system is not configured on Vercel environment variables (SMTP_USER or SMTP_PASS missing)." 
+      });
+    }
+
+    const host = (SMTP_HOST || 'smtp.gmail.com').trim().replace(/^["']|["']$/g, '');
+    const portStr = (SMTP_PORT || '465').trim().replace(/^["']|["']$/g, '');
+    const port = parseInt(portStr, 10);
+
+    const transporter = nodemailer.createTransport({
+      host,
+      port: port || 465,
+      secure: (port || 465) === 465,
+      auth: { user: smtpUser, pass: smtpPass },
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 8000,
+      greetingTimeout: 5000,
+      socketTimeout: 8000
+    });
+
     const protocol = req.headers['x-forwarded-proto'] || 'https';
     const hostHeader = req.headers['x-forwarded-host'] || req.headers.host;
     const appUrl = APP_URL || (hostHeader ? `${protocol}://${hostHeader}` : 'https://htwth.vercel.app/');
+
     const rawBodyHtml = `
       <div style="text-align: left; padding: 24px 20px; color: #1e293b; width: 100%; max-width: 100%; box-sizing: border-box; word-break: break-word; overflow-wrap: break-word;">
         <p style="font-size: 16px; font-weight: bold; color: #0f172a; margin-top: 0; margin-bottom: 12px;">Hello ${name},</p>
@@ -57,19 +72,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       </div>
     `;
 
-    const notifyHtmlRaw = `
-      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2>New Contact Request</h2>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <hr />
-        <p style="white-space: pre-wrap;">${message}</p>
-      </div>
-    `;
-    const notifyHtml = formatEmailHtml(notifyHtmlRaw, 'HTWTH System');
-
     const autoReplyHtml = formatEmailHtml(rawBodyHtml, SMTP_FROM_NAME || 'Gowtham S');
-    // 1. Send polished Auto-Response "Thank you for contacting us" to the sender
+
+    // Send single auto-response email to the sender
     await transporter.sendMail({
       from: `"${SMTP_FROM_NAME || 'Gowtham S'}" <${smtpUser}>`,
       to: email,
@@ -78,27 +83,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       html: autoReplyHtml
     });
 
-    // 2. Send the actual contact message to the Admin
-    await transporter.sendMail({
-      from: `"HTWTH System" <${smtpUser}>`,
-      replyTo: email,
-      to: smtpUser, // Send to the configured SMTP_USER
-      subject: `New Contact Request from ${name}`,
-      html: notifyHtml
-    });
-
-    res.json({ 
+    return res.status(200).json({ 
       success: true, 
       autoReplySent: true,
-      notifySent: true,
+      notifySent: false,
       mailError: null
     });
   } catch (err: any) {
-    console.error("Auto-responder / notify SMTP error:", err);
+    console.error("Auto-responder SMTP error:", err);
     return res.status(500).json({ 
       success: false, 
-      error: "Email system is currently offline or experiencing issues. Please try again later.",
-      mailError: err.message
+      error: err?.message ? `SMTP Error: ${err.message}` : "Email system is currently offline or experiencing issues. Please try again later.",
+      mailError: err?.message || String(err)
     });
   }
 }
+
