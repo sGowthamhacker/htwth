@@ -115,7 +115,7 @@ export function formatEmailHtml(rawBody: string, senderName: string = 'HTWTH'): 
             <tr>
               <td style="border-top: 1px solid ${sigBorderTop}; padding: 22px 20px; background-color: ${sigBg}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align: left;">
                 <div style="font-size: 13px; color: ${sigTextMuted}; margin-bottom: 4px;">Best regards,</div>
-                <div style="font-weight: 800; color: ${sigTextHeading}; font-size: 15px; margin-bottom: 4px; letter-spacing: -0.2px;">${cleanSender}</div>
+                <div style="font-weight: 800; color: ${sigTextHeading}; font-size: 15px; margin-bottom: 4px; letter-spacing: -0.2px;">Gowtham S Admin</div>
                 <div style="color: ${sigSubText}; font-size: 12px; margin-bottom: 16px;">Security Research Hub</div>
 
                 <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 16px;">
@@ -156,7 +156,7 @@ export function formatEmailHtml(rawBody: string, senderName: string = 'HTWTH'): 
                   </div>
 
                   <div style="color: ${sigSubText}; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">
-                    &copy; ${new Date().getFullYear()} HackToWriteToHack | ALL RIGHTS RESERVED
+                    &copy; ${new Date().getFullYear()} HTWTH | ALL RIGHTS RESERVED
                   </div>
                 </div>
               </td>

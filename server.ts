@@ -173,14 +173,16 @@ async function startServer() {
         const { transporter, user } = getSmtpTransporter();
 
         // 1. Send polished Auto-Response "Thank you for contacting us" to the sender
-        const appUrl = process.env.APP_URL || 'https://htwth.com';
+        const protocol = req.headers['x-forwarded-proto'] || 'https';
+        const hostHeader = req.headers['x-forwarded-host'] || req.headers.host;
+        const appUrl = process.env.APP_URL || (hostHeader ? `${protocol}://${hostHeader}` : 'https://htwth.vercel.app/');
         const rawBodyHtml = `
           <div style="text-align: left; padding: 24px 20px; color: #1e293b; width: 100%; max-width: 100%; box-sizing: border-box; word-break: break-word; overflow-wrap: break-word;">
             <p style="font-size: 16px; font-weight: bold; color: #0f172a; margin-top: 0; margin-bottom: 12px;">Hello ${name},</p>
             
             <p style="margin-top: 0; margin-bottom: 16px; color: #334155; line-height: 1.6;">
-              Thank you for reaching out! I have received your message and will review it as soon as possible.
-            </p>
+              Thank you for reaching out! I have received your message and will review it as soon as possible.</p>
+<div style="background-color: #f8fafc; border-left: 4px solid #6366f1; padding: 16px; margin: 24px 0; border-radius: 0 8px 8px 0;"><p style="font-size: 12px; font-weight: 700; color: #4f46e5; margin-top: 0; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">MESSAGE DETAILS</p><p style="margin: 0; color: #475569; font-style: italic; line-height: 1.5; white-space: pre-wrap;">"${message}"</p></div>
 
             <p style="margin-top: 0; margin-bottom: 0; color: #334155; line-height: 1.6;">
               Check out our website for updates:<br/>
