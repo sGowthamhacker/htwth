@@ -166,7 +166,9 @@ async function startServer() {
     let notifySent = false;
     let mailError = null;
 
-    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+    const diag = verifySmtpConfiguration();
+    
+    if (diag.smtpUser && diag.smtpPass) {
       try {
         const { transporter, user } = getSmtpTransporter();
 
