@@ -155,16 +155,23 @@ async function startServer() {
 
   // Contact Form Auto-responder SMTP Integration
   app.post("/api/contact", async (req, res) => {
-    const { name, email, message } = req.body;
+    let body = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch {
+        body = {};
+      }
+    }
+    const { name, email, message } = body || {};
 
     if (!name || !email || !message) {
-      return res.status(400).json({ error: "Missing required fields: name, email, message." });
+      return res.status(400).json({ success: false, error: "Missing required fields: name, email, message." });
     }
 
-    // Default response status
     let autoReplySent = false;
     let notifySent = false;
-    let mailError = null;
+    let mailError: string | null = null;
 
     const diag = verifySmtpConfiguration();
     
@@ -172,7 +179,7 @@ async function startServer() {
       try {
         const { transporter, user } = getSmtpTransporter();
 
-        // 1. Send polished Auto-Response "Thank you for contacting us" to the sender
+        // Send polished Auto-Response to sender
         const protocol = req.headers['x-forwarded-proto'] || 'https';
         const hostHeader = req.headers['x-forwarded-host'] || req.headers.host;
         const appUrl = process.env.APP_URL || (hostHeader ? `${protocol}://${hostHeader}` : 'https://htwth.vercel.app/');
@@ -193,7 +200,6 @@ async function startServer() {
 
         const autoReplyHtml = formatEmailHtml(rawBodyHtml, process.env.SMTP_FROM_NAME || 'Gowtham S');
 
-
         await transporter.sendMail({
           from: `"${process.env.SMTP_FROM_NAME || 'Gowtham S'}" <${user}>`,
           to: email,
@@ -204,23 +210,15 @@ async function startServer() {
         autoReplySent = true;
 
       } catch (err: any) {
-        console.error("Auto-responder / notify SMTP error:", err);
+        console.error("Auto-responder SMTP error:", err);
         mailError = formatSmtpError(err);
-        return res.status(500).json({ 
-          success: false, 
-          error: "Email system is currently offline or experiencing issues. Please try again later.",
-          mailError 
-        });
       }
     } else {
       console.warn("SMTP_USER or SMTP_PASS environment variables are not configured correctly. Skipped actual email transmission.");
-      return res.status(500).json({ 
-        success: false, 
-        error: "Email system is not configured." 
-      });
+      mailError = "SMTP credentials not configured";
     }
 
-    return res.json({ 
+    return res.status(200).json({ 
       success: true, 
       autoReplySent,
       notifySent,
