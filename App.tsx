@@ -116,7 +116,7 @@ const AnimatedBackground = () => (
 
 const ADMIN_SECRET = import.meta.env.VITE_ADMIN_SECRET || 'admin-login';
 const ADMIN_LOGIN_PATH = `#/${ADMIN_SECRET}`;
-const VALID_PROTECTED_APPS = ['dashboard', 'home', 'writeup', 'blog', 'chat', 'notes', 'todolist', 'settings', 'search', 'start', 'admin', 'notifications', 'mywork', 'resources', 'kali', 'docs', 'resumeai', 'features', 'community', 'pricing', 'browser', 'consistency', 'copyright', 'about', 'gowthamprofile', 'bounty', 'tools', 'live', 'portfolio', 'youtube', 'github'];
+const VALID_PROTECTED_APPS = ['dashboard', 'home', 'writeup', 'blog', 'chat', 'notes', 'todolist', 'settings', 'search', 'start', 'admin', 'notifications', 'mywork', 'resources', 'kali', 'docs', 'resumeai', 'features', 'community', 'pricing', 'browser', 'consistency', 'copyright', 'about', 'gowthamprofile', 'bounty', 'tools', 'live', 'portfolio', 'youtube', 'github', 'supportticket', 'ticketsystem'];
 
 const App: React.FC = () => {
   const { themeStyle, setThemeStyle, themeMode, setThemeMode, selectedBackground, setSelectedBackground, selectedFont, setSelectedFont } = useTheme();
@@ -936,14 +936,14 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
                     return;
                 }
 
-                const adminEmail = import.meta.env.VITE_SMTP_USER?.toLowerCase() || 'ragow49@gmail.com';
-                if (freshUser.email?.toLowerCase() === adminEmail) {
+                const adminEmails = ['ragow49@gmail.com', 'writeup.portal@gmail.com', 'gowlearner04@gmail.com', import.meta.env.VITE_SMTP_USER?.toLowerCase()].filter(Boolean);
+                if (freshUser.email && adminEmails.includes(freshUser.email.toLowerCase())) {
                     let adminProfile = await getUserByFirebaseUid(freshUser.uid);
                     
                     // Fallback to local construct if DB fetch fails intermittently during refresh
                     if (!adminProfile) {
                         console.warn("Admin profile fetch returned null. Checking local memory or creating fallback to prevent logout.");
-                        const localAdmin = allUsersRef.current.find(u => u.email?.toLowerCase() === adminEmail);
+                        const localAdmin = allUsersRef.current.find(u => u.email && adminEmails.includes(u.email.toLowerCase()));
                         adminProfile = localAdmin || {
                             id: freshUser.uid,
                             name: freshUser.displayName || 'Admin',

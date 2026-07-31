@@ -324,3 +324,28 @@ export interface Payload {
   is_visible: boolean;
   created_at?: string;
 }
+
+export interface TicketMessage {
+  id: string;
+  senderName: string;
+  senderEmail: string;
+  senderRole: 'user' | 'admin';
+  avatar?: string;
+  message: string;
+  createdAt: string;
+}
+
+export interface SupportTicket {
+  id: string;
+  ticketNumber: string;
+  userEmail: string;
+  userName: string;
+  userAvatar?: string;
+  subject: string;
+  category: 'Technical Issue' | 'Account Access' | 'Bug Report' | 'Feature Request' | 'Billing / General';
+  priority: 'Low' | 'Medium' | 'High' | 'Urgent';
+  status: 'Open' | 'In Progress' | 'Resolved' | 'Closed';
+  createdAt: string;
+  updatedAt: string;
+  messages: TicketMessage[];
+}

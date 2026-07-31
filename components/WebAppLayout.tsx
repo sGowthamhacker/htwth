@@ -3,6 +3,7 @@ import { User, AppDefinition } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import NotificationCenterPage from '../pages/NotificationCenterPage';
 import { getCloudinaryUrl } from '../utils/imageService';
+import CreateTicketModal from './CreateTicketModal';
 import { 
   Monitor, 
   Menu, 
@@ -21,7 +22,9 @@ import {
   Home,
   Layers,
   Sparkles,
-  Grid
+  Grid,
+  LifeBuoy,
+  Plus
 } from 'lucide-react';
 
 interface WebAppLayoutProps {
@@ -104,6 +107,7 @@ export const WebAppLayout: React.FC<WebAppLayoutProps> = ({
   });
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isCreateTicketModalOpen, setIsCreateTicketModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(externalSearchQuery);
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('all');
 
@@ -178,7 +182,7 @@ export const WebAppLayout: React.FC<WebAppLayoutProps> = ({
 
     const coreAppIds = ['home', 'mywork', 'writeup', 'blog', 'bounty'];
     const toolAppIds = ['kali', 'resumeai', 'consistency', 'resources', 'notes', 'todolist', 'docs', 'browser'];
-    const systemAppIds = ['chat', 'notifications', 'settings', 'admin'];
+    const systemAppIds = ['chat', 'notifications', 'settings', 'admin', 'ticketsystem', 'supportticket'];
 
     const coreApps = validApps.filter(a => coreAppIds.includes(a.id));
     const toolApps = validApps.filter(a => toolAppIds.includes(a.id));
@@ -335,6 +339,16 @@ export const WebAppLayout: React.FC<WebAppLayoutProps> = ({
         {/* Right: Actions */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
 
+          {/* New Ticket Button */}
+          <button
+            onClick={() => setIsCreateTicketModalOpen(true)}
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
+            title="Create Support Ticket"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>New Ticket</span>
+          </button>
+
           {/* Theme Toggle */}
           <button
             onClick={toggleThemeMode}
@@ -428,6 +442,17 @@ export const WebAppLayout: React.FC<WebAppLayoutProps> = ({
                   >
                     <Settings className="w-4 h-4 text-slate-400" />
                     <span>Account Settings</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      setIsCreateTicketModalOpen(true);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition-colors text-left cursor-pointer"
+                  >
+                    <LifeBuoy className="w-4 h-4 text-amber-500" />
+                    <span>Create Support Ticket</span>
                   </button>
 
                   <button
@@ -741,6 +766,17 @@ export const WebAppLayout: React.FC<WebAppLayoutProps> = ({
         </main>
 
       </div>
+
+      {/* Support Ticket Modal for Normal & Admin Users */}
+      <CreateTicketModal
+        isOpen={isCreateTicketModalOpen}
+        onClose={() => setIsCreateTicketModalOpen(false)}
+        user={user}
+        onTicketCreated={() => {
+          setIsCreateTicketModalOpen(false);
+          onNavigate('supportticket');
+        }}
+      />
 
     </div>
   );

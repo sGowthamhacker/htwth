@@ -65,7 +65,9 @@ import HabitTrackerPage from './HabitTrackerPage';
 import ResumeAIPage from './ResumeAIPage';
 import WebBrowserPage from './WebBrowserPage';
 import { WebAppLayout } from '../components/WebAppLayout';
-import { Globe } from 'lucide-react';
+import { Globe, LifeBuoy } from 'lucide-react';
+import TicketSystemPage from './TicketSystemPage';
+import SupportTicketPage from './SupportTicketPage';
 
 
 /*
@@ -391,6 +393,8 @@ const baseApps: AppDefinition[] = [
   { id: 'settings', name: 'Settings', icon: <SettingsIcon />, component: SettingsPage, bgColorClass: 'bg-slate-600', accentColor: '#475569' },
   { id: 'docs', name: 'Docs', icon: <DocIcon />, component: DocPage, bgColorClass: 'bg-slate-200', accentColor: '#94a3b8' },
   { id: 'browser', name: 'Web Browser', icon: <Globe />, component: WebBrowserPage, bgColorClass: 'bg-blue-600', accentColor: '#2563eb' },
+  { id: 'ticketsystem', name: 'Ticketsystem', icon: <LifeBuoy className="w-5 h-5 text-amber-500" />, component: TicketSystemPage, bgColorClass: 'bg-amber-500', accentColor: '#f59e0b' },
+  { id: 'supportticket', name: 'Support Ticket', icon: <LifeBuoy className="w-5 h-5 text-amber-500" />, component: SupportTicketPage, bgColorClass: 'bg-amber-500', accentColor: '#f59e0b' },
 ];
 
 const internalApps: AppDefinition[] = [
@@ -403,7 +407,7 @@ const internalApps: AppDefinition[] = [
     { id: 'about', name: 'Profile', icon: <UserCircleIcon />, component: MyWorkPage, bgColorClass: 'bg-indigo-500', accentColor: '#6366f1' },
 ];
 
-const defaultPinnedApps = ['home', 'mywork', 'gowthamprofile', 'consistency', 'resumeai', 'writeup', 'blog', 'resources', 'kali', 'chat', 'notes', 'todolist', 'docs', 'browser'];
+const defaultPinnedApps = ['home', 'mywork', 'gowthamprofile', 'consistency', 'resumeai', 'writeup', 'blog', 'resources', 'kali', 'chat', 'notes', 'todolist', 'docs', 'browser', 'supportticket', 'ticketsystem'];
 
 const parseHash = (hash: string): { appId: string | null; deepLinkInfo: string | null } => {
     // Remove # and optional leading /
@@ -1613,6 +1617,8 @@ const DashboardPage: React.FC<DashboardPageProps> = (props) => {
         if (targetId === 'resources') props = { ...props };
         if (targetId === 'docs') props = { ...props };
         if (targetId === 'copyright') props = { ...props };
+        if (targetId === 'ticketsystem') props = { ...props, addNotification };
+        if (targetId === 'supportticket') props = { ...props, addNotification };
 
         return React.cloneElement(baseComponent as any, props);
     }, [userApps, apps, appComponentMap, handleNavigate, currentUser, writeups, blogPosts, isPending, allUsers, setAllUsers, taskbarPosition, setTaskbarPosition, mobileTaskbarPosition, setMobileTaskbarPosition, pinnedAppIds, handleSetPinnedApps, desktopIconSize, setDesktopIconSize, onAcceptFriendRequest, onRejectFriendRequest, onRemoveFriend, onSendFriendRequest, handleRequestLogout, handleSettingsProfileUpdate, onDeleteAccount, onVerifyPassword, onEmailChange, urlState.deepLinkInfo, handleSearch, addNotification, isWorkMode, handleRequestRestart, chatMessages, handleSendMessage, handleEditMessage, handleDeleteMessage, handleReaction, handleClearChatMessages, onApproveWriteupAccess, onRejectWriteupAccess, liveUsers, handleSaveWriteup, onDeletePost, onLikePost, onAddCommentToPost, onDeleteCommentFromPost, onRequestWriteupAccess, handleSaveBlog, displayMode, setDisplayMode]);

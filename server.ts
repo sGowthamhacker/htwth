@@ -6,17 +6,16 @@ import dotenv from "dotenv";
 import QRCode from "qrcode";
 import { marked } from "marked";
 import { formatEmailHtml } from "./utils/emailFormatter.js";
+import { GoogleGenAI, Type } from "@google/genai";
 
-// Load .env for local dev without overwriting existing non-empty system process.env variables
-const sysSmtpUser = process.env.SMTP_USER;
-const sysSmtpPass = process.env.SMTP_PASS;
-const sysSmtpHost = process.env.SMTP_HOST;
-const sysSmtpPort = process.env.SMTP_PORT;
+// Enforce second SMTP credentials explicitly (writeup.portal@gmail.com)
 dotenv.config();
-if (sysSmtpUser && sysSmtpUser.trim()) process.env.SMTP_USER = sysSmtpUser;
-if (sysSmtpPass && sysSmtpPass.trim()) process.env.SMTP_PASS = sysSmtpPass;
-if (sysSmtpHost && sysSmtpHost.trim()) process.env.SMTP_HOST = sysSmtpHost;
-if (sysSmtpPort && sysSmtpPort.trim()) process.env.SMTP_PORT = sysSmtpPort;
+process.env.SMTP_USER = "writeup.portal@gmail.com";
+process.env.SMTP_PASS = "pfxcaieddlwigvmv";
+process.env.SMTP_USER2 = "writeup.portal@gmail.com";
+process.env.SMTP_PASS2 = "pfxcaieddlwigvmv";
+process.env.SMTP_HOST = "smtp.gmail.com";
+process.env.SMTP_PORT = "465";
 
 async function startServer() {
   const app = express();
@@ -68,11 +67,11 @@ async function startServer() {
   });
 
   // Utility function to verify and log diagnostic status of SMTP configuration
-  function verifySmtpConfiguration() {
-    const rawHost = process.env.SMTP_HOST || 'smtp.gmail.com';
-    const rawUser = process.env.SMTP_USER || 'ragow49@gmail.com';
-    const rawPass = process.env.SMTP_PASS || 'clfuqmldpuezhslv';
-    const rawPort = process.env.SMTP_PORT || '465';
+  function verifySmtpConfiguration(useSecondary = false) {
+    let rawHost = 'smtp.gmail.com';
+    let rawUser = 'writeup.portal@gmail.com';
+    let rawPass = 'pfxcaieddlwigvmv';
+    let rawPort = '465';
 
     const smtpHost = rawHost.trim().replace(/^["']|["']$/g, '');
     const smtpUser = rawUser.trim().replace(/^["']|["']$/g, '');
@@ -94,7 +93,7 @@ async function startServer() {
 
     const hasWhitespaceIssue = rawUser !== smtpUser || rawHost !== smtpHost || rawPass.trim() !== rawPass;
 
-    console.log('--- [SMTP DIAGNOSTICS] ---');
+    console.log(`--- [SMTP DIAGNOSTICS ${useSecondary ? 'SECONDARY (Gmail 2)' : 'PRIMARY'}] ---`);
     console.log(`SMTP_HOST: "${smtpHost}" (configured: ${Boolean(smtpHost)})`);
     console.log(`SMTP_PORT: "${smtpPort}"`);
     console.log(`SMTP_USER: "${smtpUser}" (configured: ${Boolean(smtpUser)})`);
@@ -108,8 +107,8 @@ async function startServer() {
   }
 
   // Helper to construct clean SMTP Transporter
-  function getSmtpTransporter() {
-    const diag = verifySmtpConfiguration();
+  function getSmtpTransporter(useSecondary = false) {
+    const diag = verifySmtpConfiguration(useSecondary);
     const user = diag.smtpUser;
     const pass = diag.smtpPass;
     const host = diag.smtpHost;
@@ -234,18 +233,380 @@ async function startServer() {
 
   // API Route for testing SMTP connection
   app.get("/api/admin/test-smtp", async (req, res) => {
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      return res.status(500).json({ 
-        error: "SMTP configuration missing. Please set SMTP_USER and SMTP_PASS in environment variables." 
-      });
+    let primaryRes = { user: 'writeup.portal@gmail.com', ok: false, error: '' };
+    let secondaryRes = { user: 'ragow49@gmail.com', ok: false, error: '' };
+
+    try {
+      const { transporter, user } = getSmtpTransporter(false);
+      primaryRes.user = user;
+      await transporter.verify();
+      primaryRes.ok = true;
+    } catch (err: any) {
+      primaryRes.error = err?.message || 'Primary connection failed';
     }
 
     try {
-      const { transporter } = getSmtpTransporter();
+      const { transporter, user } = getSmtpTransporter(true);
+      secondaryRes.user = user;
       await transporter.verify();
-      res.json({ success: true, message: "SMTP Server is active and ready." });
+      secondaryRes.ok = true;
+    } catch (err: any) {
+      secondaryRes.error = err?.message || 'Secondary connection failed';
+    }
+
+    const success = primaryRes.ok || secondaryRes.ok;
+    if (success) {
+      return res.json({
+        success: true,
+        activeUser: primaryRes.ok ? primaryRes.user : secondaryRes.user,
+        primary: primaryRes,
+        secondary: secondaryRes,
+        message: `SMTP test complete. Primary (${primaryRes.user}): ${primaryRes.ok ? 'Operational' : 'Failed'}. Secondary (${secondaryRes.user}): ${secondaryRes.ok ? 'Operational' : 'Failed'}.`
+      });
+    } else {
+      return res.status(500).json({
+        success: false,
+        primary: primaryRes,
+        secondary: secondaryRes,
+        error: `Both SMTP connections failed. Primary: ${primaryRes.error}. Secondary: ${secondaryRes.error}`
+      });
+    }
+  });
+
+  // Central Server-Side Support Ticket Repository
+  let SERVER_SUPPORT_TICKETS: any[] = [];
+
+  async function sendTicketEmail(ticket: any, type: 'created' | 'reply', messageText?: string, req?: any) {
+    const diag = verifySmtpConfiguration();
+    if (!diag.smtpUser || !diag.smtpPass || !ticket.userEmail) return;
+    try {
+      const { transporter, user } = getSmtpTransporter();
+      const subject = type === 'created' 
+        ? `[${ticket.ticketNumber}] Support Ticket Confirmation: ${ticket.subject}`
+        : `[${ticket.ticketNumber}] New Reply from Support Team`;
+      
+      const protocol = req?.headers?.['x-forwarded-proto'] || 'https';
+      const hostHeader = req?.headers?.['x-forwarded-host'] || req?.headers?.host;
+      const appUrl = process.env.APP_URL || (hostHeader ? `${protocol}://${hostHeader}` : 'https://ais-dev-fl5m6z2lmsovznnquito44-475153556207.asia-southeast1.run.app');
+
+      const bodyHtml = `
+        <div style="text-align: left; padding: 24px 20px; color: #1e293b; width: 100%; max-width: 100%; box-sizing: border-box; word-break: break-word; overflow-wrap: break-word;">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+            <span style="background: #e0e7ff; color: #4f46e5; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Ticket #${ticket.ticketNumber}</span>
+            <span style="background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 6px; text-transform: uppercase;">${ticket.category || 'Support'}</span>
+            <span style="background: ${ticket.status === 'Resolved' ? '#10b98120' : ticket.status === 'Closed' ? '#64748b20' : '#f59e0b20'}; color: ${ticket.status === 'Resolved' ? '#059669' : ticket.status === 'Closed' ? '#475569' : '#d97706'}; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase;">Status: ${ticket.status || 'Open'}</span>
+          </div>
+
+          <h2 style="font-size: 20px; font-weight: 900; color: #0f172a; margin-top: 0; margin-bottom: 12px; letter-spacing: -0.3px;">
+            ${type === 'created' ? 'Support Ticket Confirmation' : 'Support Ticket Update'}
+          </h2>
+
+          <p style="font-size: 15px; font-weight: bold; color: #0f172a; margin-top: 0; margin-bottom: 12px;">Hello ${ticket.userName || 'Valued User'},</p>
+          
+          <p style="margin-top: 0; margin-bottom: 16px; color: #334155; line-height: 1.6;">
+            ${type === 'created' 
+              ? 'Thank you for reaching out to <b>HTWTH Support</b>! We have successfully received your support ticket and our team will resolve your query quickly.' 
+              : 'There is a new response from our support team on your ticket:'}
+          </p>
+
+          <div style="background-color: #f8fafc; border-left: 4px solid #6366f1; padding: 16px; margin: 24px 0; border-radius: 0 8px 8px 0;">
+            <p style="font-size: 11px; font-weight: 700; color: #4f46e5; margin-top: 0; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Ticket Subject</p>
+            <p style="font-size: 15px; font-weight: bold; color: #0f172a; margin: 0 0 8px 0;">${ticket.subject}</p>
+            ${messageText ? `<p style="margin: 0; color: #475569; font-style: italic; line-height: 1.5; white-space: pre-wrap;">"${messageText}"</p>` : ''}
+          </div>
+
+          <p style="margin-top: 0; margin-bottom: 16px; color: #334155; line-height: 1.6;">
+            You can view, track, and reply to this ticket anytime in your platform Support & Ticket System dashboard:
+          </p>
+
+          <div style="margin: 20px 0;">
+            <a href="${appUrl}" style="background-color: #4f46e5; color: #ffffff; padding: 10px 20px; border-radius: 8px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 14px;">Open Support Dashboard</a>
+          </div>
+        </div>
+      `;
+
+      const formattedHtml = formatEmailHtml(bodyHtml, process.env.SMTP_FROM_NAME || 'HTWTH Support');
+
+      await transporter.sendMail({
+        from: `"${process.env.SMTP_FROM_NAME || 'HTWTH Support'}" <${user}>`,
+        to: ticket.userEmail,
+        subject,
+        text: `Hello ${ticket.userName || 'User'},\n\n${type === 'created' ? 'Thank you for your support ticket! We have received your query and will resolve it quickly.' : 'There is a new update on your support ticket #' + ticket.ticketNumber + '.'}\n\nTicket: #${ticket.ticketNumber} - ${ticket.subject}\n\nBest regards,\nHTWTH Support Team`,
+        html: formattedHtml
+      });
+      console.log(`Support ticket email (${type}) sent to ${ticket.userEmail} for ticket #${ticket.ticketNumber}`);
+    } catch (err) {
+      console.error("Failed to send support ticket email:", err);
+    }
+  }
+
+  const pruneResolvedTickets = () => {
+    const now = Date.now();
+    const oneHourMs = 3600000;
+    SERVER_SUPPORT_TICKETS = SERVER_SUPPORT_TICKETS.filter((t: any) => {
+      if (t.status === 'Resolved') {
+        const resolvedTime = new Date(t.updatedAt || t.createdAt || 0).getTime();
+        if (now - resolvedTime > oneHourMs) return false;
+      }
+      return true;
+    });
+  };
+
+  app.get("/api/support/tickets", (req, res) => {
+    pruneResolvedTickets();
+    return res.json({ tickets: SERVER_SUPPORT_TICKETS });
+  });
+
+  app.post("/api/support/tickets", (req, res) => {
+    try {
+      pruneResolvedTickets();
+      const { tickets, ticket, replace } = req.body;
+      const existingMap = new Map<string, any>();
+      SERVER_SUPPORT_TICKETS.forEach((t: any) => existingMap.set(t.id, t));
+
+      let incomingTickets: any[] = [];
+      if (replace && Array.isArray(tickets)) {
+        incomingTickets = tickets;
+      } else if (Array.isArray(tickets)) {
+        const map = new Map<string, any>();
+        existingMap.forEach((v, k) => map.set(k, v));
+        tickets.forEach((t: any) => {
+          const existing = map.get(t.id);
+          if (!existing || new Date(t.updatedAt || t.createdAt || 0).getTime() >= new Date(existing.updatedAt || existing.createdAt || 0).getTime()) {
+            map.set(t.id, t);
+          }
+        });
+        incomingTickets = Array.from(map.values());
+      } else if (ticket && ticket.id) {
+        incomingTickets = [...SERVER_SUPPORT_TICKETS];
+        const idx = incomingTickets.findIndex((t: any) => t.id === ticket.id);
+        if (idx >= 0) {
+          incomingTickets[idx] = ticket;
+        } else {
+          incomingTickets.unshift(ticket);
+        }
+      }
+
+      // Check for new tickets or new admin replies to trigger emails
+      incomingTickets.forEach((t: any) => {
+        const prev = existingMap.get(t.id);
+        if (!prev) {
+          // Newly created ticket!
+          const firstMsg = Array.isArray(t.messages) && t.messages.length > 0 ? t.messages[0].message : '';
+          sendTicketEmail(t, 'created', firstMsg, req);
+        } else {
+          // Check if admin added a new message
+          const prevMsgCount = Array.isArray(prev.messages) ? prev.messages.length : 0;
+          const currMsgCount = Array.isArray(t.messages) ? t.messages.length : 0;
+          if (currMsgCount > prevMsgCount) {
+            const newMsgs = t.messages.slice(prevMsgCount);
+            const realAdminMsg = newMsgs.find((m: any) => m.senderRole === 'admin' && m.senderName !== 'System Notice' && !m.message.includes("Your ticket was resolved"));
+            if (realAdminMsg) {
+              sendTicketEmail(t, 'reply', realAdminMsg.message, req);
+            }
+          }
+        }
+      });
+
+      SERVER_SUPPORT_TICKETS = incomingTickets.sort((a, b) => 
+        new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
+      );
+
+      pruneResolvedTickets();
+      return res.json({ success: true, tickets: SERVER_SUPPORT_TICKETS });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || "Failed to update tickets" });
+    }
+  });
+
+  app.delete("/api/support/tickets/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      SERVER_SUPPORT_TICKETS = SERVER_SUPPORT_TICKETS.filter((t: any) => t.id !== id && t.ticketNumber !== id && t.ticketNumber !== `#${id}`);
+      return res.json({ success: true, tickets: SERVER_SUPPORT_TICKETS });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || "Failed to delete ticket" });
+    }
+  });
+
+  // AI Backend Support Automation Route
+  app.post("/api/support/process-ticket", async (req, res) => {
+    try {
+      const { userEmail, issueTitle, issueDescription, activeTicketsList } = req.body;
+
+      if (!userEmail || !issueTitle) {
+        return res.status(400).json({ error: "userEmail and issueTitle are required." });
+      }
+
+      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || "AIzaSyBujCiuNzlUvP1q561-I5TboqtCzJhZc3Y";
+      const ai = new GoogleGenAI({ 
+        apiKey,
+        httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+      });
+
+      const activeSMTPUser = process.env.SMTP_USER || "writeup.portal@gmail.com";
+
+      const systemInstruction = `You are an expert Backend Support Automation AI. Your job is to process incoming support requests from a web application and format them into perfectly structured email payloads for a Nodemailer/Gmail system.
+
+Your primary goal is to maintain distinct conversation threads for the same user based on their specific problem, ensuring separate issues do not collapse or mix together.
+
+Follow these strict operational rules:
+
+1. ANALYZE THE REQUEST:
+- Read the incoming payload containing: userEmail, issueTitle, issueDescription, and activeTicketsList.
+- Determine if the new request belongs to an existing open ticket or if it requires a brand-new conversation thread.
+
+2. RULES FOR A NEW TICKET:
+- If the user is submitting a completely new problem, assign a unique Ticket ID (e.g., #TKT-101 or #TKT-782).
+- Create a specific, structured Subject Line format: "[Ticket #ID] Issue Title".
+- Set the action field to "CREATE_NEW_THREAD".
+- Set hiddenFingerprintTarget to null.
+
+3. RULES FOR EXISTING TICKETS (THREAD MAINTENANCE):
+- Check the activeTicketsList. If the user has an open ticket regarding the SAME issue, you must append this submission to that specific thread.
+- Retain the EXACT same Subject Line from the original ticket.
+- Set the action field to "APPEND_TO_THREAD".
+- Retrieve the stored Hidden-Fingerprint-ID (Message-ID/References) from that active ticket and inject it into the hiddenFingerprintTarget field.
+
+4. MASKING & SECURITY:
+- Set the Friendly Display Name to '"App Support Team"' to mask the original master Gmail.
+
+OUTPUT FORMAT:
+Always reply in a strict JSON format matching this schema:
+{
+  "action": "CREATE_NEW_THREAD" or "APPEND_TO_THREAD",
+  "ticketId": "Generated or Matched ID",
+  "subject": "The Exact Subject Line",
+  "friendlyFrom": "\"App Support Team\" <${activeSMTPUser}>",
+  "replyTo": "${activeSMTPUser}",
+  "hiddenFingerprintTarget": "Stored Message-ID string or null",
+  "emailBody": "Cleanly formatted email text body"
+}`;
+
+      const userPromptPayload = JSON.stringify({
+        userEmail,
+        issueTitle,
+        issueDescription: issueDescription || '',
+        activeTicketsList: activeTicketsList || []
+      });
+
+      let aiResult: any = null;
+
+      try {
+        const response = await ai.models.generateContent({
+          model: "gemini-3.6-flash",
+          contents: `Process this incoming support request payload and format the JSON response according to system instructions:\n${userPromptPayload}`,
+          config: {
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                action: { type: Type.STRING, description: "CREATE_NEW_THREAD or APPEND_TO_THREAD" },
+                ticketId: { type: Type.STRING, description: "Generated or Matched ID (e.g. #TKT-101)" },
+                subject: { type: Type.STRING, description: "Structured Subject Line" },
+                friendlyFrom: { type: Type.STRING, description: "Friendly display name with system email" },
+                replyTo: { type: Type.STRING, description: "User reply-to email" },
+                hiddenFingerprintTarget: { type: Type.STRING, description: "Stored Message-ID or null" },
+                emailBody: { type: Type.STRING, description: "Formatted email body text" }
+              },
+              required: ["action", "ticketId", "subject", "friendlyFrom", "replyTo", "emailBody"]
+            }
+          }
+        });
+
+        const rawText = response.text ? response.text.trim() : '';
+        if (rawText) {
+          aiResult = JSON.parse(rawText);
+        }
+      } catch (aiErr: any) {
+        console.warn("[SUPPORT AI WARNING] Gemini execution note:", aiErr?.message);
+      }
+
+      // Fallback deterministic matching engine if AI result is absent
+      if (!aiResult || !aiResult.ticketId) {
+        const existingMatch = (activeTicketsList || []).find((t: any) => 
+          t.status !== 'Closed' &&
+          t.status !== 'Resolved' &&
+          (t.subject.toLowerCase().includes(issueTitle.toLowerCase()) || issueTitle.toLowerCase().includes(t.subject.toLowerCase()))
+        );
+
+        if (existingMatch) {
+          aiResult = {
+            action: "APPEND_TO_THREAD",
+            ticketId: existingMatch.ticketNumber || existingMatch.id,
+            subject: existingMatch.subject,
+            friendlyFrom: `"App Support Team" <${activeSMTPUser}>`,
+            replyTo: activeSMTPUser,
+            hiddenFingerprintTarget: existingMatch.messageId || `<ticket-${existingMatch.id}@htwth.com>`,
+            emailBody: `Dear User,\n\nWe have received your update regarding "${issueTitle}". Our support team is continuing to process this request under ticket ${existingMatch.ticketNumber}.\n\nDetails:\n${issueDescription}\n\nBest regards,\nApp Support Team`
+          };
+        } else {
+          const randId = `#TKT-${Math.floor(100 + Math.random() * 900)}`;
+          aiResult = {
+            action: "CREATE_NEW_THREAD",
+            ticketId: randId,
+            subject: `[Ticket ${randId}] ${issueTitle}`,
+            friendlyFrom: `"App Support Team" <${activeSMTPUser}>`,
+            replyTo: activeSMTPUser,
+            hiddenFingerprintTarget: null,
+            emailBody: `Dear User,\n\nThank you for contacting support regarding "${issueTitle}". A new support ticket ${randId} has been created.\n\nDescription:\n${issueDescription}\n\nOur team will review your ticket promptly.\n\nBest regards,\nApp Support Team`
+          };
+        }
+      }
+
+      // Dispatch Nodemailer email via Active SMTP Transporter
+      let smtpConfig = getSmtpTransporter(false);
+      try {
+        await smtpConfig.transporter.verify();
+      } catch (err: any) {
+        smtpConfig = getSmtpTransporter(true);
+      }
+
+      const generatedMsgId = `<msg-${Date.now()}-${Math.random().toString(36).substring(2,7)}@htwth.com>`;
+      
+      const mailOptions: any = {
+        from: aiResult.friendlyFrom || `"App Support Team" <${smtpConfig.user}>`,
+        to: userEmail,
+        replyTo: aiResult.replyTo || smtpConfig.user || activeSMTPUser,
+        subject: aiResult.subject,
+        text: aiResult.emailBody,
+        html: formatEmailHtml(aiResult.emailBody, "App Support Team"),
+        headers: {
+          'X-Ticket-ID': aiResult.ticketId,
+          'X-Thread-Action': aiResult.action,
+          'Message-ID': generatedMsgId
+        }
+      };
+
+      if (aiResult.hiddenFingerprintTarget) {
+        mailOptions.headers['In-Reply-To'] = aiResult.hiddenFingerprintTarget;
+        mailOptions.headers['References'] = aiResult.hiddenFingerprintTarget;
+      }
+
+      let emailSent = false;
+      let emailError = null;
+
+      try {
+        await smtpConfig.transporter.sendMail(mailOptions);
+        emailSent = true;
+        console.log(`[SUPPORT AI EMAIL SUCCESS] Sent support thread email for ticket ${aiResult.ticketId} to ${userEmail}`);
+      } catch (mErr: any) {
+        console.warn(`[SUPPORT AI EMAIL WARN] SMTP dispatch note:`, mErr?.message);
+        emailError = mErr?.message;
+      }
+
+      return res.json({
+        success: true,
+        emailSent,
+        emailError,
+        generatedMessageId: generatedMsgId,
+        aiPayload: aiResult
+      });
+
     } catch (error: any) {
-      res.status(500).json({ error: formatSmtpError(error) });
+      console.error("[SUPPORT AI ENDPOINT ERROR]", error);
+      res.status(500).json({ error: error.message || "Failed to process support request" });
     }
   });
 
@@ -253,15 +614,17 @@ async function startServer() {
   app.post("/api/admin/send-email", async (req, res) => {
     const { to, subject, body, senderName } = req.body;
 
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      return res.status(500).json({ 
-        error: "SMTP configuration missing. Please set SMTP_USER and SMTP_PASS in environment variables." 
-      });
+    let smtpConfig = getSmtpTransporter(false);
+    try {
+      await smtpConfig.transporter.verify();
+    } catch (err: any) {
+      console.warn("Primary SMTP verify failed, falling back to Gmail 2:", err?.message);
+      smtpConfig = getSmtpTransporter(true);
     }
 
     try {
-      const { transporter, user } = getSmtpTransporter();
-      console.log(`[SMTP SEND DEBUG] User: ${user.substring(0,3)}... (len:${user.length})`);
+      const { transporter, user } = smtpConfig;
+      console.log(`[SMTP SEND DEBUG] Active User: ${user.substring(0,3)}... (len:${user.length})`);
 
       let recipients: string[] = [];
       if (Array.isArray(to)) {
@@ -271,7 +634,6 @@ async function startServer() {
       } else {
         recipients = [to];
       }
-      const results = [];
 
       const rawSender = senderName || process.env.SENDER_NAME || process.env.SMTP_FROM_NAME;
       let actualSenderName = rawSender ? rawSender.trim() : 'HTWTH';

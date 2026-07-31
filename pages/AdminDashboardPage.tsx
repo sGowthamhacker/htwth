@@ -32,7 +32,8 @@ import { EMAIL_TEMPLATES, EmailTemplate } from '../utils/emailTemplates';
 import { formatEmailHtml } from '../utils/emailFormatter';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
-import { Server, Monitor as MonitorIcon, Smartphone as SmartphoneIcon, UserPlus as UserPlusIcon, FileText as DocumentTextIcon, Megaphone as MegaphoneIcon, Settings2 as Settings2Icon, Activity as ActivityIcon, Inbox as InboxIcon, Sparkles as SparklesIcon, X as XIcon, LayoutTemplate as TemplateIcon } from 'lucide-react';
+import { Server, Monitor as MonitorIcon, Smartphone as SmartphoneIcon, UserPlus as UserPlusIcon, FileText as DocumentTextIcon, Megaphone as MegaphoneIcon, Settings2 as Settings2Icon, Activity as ActivityIcon, Inbox as InboxIcon, Sparkles as SparklesIcon, X as XIcon, LayoutTemplate as TemplateIcon, LifeBuoy } from 'lucide-react';
+import TicketSystemPage from './TicketSystemPage';
 
 // EyeIcon for Permissions dropdown
 const EyeIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -465,6 +466,14 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
     const [isLoading, setIsLoading] = useState(false);
     const [isTesting, setIsTesting] = useState(false);
     const [smtpStatus, setSmtpStatus] = useState<'unknown' | 'success' | 'error'>('unknown');
+    const [activeSmtpUser, setActiveSmtpUser] = useState<string>('writeup.portal@gmail.com');
+    const [smtpDetails, setSmtpDetails] = useState<{
+        primary: { user: string; ok: boolean };
+        secondary: { user: string; ok: boolean };
+    }>({
+        primary: { user: 'writeup.portal@gmail.com', ok: false },
+        secondary: { user: 'writeup.portal@gmail.com', ok: false }
+    });
     const [progress, setProgress] = useState<{
         current: number;
         total: number;
@@ -498,10 +507,18 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 10000);
                 const response = await fetch('/api/admin/test-smtp', { signal: controller.signal });
+                const data = await response.json().catch(() => ({}));
                 clearTimeout(timeoutId);
                 if (isMounted) {
+                    if (data?.primary || data?.secondary) {
+                        setSmtpDetails({
+                            primary: { user: data?.primary?.user || 'writeup.portal@gmail.com', ok: Boolean(data?.primary?.ok) },
+                            secondary: { user: data?.secondary?.user || 'ragow49@gmail.com', ok: Boolean(data?.secondary?.ok) }
+                        });
+                    }
                     if (response.ok) {
                         setSmtpStatus('success');
+                        if (data?.activeUser) setActiveSmtpUser(data.activeUser);
                     } else {
                         setSmtpStatus('error');
                     }
@@ -623,10 +640,18 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000);
             const response = await fetch('/api/admin/test-smtp', { signal: controller.signal });
+            const data = await response.json().catch(() => ({}));
             clearTimeout(timeoutId);
+            if (data?.primary || data?.secondary) {
+                setSmtpDetails({
+                    primary: { user: data?.primary?.user || 'writeup.portal@gmail.com', ok: Boolean(data?.primary?.ok) },
+                    secondary: { user: data?.secondary?.user || 'ragow49@gmail.com', ok: Boolean(data?.secondary?.ok) }
+                });
+            }
             if (response.ok) {
                 setSmtpStatus('success');
-                addNotification({ title: 'Success', message: 'SMTP connection verified successfully.', type: 'success' });
+                if (data?.activeUser) setActiveSmtpUser(data.activeUser);
+                addNotification({ title: 'Success', message: `SMTP verification completed. Active: ${data?.activeUser || 'Primary'}.`, type: 'success' });
             } else {
                 setSmtpStatus('error');
                 addNotification({ title: 'Error', message: 'Failed to verify SMTP connection.', type: 'error' });
@@ -787,40 +812,79 @@ const MailBroadcastChannel: React.FC<{ adminUser: User; allUsers: User[] }> = ({
 
     return (
         <div ref={broadcastRef} className="space-y-6 animate-fade-in" key="mail-broadcast">
-            {/* Sleek SMTP Status Indicator */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-xl flex items-center justify-center ${
-                        smtpStatus === 'success' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                        smtpStatus === 'error' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400' :
-                        'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                    }`}>
-                        {smtpStatus === 'success' && <CheckCircleIcon className="w-6 h-6" />}
-                        {smtpStatus === 'error' && <XCircleIcon className="w-6 h-6" />}
-                        {smtpStatus === 'unknown' && <RefreshIcon className="w-6 h-6 animate-spin" />}
+            {/* Sleek Dual SMTP Status Indicator */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 space-y-4">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className={`p-3 rounded-xl flex items-center justify-center ${
+                            smtpStatus === 'success' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                            smtpStatus === 'error' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400' :
+                            'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                        }`}>
+                            {smtpStatus === 'success' && <CheckCircleIcon className="w-6 h-6" />}
+                            {smtpStatus === 'error' && <XCircleIcon className="w-6 h-6" />}
+                            {smtpStatus === 'unknown' && <RefreshIcon className="w-6 h-6 animate-spin" />}
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                                SMTP Dual Connection Engine
+                                {smtpStatus === 'success' && <span className="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-400/10 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-600/20 dark:ring-emerald-400/20">Operational</span>}
+                                {smtpStatus === 'error' && <span className="inline-flex items-center rounded-full bg-rose-50 dark:bg-rose-400/10 px-2 py-1 text-xs font-medium text-rose-700 dark:text-rose-400 ring-1 ring-inset ring-rose-600/10 dark:ring-rose-400/20">Failed</span>}
+                                {smtpStatus === 'unknown' && <span className="inline-flex items-center rounded-full bg-slate-50 dark:bg-slate-400/10 px-2 py-1 text-xs font-medium text-slate-700 dark:text-slate-400 ring-1 ring-inset ring-slate-600/10 dark:ring-slate-400/20 animate-pulse">Checking...</span>}
+                            </h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                                High-availability dual SMTP dispatch engine with automatic fallback.
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                            SMTP Connection Status
-                            {smtpStatus === 'success' && <span className="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-400/10 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-600/20 dark:ring-emerald-400/20">Operational</span>}
-                            {smtpStatus === 'error' && <span className="inline-flex items-center rounded-full bg-rose-50 dark:bg-rose-400/10 px-2 py-1 text-xs font-medium text-rose-700 dark:text-rose-400 ring-1 ring-inset ring-rose-600/10 dark:ring-rose-400/20">Failed</span>}
-                            {smtpStatus === 'unknown' && <span className="inline-flex items-center rounded-full bg-slate-50 dark:bg-slate-400/10 px-2 py-1 text-xs font-medium text-slate-700 dark:text-slate-400 ring-1 ring-inset ring-slate-600/10 dark:ring-slate-400/20 animate-pulse">Checking...</span>}
-                        </h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                            {smtpStatus === 'success' ? 'Connected securely to SMTP server. Ready for broadcasting.' :
-                             smtpStatus === 'error' ? 'Connection failed. Please check your SMTP configuration.' :
-                             'Verifying secure connection to the mail server...'}
-                        </p>
+                    <button
+                        onClick={handleTestConnection}
+                        disabled={isTesting}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors disabled:opacity-50 shadow-sm"
+                    >
+                        <RefreshIcon className={`w-4 h-4 ${isTesting ? 'animate-spin' : ''}`} />
+                        {isTesting ? 'Testing...' : 'Test Connections'}
+                    </button>
+                </div>
+
+                {/* Primary & Secondary SMTP Server Badges */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-100 dark:border-slate-700/60">
+                    {/* Primary SMTP Server */}
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-700/80">
+                        <div className="flex items-center gap-2.5 overflow-hidden">
+                            <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0"></span>
+                            <div className="truncate">
+                                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Primary SMTP (Default)</div>
+                                <div className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{smtpDetails.primary.user}</div>
+                            </div>
+                        </div>
+                        <span className={`flex-shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                            smtpDetails.primary.ok 
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800' 
+                                : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                        }`}>
+                            {smtpDetails.primary.ok ? 'Active' : 'Standby / Error'}
+                        </span>
+                    </div>
+
+                    {/* Secondary SMTP Server */}
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-700/80">
+                        <div className="flex items-center gap-2.5 overflow-hidden">
+                            <span className="w-2 h-2 rounded-full bg-purple-500 flex-shrink-0"></span>
+                            <div className="truncate">
+                                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Dedicated Support Sender</div>
+                                <div className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{smtpDetails.secondary.user}</div>
+                            </div>
+                        </div>
+                        <span className={`flex-shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                            smtpDetails.secondary.ok 
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800' 
+                                : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                        }`}>
+                            {smtpDetails.secondary.ok ? 'Active' : 'Standby'}
+                        </span>
                     </div>
                 </div>
-                <button
-                    onClick={handleTestConnection}
-                    disabled={isTesting}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors disabled:opacity-50 shadow-sm"
-                >
-                    <RefreshIcon className={`w-4 h-4 ${isTesting ? 'animate-spin' : ''}`} />
-                    {isTesting ? 'Testing...' : 'Test Connection'}
-                </button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -1300,6 +1364,7 @@ const AdminNav: React.FC<{
             countColor: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200' 
         },
         { id: 'broadcast', label: 'Broadcast Channel', icon: <PaperAirplaneIcon className="w-5 h-5"/> },
+        { id: 'ticketsystem', label: 'Ticket System', icon: <LifeBuoy className="w-5 h-5"/> },
         { id: 'controller', label: 'Controller', icon: <ShieldIcon className="w-5 h-5"/> }
     ];
 
@@ -1437,7 +1502,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
         );
     }
 
-    const [view, setView] = useState<'management' | 'live' | 'requests' | 'inquiries' | 'broadcast' | 'mail_broadcast' | 'controller'>('management');
+    const [view, setView] = useState<'management' | 'live' | 'requests' | 'inquiries' | 'broadcast' | 'mail_broadcast' | 'ticketsystem' | 'controller'>('management');
     const dragScroll = useDragToScroll();
     const [searchQuery, setSearchQuery] = useState('');
     const [sortBy, setSortBy] = useState<'created_at' | 'name'>('created_at');
@@ -1625,7 +1690,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
     }, []);
 
     useEffect(() => {
-        setView((deepLinkInfo as 'management' | 'live' | 'requests' | 'inquiries' | 'broadcast' | 'mail_broadcast' | 'controller') || 'management');
+        setView((deepLinkInfo as 'management' | 'live' | 'requests' | 'inquiries' | 'broadcast' | 'mail_broadcast' | 'ticketsystem' | 'controller') || 'management');
         // Close mobile menu on view change
         setIsMobileMenuOpen(false);
     }, [deepLinkInfo]);
@@ -1674,6 +1739,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
         },
         { id: 'broadcast', label: 'Broadcast Channel', icon: <PaperAirplaneIcon className="w-5 h-5"/> },
         { id: 'mail_broadcast', label: 'Mail Update', icon: <MailIcon className="w-5 h-5"/> },
+        { id: 'ticketsystem', label: 'Ticket System', icon: <LifeBuoy className="w-5 h-5"/> },
         { id: 'controller', label: 'Controller', icon: <ShieldIcon className="w-5 h-5"/> }
     ];
 
@@ -2655,6 +2721,17 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ allUsers
                         className="relative overflow-visible"
                     >
                         <MailBroadcastChannel adminUser={user} allUsers={allUsers} />
+                    </motion.div>
+                )}
+                {view === 'ticketsystem' && (
+                    <motion.div
+                        key="ticketsystem"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden p-2"
+                    >
+                        <TicketSystemPage user={user} />
                     </motion.div>
                 )}
                 {view === 'controller' && (
