@@ -898,5 +898,23 @@ export const saveSupportTicketToSupabase = async (ticket: SupportTicket): Promis
     }
 };
 
+export const deleteSupportTicketFromSupabase = async (ticketId: string): Promise<boolean> => {
+    const s = getSupabase();
+    if (!s) return false;
+
+    try {
+        await s.from('ticket_messages').delete().eq('ticket_id', ticketId);
+        const { error } = await s.from('support_tickets').delete().eq('id', ticketId);
+        if (error) {
+            console.warn('[Supabase Warning] deleteSupportTicketFromSupabase:', error.message);
+            return false;
+        }
+        return true;
+    } catch (err) {
+        console.error('Error deleting ticket from Supabase:', err);
+        return false;
+    }
+};
+
 
 

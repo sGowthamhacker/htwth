@@ -192,9 +192,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === 'DELETE') {
-    const { id } = req.body || req.query || {};
+    const urlParts = (req.url || '').split('/');
+    const lastPart = urlParts[urlParts.length - 1]?.split('?')[0];
+    const id = (req.body && req.body.id) || (req.query && req.query.id) || (lastPart && lastPart !== 'tickets' ? lastPart : null);
+    
     if (id) {
-      SERVER_SUPPORT_TICKETS = SERVER_SUPPORT_TICKETS.filter(t => t.id !== id);
+      SERVER_SUPPORT_TICKETS = SERVER_SUPPORT_TICKETS.filter(t => t.id !== id && t.ticketNumber !== id && t.ticketNumber !== `#${id}`);
     }
     return res.json({ success: true, tickets: SERVER_SUPPORT_TICKETS });
   }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, SupportTicket, TicketMessage } from '../types';
-import { getSupportTicketsFromSupabase, saveSupportTicketToSupabase } from '../services/database';
+import { getSupportTicketsFromSupabase, saveSupportTicketToSupabase, deleteSupportTicketFromSupabase } from '../services/database';
 import { 
   LifeBuoy, 
   Plus, 
@@ -225,6 +225,8 @@ const SupportTicketPage: React.FC<SupportTicketPageProps> = ({ user, addNotifica
     setTickets(updated);
     if (selectedTicketId === ticketToDelete.id) setSelectedTicketId(null);
     
+    // Delete from Supabase & backend
+    deleteSupportTicketFromSupabase(ticketToDelete.id).catch(() => {});
     fetch(`/api/support/tickets/${ticketToDelete.id}`, {
       method: 'DELETE'
     }).catch(err => console.warn('Server ticket delete note:', err));
