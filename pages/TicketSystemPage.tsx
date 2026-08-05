@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, SupportTicket, TicketMessage } from '../types';
-import { getStoredTickets, saveStoredTickets, syncTicketsFromBackend } from './SupportTicketPage';
-import { deleteSupportTicketFromSupabase } from '../services/database';
+import { getStoredTickets, saveStoredTickets, syncTicketsFromBackend, markTicketAsDeleted } from './SupportTicketPage';
+import { deleteTicket } from '../services/database';
 import { 
   ShieldCheck, 
   Search, 
@@ -35,7 +35,7 @@ const QUICK_RESPONSES = [
 ];
 
 const TicketSystemPage: React.FC<TicketSystemPageProps> = ({ user, addNotification }) => {
-  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [tickets, setTickets] = useState<SupportTicket[]>(() => getStoredTickets());
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Open' | 'In Progress' | 'Resolved' | 'Closed'>('All');
@@ -44,16 +44,26 @@ const TicketSystemPage: React.FC<TicketSystemPageProps> = ({ user, addNotificati
   const [replyStatus, setReplyStatus] = useState<SupportTicket['status']>('In Progress');
   const [ticketToDelete, setTicketToDelete] = useState<SupportTicket | null>(null);
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   const loadTickets = async () => {
-    const all = await syncTicketsFromBackend();
-    setTickets(all);
+    setTickets(getStoredTickets());
+    setIsRefreshing(true);
+    try {
+      const all = await syncTicketsFromBackend();
+      setTickets(all);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
+
+  const selectedTicket = tickets.find(t => t.id === selectedTicketId);
 
   useEffect(() => {
     if (selectedTicket) {
       setReplyStatus(selectedTicket.status);
     }
-  }, [selectedTicketId]);
+  }, [selectedTicketId, selectedTicket?.status]);
 
   useEffect(() => {
     loadTickets();
@@ -85,8 +95,6 @@ const TicketSystemPage: React.FC<TicketSystemPageProps> = ({ user, addNotificati
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  const selectedTicket = tickets.find(t => t.id === selectedTicketId);
-
   // Metrics
   const totalTickets = tickets.length;
   const openTickets = tickets.filter(t => t.status === 'Open').length;
@@ -95,9 +103,32 @@ const TicketSystemPage: React.FC<TicketSystemPageProps> = ({ user, addNotificati
 
   const handleUpdateStatus = (ticketId: string, newStatus: SupportTicket['status']) => {
     const now = new Date().toISOString();
-    const updated = tickets.map(t => t.id === ticketId ? { ...t, status: newStatus, updatedAt: now } : t);
+    const updated = tickets.map(t => {
+      if (t.id === ticketId) {
+        const hasSysMsg = (t.messages || []).some(m => m.id.startsWith('msg-sys-closed'));
+        let newMessages = t.messages || [];
+        if ((newStatus === 'Closed' || newStatus === 'Resolved') && !hasSysMsg) {
+          newMessages = [
+            ...newMessages,
+            {
+              id: `msg-sys-closed-${Date.now()}`,
+              senderName: 'System Notice',
+              senderEmail: 'system@platform.local',
+              senderRole: 'admin' as const,
+              message: `This ticket has been marked as ${newStatus} by Support Admin. Note: ${newStatus} support tickets are automatically deleted after 1 hour, and no further replies can be sent. If you need additional help, please create a new ticket.`,
+              createdAt: now
+            }
+          ];
+        }
+        return { ...t, status: newStatus, updatedAt: now, messages: newMessages };
+      }
+      return t;
+    });
     saveStoredTickets(updated);
     setTickets(updated);
+
+    // Immediate database re-hydration
+    syncTicketsFromBackend().then(synced => setTickets(synced));
 
     if (addNotification) {
       addNotification({
@@ -151,6 +182,9 @@ const TicketSystemPage: React.FC<TicketSystemPageProps> = ({ user, addNotificati
     setTickets(updatedTickets);
     setReplyMessage('');
 
+    // Immediate database re-hydration
+    syncTicketsFromBackend().then(synced => setTickets(synced));
+
     if (addNotification) {
       addNotification({
         title: 'Admin Reply Sent',
@@ -160,26 +194,73 @@ const TicketSystemPage: React.FC<TicketSystemPageProps> = ({ user, addNotificati
     }
   };
 
-  const confirmDeleteTicket = () => {
+  const confirmDeleteTicket = async () => {
     if (!ticketToDelete) return;
 
-    const updated = tickets.filter(t => t.id !== ticketToDelete.id);
-    saveStoredTickets(updated);
-    setTickets(updated);
-    if (selectedTicketId === ticketToDelete.id) setSelectedTicketId(null);
+    const targetId = ticketToDelete.id;
+    const targetNum = ticketToDelete.ticketNumber;
 
-    // Delete from Supabase & backend
-    deleteSupportTicketFromSupabase(ticketToDelete.id).catch(() => {});
-    fetch(`/api/support/tickets/${ticketToDelete.id}`, {
-      method: 'DELETE'
-    }).catch(err => console.warn('Server ticket delete note:', err));
+    // "when admin before resolved or closed delete that ticket, that user ticket show closed, after 1 hr delete"
+    if (ticketToDelete.status === 'Open' || ticketToDelete.status === 'In Progress') {
+      const now = new Date().toISOString();
+      const closedTicket: SupportTicket = {
+        ...ticketToDelete,
+        status: 'Closed',
+        updatedAt: now,
+        messages: [
+          ...(ticketToDelete.messages || []),
+          {
+            id: `msg-sys-del-${Date.now()}`,
+            senderName: 'System Notice',
+            senderEmail: 'system@platform.local',
+            senderRole: 'admin',
+            message: 'This support ticket has been closed by the Support Admin. It has been scheduled for deletion and will be permanently deleted in 1 hour.',
+            createdAt: now
+          }
+        ]
+      };
+
+      const currentTickets = getStoredTickets();
+      const updated = currentTickets.map(t => t.id === targetId ? closedTicket : t);
+      saveStoredTickets(updated);
+      setTickets(updated);
+
+      setTicketToDelete(null);
+
+      // Trigger sync in background to update Supabase and server
+      await syncTicketsFromBackend();
+
+      if (addNotification) {
+        addNotification({
+          title: 'Ticket Closed',
+          message: `Support ticket #${targetNum || targetId} has been closed and scheduled for deletion in 1 hour.`,
+          type: 'success'
+        });
+      }
+      return;
+    }
+
+    // Otherwise, if already Resolved or Closed, do immediate hard delete
+    setTickets(prev => prev.filter(t => t.id !== targetId && t.ticketNumber !== targetNum));
+    if (selectedTicketId === targetId) setSelectedTicketId(null);
+
+    markTicketAsDeleted(targetId, targetNum);
+    const updated = getStoredTickets().filter(t => t.id !== targetId && t.ticketNumber !== targetNum);
+    saveStoredTickets(updated);
 
     setTicketToDelete(null);
+
+    // Delete from Supabase & backend database
+    await deleteTicket(targetId, targetNum);
+
+    // Immediate database re-hydration and resync to guarantee deleted tickets do not reappear
+    const synced = await syncTicketsFromBackend();
+    setTickets(synced.filter(t => t.id !== targetId && t.ticketNumber !== targetNum));
 
     if (addNotification) {
       addNotification({
         title: 'Ticket Deleted',
-        message: `Support ticket #${ticketToDelete.ticketNumber} removed from the system.`,
+        message: `Support ticket #${targetNum || targetId} removed successfully.`,
         type: 'warning'
       });
     }
@@ -234,9 +315,11 @@ const TicketSystemPage: React.FC<TicketSystemPageProps> = ({ user, addNotificati
 
         <button
           onClick={loadTickets}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all cursor-pointer shrink-0 self-start sm:self-center"
+          disabled={isRefreshing}
+          className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all cursor-pointer shrink-0 self-start sm:self-center disabled:opacity-60"
         >
-          <RefreshCw className="w-3.5 h-3.5" /> Refresh List
+          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-amber-500' : ''}`} />
+          <span>{isRefreshing ? 'Re-hydrating...' : 'Refresh Database'}</span>
         </button>
       </div>
 

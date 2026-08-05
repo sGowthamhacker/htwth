@@ -342,6 +342,8 @@ export interface SupportTicket {
   userName: string;
   userAvatar?: string;
   subject: string;
+  description?: string;
+  assignedTo?: string;
   category: 'Technical Issue' | 'Account Access' | 'Bug Report' | 'Feature Request' | 'Billing / General';
   priority: 'Low' | 'Medium' | 'High' | 'Urgent';
   status: 'Open' | 'In Progress' | 'Resolved' | 'Closed';

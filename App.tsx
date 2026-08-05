@@ -430,6 +430,18 @@ const App: React.FC = () => {
       }
   }, [appUser, refreshPosts]);
 
+  // Bind refreshPosts to the window object for global availability (e.g. from database service)
+  useEffect(() => {
+      if (typeof window !== 'undefined') {
+          (window as any).refreshPosts = refreshPosts;
+      }
+      return () => {
+          if (typeof window !== 'undefined') {
+              delete (window as any).refreshPosts;
+          }
+      };
+  }, [refreshPosts]);
+
   // Effect to sync post authors with updated user data
   useEffect(() => {
     const syncAuthors = (setPosts: React.Dispatch<React.SetStateAction<Post[]>>) => {
@@ -1883,12 +1895,16 @@ const performLogin = useCallback(async (newUser: User, firebaseUserFromAuth: Fir
 
   const handleDeletePost = useCallback(async (postId: string, type: 'writeup' | 'blog') => { 
       const targetPost = (type === 'writeup' ? writeups : blogPosts).find(p => p.id === postId);
+      // Immediately filter out from local state list for instant responsiveness
+      const updater = type === 'writeup' ? setWriteups : setBlogPosts;
+      updater(prev => prev.filter(p => p.id !== postId));
+
       await deletePost(postId); 
       logActivity(`deleted a ${type}`, targetPost?.title || 'Unknown Title');
       
-      // Refresh posts to ensure state is in sync with database
+      // Forced state synchronization with database
       await refreshPosts();
-  }, [refreshPosts, writeups, blogPosts, logActivity]);
+  }, [refreshPosts, writeups, blogPosts, logActivity, setWriteups, setBlogPosts]);
   
   // OPTIMISTIC UPDATE
   const handleLikePost = useCallback(async (post: Post, liker: User) => { 

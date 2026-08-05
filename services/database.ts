@@ -799,12 +799,14 @@ export const getSupportTicketsFromSupabase = async (userEmail?: string): Promise
             ticket_messages (
                 id,
                 ticket_id,
+                sender_id,
                 sender_name,
                 sender_email,
                 sender_role,
                 sender_type,
                 avatar,
                 message,
+                attachments,
                 created_at
             )
         `).order('created_at', { ascending: false });
@@ -813,36 +815,106 @@ export const getSupportTicketsFromSupabase = async (userEmail?: string): Promise
             query = query.ilike('user_email', userEmail);
         }
 
-        const { data, error } = await query;
+        const res = await query;
+        let data: any = res.data;
+        const error = res.error;
+
         if (error) {
-            console.warn('[Supabase Warning] getSupportTicketsFromSupabase:', error.message);
-            return [];
+            // Dynamic fallback: if database is not fully migrated with 'sender_id', run query without it
+            if (error.message && (error.message.includes('sender_id') || error.message.includes('column'))) {
+                let fallbackQuery = s.from('support_tickets').select(`
+                    id,
+                    ticket_number,
+                    user_name,
+                    user_email,
+                    user_avatar,
+                    subject,
+                    description,
+                    category,
+                    priority,
+                    status,
+                    assigned_to,
+                    created_at,
+                    updated_at,
+                    ticket_messages (
+                        id,
+                        ticket_id,
+                        sender_name,
+                        sender_email,
+                        sender_role,
+                        sender_type,
+                        avatar,
+                        message,
+                        attachments,
+                        created_at
+                    )
+                `).order('created_at', { ascending: false });
+
+                if (userEmail) {
+                    fallbackQuery = fallbackQuery.ilike('user_email', userEmail);
+                }
+
+                const fallbackRes = await fallbackQuery;
+                if (fallbackRes.error) {
+                    console.warn('[Supabase Warning] getSupportTicketsFromSupabase Fallback failed:', fallbackRes.error.message);
+                    return [];
+                }
+                data = fallbackRes.data;
+            } else {
+                console.warn('[Supabase Warning] getSupportTicketsFromSupabase:', error.message);
+                return [];
+            }
         }
 
         if (!Array.isArray(data)) return [];
 
-        return data.map((t: any) => ({
-            id: t.id,
-            ticketNumber: t.ticket_number || t.ticketNumber || `TCK-${t.id}`,
-            userName: t.user_name || t.userName || 'User',
-            userEmail: t.user_email || t.userEmail || '',
-            userAvatar: t.user_avatar || t.userAvatar || '',
-            subject: t.subject || 'No Subject',
-            category: t.category || 'Technical Issue',
-            priority: t.priority || 'Medium',
-            status: t.status || 'Open',
-            createdAt: t.created_at || t.createdAt || new Date().toISOString(),
-            updatedAt: t.updated_at || t.updatedAt || new Date().toISOString(),
-            messages: Array.isArray(t.ticket_messages) ? t.ticket_messages.map((m: any) => ({
-                id: m.id,
-                senderName: m.sender_name || m.senderName || 'User',
-                senderEmail: m.sender_email || m.senderEmail || '',
-                senderRole: m.sender_role || m.senderRole || m.sender_type || 'user',
-                avatar: m.avatar || '',
-                message: m.message || '',
-                createdAt: m.created_at || m.createdAt || new Date().toISOString()
-            })).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) : []
-        }));
+        // Add robust mapping and filtering:
+        // 1. Skip any records with missing sender information (user_email / user_name / id)
+        // 2. Perform map-operation that filters out invalid ticket messages before returning data
+        const cleanAndFiltered: SupportTicket[] = data
+            .filter((t: any) => {
+                const hasValidSenderInfo = t && t.user_email && t.user_name && t.id;
+                return !!hasValidSenderInfo;
+            })
+            .map((t: any) => {
+                const validMessages = Array.isArray(t.ticket_messages)
+                    ? t.ticket_messages
+                        .filter((m: any) => {
+                            // Filter out invalid ticket messages (must have valid body, sender name/email)
+                            const isValidMsg = m && m.id && m.message && (m.sender_name || m.sender_email);
+                            return !!isValidMsg;
+                        })
+                        .map((m: any) => ({
+                            id: m.id,
+                            senderName: m.sender_name || m.senderName || 'User',
+                            senderEmail: m.sender_email || m.senderEmail || '',
+                            senderRole: m.sender_role || m.senderRole || m.sender_type || 'user',
+                            avatar: m.avatar || '',
+                            message: m.message || '',
+                            createdAt: m.created_at || m.createdAt || new Date().toISOString()
+                        }))
+                        .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                    : [];
+
+                return {
+                    id: t.id,
+                    ticketNumber: t.ticket_number || t.ticketNumber || `TCK-${t.id}`,
+                    userName: t.user_name || t.userName || 'User',
+                    userEmail: t.user_email || t.userEmail || '',
+                    userAvatar: t.user_avatar || t.userAvatar || '',
+                    subject: t.subject || 'No Subject',
+                    category: t.category || 'Technical Issue',
+                    priority: t.priority || 'Medium',
+                    status: t.status || 'Open',
+                    assignedTo: t.assigned_to || t.assignedTo || null,
+                    description: t.description || '',
+                    createdAt: t.created_at || t.createdAt || new Date().toISOString(),
+                    updatedAt: t.updated_at || t.updatedAt || new Date().toISOString(),
+                    messages: validMessages
+                };
+            });
+
+        return cleanAndFiltered;
     } catch (err) {
         console.error('Error fetching tickets from Supabase:', err);
         return [];
@@ -861,9 +933,11 @@ export const saveSupportTicketToSupabase = async (ticket: SupportTicket): Promis
             user_email: ticket.userEmail,
             user_avatar: ticket.userAvatar,
             subject: ticket.subject,
+            description: ticket.description || '',
             category: ticket.category,
             priority: ticket.priority,
             status: ticket.status,
+            assigned_to: ticket.assignedTo || null,
             created_at: ticket.createdAt,
             updated_at: ticket.updatedAt
         });
@@ -898,16 +972,18 @@ export const saveSupportTicketToSupabase = async (ticket: SupportTicket): Promis
     }
 };
 
-export const deleteSupportTicketFromSupabase = async (ticketId: string): Promise<boolean> => {
+export const deleteSupportTicketFromSupabase = async (ticketId: string, ticketNumber?: string): Promise<boolean> => {
     const s = getSupabase();
     if (!s) return false;
 
     try {
         await s.from('ticket_messages').delete().eq('ticket_id', ticketId);
-        const { error } = await s.from('support_tickets').delete().eq('id', ticketId);
-        if (error) {
-            console.warn('[Supabase Warning] deleteSupportTicketFromSupabase:', error.message);
-            return false;
+        if (ticketNumber) {
+            await s.from('ticket_messages').delete().eq('ticket_id', ticketNumber);
+        }
+        await s.from('support_tickets').delete().eq('id', ticketId);
+        if (ticketNumber) {
+            await s.from('support_tickets').delete().eq('ticket_number', ticketNumber);
         }
         return true;
     } catch (err) {
@@ -915,6 +991,76 @@ export const deleteSupportTicketFromSupabase = async (ticketId: string): Promise
         return false;
     }
 };
+
+export const deleteTicket = async (ticketId: string, ticketNumber?: string): Promise<boolean> => {
+    // 1. Perform immediate optimistic update in localStorage to update UI instantly across all pages
+    if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+            const STORAGE_KEY = 'htwth_support_tickets';
+            const DELETED_KEY = 'htwth_deleted_ticket_ids';
+
+            // Mark as deleted
+            const currentRaw = localStorage.getItem(DELETED_KEY);
+            const current = currentRaw ? JSON.parse(currentRaw) : [];
+            const set = new Set(current);
+            if (ticketId) set.add(ticketId);
+            if (ticketNumber) {
+                set.add(ticketNumber);
+                if (!ticketNumber.startsWith('#')) set.add(`#${ticketNumber}`);
+            }
+            localStorage.setItem(DELETED_KEY, JSON.stringify(Array.from(set)));
+
+            // Filter out from local support tickets list
+            const rawTickets = localStorage.getItem(STORAGE_KEY);
+            if (rawTickets) {
+                const parsed = JSON.parse(rawTickets);
+                if (Array.isArray(parsed)) {
+                    const filtered = parsed.filter((t: any) => t.id !== ticketId && t.ticketNumber !== ticketNumber);
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+                }
+            }
+
+            // Dispatch event so active components update local state immediately
+            window.dispatchEvent(new Event('htwth_tickets_updated'));
+        } catch (e) {
+            console.error('[Optimistic Update Error] deleteTicket:', e);
+        }
+    }
+
+    try {
+        // 2. Perform backend deletes
+        await deleteSupportTicketFromSupabase(ticketId, ticketNumber);
+
+        await fetch(`/api/support/tickets/${ticketId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: ticketId, ticketNumber })
+        }).catch(err => console.warn('Server ticket delete note:', err));
+
+        await fetch('/api/support/tickets', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: ticketId, ticketNumber })
+        }).catch(() => {});
+
+        // 3. Trigger refreshPosts callback if registered globally on window to re-sync with database
+        if (typeof window !== 'undefined') {
+            const globalWin = window as any;
+            if (typeof globalWin.refreshPosts === 'function') {
+                globalWin.refreshPosts().catch((err: any) => {
+                    console.warn('[refreshPosts Error] after deleteTicket:', err);
+                });
+            }
+        }
+
+        return true;
+    } catch (err) {
+        console.error('Error in deleteTicket:', err);
+        return false;
+    }
+};
+
+export const deleteSupportTicket = deleteTicket;
 
 
 

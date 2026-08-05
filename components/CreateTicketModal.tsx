@@ -131,7 +131,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
       };
 
       const updated = [newTicket, ...tickets];
-      saveStoredTickets(updated);
+      saveStoredTickets(updated, { type: 'created', ticket: newTicket });
 
       if (addNotification) {
         addNotification({

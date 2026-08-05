@@ -344,7 +344,7 @@ async function startServer() {
     const now = Date.now();
     const oneHourMs = 3600000;
     SERVER_SUPPORT_TICKETS = SERVER_SUPPORT_TICKETS.filter((t: any) => {
-      if (t.status === 'Resolved') {
+      if (t.status === 'Resolved' || t.status === 'Closed') {
         const resolvedTime = new Date(t.updatedAt || t.createdAt || 0).getTime();
         if (now - resolvedTime > oneHourMs) return false;
       }
@@ -428,10 +428,31 @@ async function startServer() {
     }
   });
 
+  app.delete("/api/support/tickets", (req, res) => {
+    try {
+      const { id, ticketNumber, subject } = req.body || req.query || {};
+      SERVER_SUPPORT_TICKETS = SERVER_SUPPORT_TICKETS.filter((t: any) => {
+        if (id && (t.id === id || t.ticketNumber === id || t.ticketNumber === `#${id}`)) return false;
+        if (ticketNumber && (t.id === ticketNumber || t.ticketNumber === ticketNumber || t.ticketNumber === `#${ticketNumber}`)) return false;
+        if (subject && t.subject && t.subject.trim().toLowerCase() === subject.trim().toLowerCase()) return false;
+        return true;
+      });
+      return res.json({ success: true, tickets: SERVER_SUPPORT_TICKETS });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || "Failed to delete ticket" });
+    }
+  });
+
   app.delete("/api/support/tickets/:id", (req, res) => {
     try {
       const { id } = req.params;
-      SERVER_SUPPORT_TICKETS = SERVER_SUPPORT_TICKETS.filter((t: any) => t.id !== id && t.ticketNumber !== id && t.ticketNumber !== `#${id}`);
+      const { ticketNumber, subject } = req.body || req.query || {};
+      SERVER_SUPPORT_TICKETS = SERVER_SUPPORT_TICKETS.filter((t: any) => {
+        if (t.id === id || t.ticketNumber === id || t.ticketNumber === `#${id}`) return false;
+        if (ticketNumber && (t.id === ticketNumber || t.ticketNumber === ticketNumber || t.ticketNumber === `#${ticketNumber}`)) return false;
+        if (subject && t.subject && t.subject.trim().toLowerCase() === subject.trim().toLowerCase()) return false;
+        return true;
+      });
       return res.json({ success: true, tickets: SERVER_SUPPORT_TICKETS });
     } catch (err: any) {
       return res.status(500).json({ error: err.message || "Failed to delete ticket" });

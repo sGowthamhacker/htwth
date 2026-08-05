@@ -90,19 +90,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === 'POST') {
-    const { newEventPayload, tickets } = req.body || {};
+    const { newEventPayload, tickets, replace } = req.body || {};
     
     if (Array.isArray(tickets)) {
-      // Merge with existing server tickets
-      const map = new Map<string, any>();
-      SERVER_SUPPORT_TICKETS.forEach(t => map.set(t.id, t));
-      tickets.forEach(t => {
-        const existing = map.get(t.id);
-        if (!existing || new Date(t.updatedAt || t.createdAt || 0).getTime() >= new Date(existing.updatedAt || existing.createdAt || 0).getTime()) {
-          map.set(t.id, t);
-        }
-      });
-      SERVER_SUPPORT_TICKETS = cleanExpiredTickets(Array.from(map.values()));
+      if (replace) {
+        SERVER_SUPPORT_TICKETS = cleanExpiredTickets(tickets);
+      } else {
+        // Merge with existing server tickets
+        const map = new Map<string, any>();
+        SERVER_SUPPORT_TICKETS.forEach(t => map.set(t.id, t));
+        tickets.forEach(t => {
+          const existing = map.get(t.id);
+          if (!existing || new Date(t.updatedAt || t.createdAt || 0).getTime() >= new Date(existing.updatedAt || existing.createdAt || 0).getTime()) {
+            map.set(t.id, t);
+          }
+        });
+        SERVER_SUPPORT_TICKETS = cleanExpiredTickets(Array.from(map.values()));
+      }
     }
     
     // Only send email if a specific new event payload was provided
@@ -194,11 +198,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'DELETE') {
     const urlParts = (req.url || '').split('/');
     const lastPart = urlParts[urlParts.length - 1]?.split('?')[0];
-    const id = (req.body && req.body.id) || (req.query && req.query.id) || (lastPart && lastPart !== 'tickets' ? lastPart : null);
-    
-    if (id) {
-      SERVER_SUPPORT_TICKETS = SERVER_SUPPORT_TICKETS.filter(t => t.id !== id && t.ticketNumber !== id && t.ticketNumber !== `#${id}`);
-    }
+    const urlId = lastPart && lastPart !== 'tickets' ? lastPart : null;
+    const { id, ticketNumber, subject } = req.body || req.query || {};
+    const targetId = id || urlId;
+
+    SERVER_SUPPORT_TICKETS = SERVER_SUPPORT_TICKETS.filter(t => {
+      if (targetId && (t.id === targetId || t.ticketNumber === targetId || t.ticketNumber === `#${targetId}`)) return false;
+      if (ticketNumber && (t.id === ticketNumber || t.ticketNumber === ticketNumber || t.ticketNumber === `#${ticketNumber}`)) return false;
+      if (subject && t.subject && t.subject.trim().toLowerCase() === subject.trim().toLowerCase()) return false;
+      return true;
+    });
+
     return res.json({ success: true, tickets: SERVER_SUPPORT_TICKETS });
   }
 

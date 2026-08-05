@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, SupportTicket, TicketMessage } from '../types';
-import { getSupportTicketsFromSupabase, saveSupportTicketToSupabase, deleteSupportTicketFromSupabase } from '../services/database';
+import { getSupportTicketsFromSupabase, saveSupportTicketToSupabase, deleteSupportTicketFromSupabase, deleteTicket } from '../services/database';
 import { 
   LifeBuoy, 
   Plus, 
@@ -32,6 +32,53 @@ interface SupportTicketPageProps {
 }
 
 const STORAGE_KEY = 'htwth_support_tickets';
+const DELETED_KEY = 'htwth_deleted_ticket_ids';
+
+export const getDeletedTicketIds = (): string[] => {
+  try {
+    const raw = localStorage.getItem(DELETED_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+export const markTicketAsDeleted = (id: string, ticketNumber?: string) => {
+  try {
+    const current = getDeletedTicketIds();
+    const set = new Set(current);
+    if (id) set.add(id);
+    if (ticketNumber) {
+      set.add(ticketNumber);
+      if (!ticketNumber.startsWith('#')) set.add(`#${ticketNumber}`);
+    }
+    localStorage.setItem(DELETED_KEY, JSON.stringify(Array.from(set)));
+  } catch (e) {
+    console.error('Failed to mark ticket as deleted:', e);
+  }
+};
+
+export const unmarkTicketAsDeleted = (id?: string, ticketNumber?: string) => {
+  try {
+    const current = getDeletedTicketIds();
+    const filtered = current.filter(x => 
+      !x.startsWith('sub:') && 
+      x !== id && 
+      x !== ticketNumber && 
+      x !== `#${ticketNumber}`
+    );
+    localStorage.setItem(DELETED_KEY, JSON.stringify(filtered));
+  } catch (e) {
+    console.error('Failed to unmark ticket:', e);
+  }
+};
+
+export const isTicketDeleted = (t: SupportTicket, deletedSet: Set<string>): boolean => {
+  if (!t) return true;
+  if (t.id && deletedSet.has(t.id)) return true;
+  if (t.ticketNumber && (deletedSet.has(t.ticketNumber) || deletedSet.has(`#${t.ticketNumber}`))) return true;
+  return false;
+};
 
 const PRESET_TEMPLATES = [
   {
@@ -84,39 +131,53 @@ export const isTicketExpired = (t: SupportTicket, now: number = Date.now()): boo
 
 export const getStoredTickets = (): SupportTicket[] => {
   try {
+    const deletedSet = new Set(getDeletedTicketIds());
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_SAMPLE_TICKETS));
-      return INITIAL_SAMPLE_TICKETS;
+      return INITIAL_SAMPLE_TICKETS.filter(t => !isTicketDeleted(t, deletedSet));
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
       const now = Date.now();
-      const clean = parsed.filter(t => !isTicketExpired(t, now));
+      const clean = parsed.filter(t => !isTicketExpired(t, now) && !isTicketDeleted(t, deletedSet));
       if (clean.length !== parsed.length) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
       }
       return clean;
     }
-    return INITIAL_SAMPLE_TICKETS;
+    return INITIAL_SAMPLE_TICKETS.filter(t => !isTicketDeleted(t, deletedSet));
   } catch (e) {
     console.error('Failed to load support tickets from localStorage:', e);
-    return INITIAL_SAMPLE_TICKETS;
+    const deletedSet = new Set(getDeletedTicketIds());
+    return INITIAL_SAMPLE_TICKETS.filter(t => !isTicketDeleted(t, deletedSet));
   }
 };
 
 export const saveStoredTickets = (tickets: SupportTicket[], newEventPayload?: any) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
+    // Unmark any active/created tickets from the deleted IDs set
+    if (newEventPayload?.ticket) {
+      unmarkTicketAsDeleted(newEventPayload.ticket.id, newEventPayload.ticket.ticketNumber);
+    }
+    tickets.forEach(t => {
+      unmarkTicketAsDeleted(t.id, t.ticketNumber);
+    });
+
+    const deletedSet = new Set(getDeletedTicketIds());
+    const cleanTickets = tickets.filter(t => !isTicketDeleted(t, deletedSet));
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanTickets));
     window.dispatchEvent(new Event('htwth_tickets_updated'));
+
     fetch('/api/support/tickets', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tickets, replace: true, newEventPayload })
+      body: JSON.stringify({ tickets: cleanTickets, replace: true, newEventPayload })
     }).catch(err => console.warn('Server ticket sync note:', err));
 
     // Async save to Supabase if available
-    tickets.forEach(ticket => {
+    cleanTickets.forEach(ticket => {
       saveSupportTicketToSupabase(ticket).catch(() => {});
     });
   } catch (e) {
@@ -125,7 +186,9 @@ export const saveStoredTickets = (tickets: SupportTicket[], newEventPayload?: an
 };
 
 export const syncTicketsFromBackend = async (): Promise<SupportTicket[]> => {
-  const local = getStoredTickets();
+  const deletedSet = new Set(getDeletedTicketIds());
+  const local = getStoredTickets().filter(t => !isTicketDeleted(t, deletedSet));
+
   try {
     const res = await fetch('/api/support/tickets');
     let backendTickets: SupportTicket[] = [];
@@ -138,28 +201,56 @@ export const syncTicketsFromBackend = async (): Promise<SupportTicket[]> => {
     const supabaseTickets = await getSupportTicketsFromSupabase().catch(() => []);
 
     const map = new Map<string, SupportTicket>();
-    // 1. Keep local stored tickets
-    local.forEach(t => map.set(t.id, t));
-    
-    // 2. Merge backend tickets (preferring newest update)
-    backendTickets.forEach((t: SupportTicket) => {
-      const existing = map.get(t.id);
-      if (!existing || new Date(t.updatedAt || t.createdAt || 0).getTime() >= new Date(existing.updatedAt || existing.createdAt || 0).getTime()) {
-        map.set(t.id, t);
-      }
-    });
 
-    // 3. Merge Supabase tickets
-    supabaseTickets.forEach((t: SupportTicket) => {
+    const mergeIntoMap = (t: SupportTicket) => {
+      if (!t || isTicketDeleted(t, deletedSet)) return;
       const existing = map.get(t.id);
-      if (!existing || new Date(t.updatedAt || t.createdAt || 0).getTime() >= new Date(existing.updatedAt || existing.createdAt || 0).getTime()) {
+      if (!existing) {
         map.set(t.id, t);
+      } else {
+        const existingTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+        const incomingTime = new Date(t.updatedAt || t.createdAt || 0).getTime();
+
+        const primary = incomingTime >= existingTime ? t : existing;
+        const secondary = incomingTime >= existingTime ? existing : t;
+
+        // Merge messages array without duplicates
+        const msgMap = new Map<string, TicketMessage>();
+        (existing.messages || []).forEach(m => { if (m && m.id) msgMap.set(m.id, m); });
+        (t.messages || []).forEach(m => { if (m && m.id) msgMap.set(m.id, m); });
+
+        const mergedMessages = Array.from(msgMap.values()).sort((a, b) => 
+          new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+        );
+
+        map.set(t.id, {
+          ...secondary,
+          ...primary,
+          messages: mergedMessages
+        });
       }
-    });
+    };
+
+    // 1. Keep local stored tickets
+    local.forEach(t => mergeIntoMap(t));
+    
+    // 2. Merge backend tickets (only if NOT deleted)
+    backendTickets.forEach((t: SupportTicket) => mergeIntoMap(t));
+
+    // 3. Merge Supabase tickets (only if NOT deleted)
+    supabaseTickets.forEach((t: SupportTicket) => mergeIntoMap(t));
 
     const now = Date.now();
+
+    // 4. Background purge of expired tickets from Supabase & API databases
+    Array.from(map.values()).forEach((t: SupportTicket) => {
+      if (isTicketExpired(t, now)) {
+        deleteTicket(t.id, t.ticketNumber).catch(() => {});
+      }
+    });
+
     const merged = Array.from(map.values())
-      .filter(t => !isTicketExpired(t, now))
+      .filter(t => !isTicketExpired(t, now) && !isTicketDeleted(t, deletedSet))
       .sort((a: SupportTicket, b: SupportTicket) => 
         new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
       );
@@ -193,7 +284,7 @@ export const syncTicketsFromBackend = async (): Promise<SupportTicket[]> => {
 };
 
 const SupportTicketPage: React.FC<SupportTicketPageProps> = ({ user, addNotification }) => {
-  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [tickets, setTickets] = useState<SupportTicket[]>(() => getStoredTickets());
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -218,25 +309,72 @@ const SupportTicketPage: React.FC<SupportTicketPageProps> = ({ user, addNotifica
   const [replyMessage, setReplyMessage] = useState('');
   const [ticketToDelete, setTicketToDelete] = useState<SupportTicket | null>(null);
 
-  const confirmDeleteTicket = () => {
+  const confirmDeleteTicket = async () => {
     if (!ticketToDelete) return;
-    const updated = tickets.filter(t => t.id !== ticketToDelete.id);
+    const targetId = ticketToDelete.id;
+    const targetNum = ticketToDelete.ticketNumber;
+
+    // "when admin/user before resolved or closed delete that ticket, show closed, after 1 hr delete"
+    if (ticketToDelete.status === 'Open' || ticketToDelete.status === 'In Progress') {
+      const now = new Date().toISOString();
+      const closedTicket: SupportTicket = {
+        ...ticketToDelete,
+        status: 'Closed',
+        updatedAt: now,
+        messages: [
+          ...(ticketToDelete.messages || []),
+          {
+            id: `msg-sys-del-${Date.now()}`,
+            senderName: 'System Notice',
+            senderEmail: 'system@platform.local',
+            senderRole: 'admin',
+            message: 'This support ticket has been closed. It is scheduled for deletion and will be permanently deleted from the system in 1 hour.',
+            createdAt: now
+          }
+        ]
+      };
+
+      const currentTickets = getStoredTickets();
+      const updated = currentTickets.map(t => t.id === targetId ? closedTicket : t);
+      saveStoredTickets(updated);
+      setTickets(updated);
+
+      setTicketToDelete(null);
+
+      // Perform backend update
+      await syncTicketsFromBackend();
+
+      if (addNotification) {
+        addNotification({
+          title: 'Ticket Closed',
+          message: `Support ticket #${targetNum || targetId} has been closed and scheduled for permanent deletion in 1 hour.`,
+          type: 'success'
+        });
+      }
+      return;
+    }
+
+    // Immediate state-driven UI update
+    setTickets(prev => prev.filter(t => t.id !== targetId && t.ticketNumber !== targetNum));
+    if (selectedTicketId === targetId) setSelectedTicketId(null);
+
+    markTicketAsDeleted(targetId, targetNum);
+    const updated = getStoredTickets().filter(t => t.id !== targetId && t.ticketNumber !== targetNum);
     saveStoredTickets(updated);
-    setTickets(updated);
-    if (selectedTicketId === ticketToDelete.id) setSelectedTicketId(null);
-    
-    // Delete from Supabase & backend
-    deleteSupportTicketFromSupabase(ticketToDelete.id).catch(() => {});
-    fetch(`/api/support/tickets/${ticketToDelete.id}`, {
-      method: 'DELETE'
-    }).catch(err => console.warn('Server ticket delete note:', err));
 
     setTicketToDelete(null);
+
+    // Perform database deletion
+    await deleteTicket(targetId, targetNum);
+
+    // Immediate database re-hydration to guarantee UI state matches DB and deleted tickets do not reappear
+    const synced = await syncTicketsFromBackend();
+    setTickets(synced.filter(t => t.id !== targetId && t.ticketNumber !== targetNum));
 
     if (addNotification) {
       addNotification({
         title: 'Ticket Deleted',
-        message: `Support ticket #${ticketToDelete.ticketNumber} removed successfully.`,
+        message: `Support ticket #${targetNum || targetId} removed successfully.`,
         type: 'warning'
       });
     }
@@ -332,8 +470,9 @@ const SupportTicketPage: React.FC<SupportTicketPageProps> = ({ user, addNotifica
   };
 
   // Filter user's own tickets (or all if admin)
+  const isAdminUser = user.role === 'admin' || user.email?.toLowerCase() === 'gowlearner04@gmail.com' || user.email?.toLowerCase().includes('admin');
   const myTickets = tickets.filter(t => 
-    user.role === 'admin' ? true : t.userEmail.toLowerCase() === (user.email || '').toLowerCase()
+    isAdminUser ? true : t.userEmail.toLowerCase() === (user.email || '').toLowerCase()
   );
 
   const filteredTickets = myTickets.filter(t => {
