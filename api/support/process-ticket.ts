@@ -101,7 +101,7 @@ Always reply in a strict JSON format matching this schema:
       }
     });
 
-    const textRes = response.text();
+    const textRes = response.text;
     if (!textRes) throw new Error("AI returned empty response");
     
     let aiResult;
