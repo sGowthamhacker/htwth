@@ -281,47 +281,74 @@ async function startServer() {
     if (!diag.smtpUser || !diag.smtpPass || !ticket.userEmail) return;
     try {
       const { transporter, user } = getSmtpTransporter();
+      const currentStatus = ticket.status || 'Open';
       const subject = type === 'created' 
         ? `[${ticket.ticketNumber}] Support Ticket Confirmation: ${ticket.subject}`
-        : `[${ticket.ticketNumber}] New Reply from Support Team`;
+        : `[${ticket.ticketNumber}] [Status: ${currentStatus}] New Reply on: ${ticket.subject}`;
       
       const protocol = req?.headers?.['x-forwarded-proto'] || 'https';
       const hostHeader = req?.headers?.['x-forwarded-host'] || req?.headers?.host;
       const appUrl = process.env.APP_URL || (hostHeader ? `${protocol}://${hostHeader}` : 'https://ais-dev-fl5m6z2lmsovznnquito44-475153556207.asia-southeast1.run.app');
 
-      const bodyHtml = `
-        <div style="text-align: left; padding: 24px 20px; color: #1e293b; width: 100%; max-width: 100%; box-sizing: border-box; word-break: break-word; overflow-wrap: break-word;">
-          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
-            <span style="background: #e0e7ff; color: #4f46e5; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Ticket #${ticket.ticketNumber}</span>
-            <span style="background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 6px; text-transform: uppercase;">${ticket.category || 'Support'}</span>
-            <span style="background: ${ticket.status === 'Resolved' ? '#10b98120' : ticket.status === 'Closed' ? '#64748b20' : '#f59e0b20'}; color: ${ticket.status === 'Resolved' ? '#059669' : ticket.status === 'Closed' ? '#475569' : '#d97706'}; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase;">Status: ${ticket.status || 'Open'}</span>
+      // Style variables based on status
+      const isResolvedOrClosed = currentStatus === 'Resolved' || currentStatus === 'Closed';
+      const statusBg = currentStatus === 'Resolved' ? '#10b98120' : currentStatus === 'Closed' ? '#f1f5f9' : '#f59e0b20';
+      const statusColor = currentStatus === 'Resolved' ? '#059669' : currentStatus === 'Closed' ? '#475569' : '#d97706';
+
+      let bodyHtml = `
+        <div style="text-align: left; padding: 24px 20px; color: #1e293b; width: 100%; max-width: 100%; box-sizing: border-box; word-break: break-word; overflow-wrap: break-word; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
+            <span style="background: #e0e7ff; color: #4f46e5; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; margin-right: 6px;">Ticket #${ticket.ticketNumber}</span>
+            <span style="background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 6px; text-transform: uppercase; display: inline-block; margin-right: 6px;">${ticket.category || 'Technical Issue'}</span>
+            <span style="background: ${statusBg}; color: ${statusColor}; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase; display: inline-block;">Status: ${currentStatus}</span>
           </div>
 
           <h2 style="font-size: 20px; font-weight: 900; color: #0f172a; margin-top: 0; margin-bottom: 12px; letter-spacing: -0.3px;">
-            ${type === 'created' ? 'Support Ticket Confirmation' : 'Support Ticket Update'}
+            ${type === 'created' ? 'Support Ticket Confirmation' : 'Support Ticket Reply & Update'}
           </h2>
 
           <p style="font-size: 15px; font-weight: bold; color: #0f172a; margin-top: 0; margin-bottom: 12px;">Hello ${ticket.userName || 'Valued User'},</p>
           
-          <p style="margin-top: 0; margin-bottom: 16px; color: #334155; line-height: 1.6;">
+          <p style="margin-top: 0; margin-bottom: 16px; color: #334155; line-height: 1.6; font-size: 14px;">
             ${type === 'created' 
-              ? 'Thank you for reaching out to <b>HTWTH Support</b>! We have successfully received your support ticket and our team will resolve your query quickly.' 
-              : 'There is a new response from our support team on your ticket:'}
+              ? 'Thank you for contacting <b>HTWTH Support</b>. We have successfully received your support ticket. Our engineering and support team is actively reviewing your request and will get back to you shortly.' 
+              : 'A support specialist has posted a reply regarding your support ticket. Please find the response details below:'}
           </p>
 
-          <div style="background-color: #f8fafc; border-left: 4px solid #6366f1; padding: 16px; margin: 24px 0; border-radius: 0 8px 8px 0;">
+          <div style="background-color: #f8fafc; border-left: 4px solid #4f46e5; padding: 16px; margin: 20px 0; border-radius: 0 8px 8px 0;">
             <p style="font-size: 11px; font-weight: 700; color: #4f46e5; margin-top: 0; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Ticket Subject</p>
-            <p style="font-size: 15px; font-weight: bold; color: #0f172a; margin: 0 0 8px 0;">${ticket.subject}</p>
-            ${messageText ? `<p style="margin: 0; color: #475569; font-style: italic; line-height: 1.5; white-space: pre-wrap;">"${messageText}"</p>` : ''}
+            <p style="font-size: 15px; font-weight: bold; color: #0f172a; margin: 0 0 12px 0;">${ticket.subject}</p>
+            
+            ${messageText ? `
+              <p style="font-size: 11px; font-weight: 700; color: #d97706; margin-top: 12px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                ${type === 'created' ? 'Ticket Description' : 'Response Message'}
+              </p>
+              <div style="margin: 0; padding: 14px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; color: #1e293b; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${messageText}</div>
+            ` : ''}
           </div>
 
-          <p style="margin-top: 0; margin-bottom: 16px; color: #334155; line-height: 1.6;">
-            You can view, track, and reply to this ticket anytime in your platform Support & Ticket System dashboard:
+          ${isResolvedOrClosed ? `
+            <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #d97706; padding: 14px; margin: 20px 0; border-radius: 6px;">
+              <p style="font-size: 13px; font-weight: 800; color: #92400e; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.5px;">⚠️ Important Expiry Notice</p>
+              <p style="font-size: 13px; color: #78350f; margin: 0; line-height: 1.5;">
+                This support ticket has been marked as <strong>${currentStatus}</strong>.
+                As part of our automated privacy policy, resolved and closed tickets are <strong>permanently deleted exactly 1 hour</strong> after resolution. No further replies can be sent or tracked for this support ID. If you need any further assistance, please open a new ticket.
+              </p>
+            </div>
+          ` : ''}
+
+          <p style="margin-top: 0; margin-bottom: 16px; color: #334155; line-height: 1.6; font-size: 14px;">
+            You can view details, read the chat history, and respond directly to this ticket through your Support Dashboard:
           </p>
 
-          <div style="margin: 20px 0;">
-            <a href="${appUrl}" style="background-color: #4f46e5; color: #ffffff; padding: 10px 20px; border-radius: 8px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 14px;">Open Support Dashboard</a>
+          <div style="margin: 24px 0;">
+            <a href="${appUrl}" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; border-radius: 8px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 14px; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);">View Ticket in Dashboard</a>
           </div>
+
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+          <p style="font-size: 12px; color: #64748b; margin: 0; line-height: 1.5;">
+            This is an automated operational notification regarding support ticket #${ticket.ticketNumber}. Please do not reply directly to this email.
+          </p>
         </div>
       `;
 
@@ -331,10 +358,20 @@ async function startServer() {
         from: `"${process.env.SMTP_FROM_NAME || 'HTWTH Support'}" <${user}>`,
         to: ticket.userEmail,
         subject,
-        text: `Hello ${ticket.userName || 'User'},\n\n${type === 'created' ? 'Thank you for your support ticket! We have received your query and will resolve it quickly.' : 'There is a new update on your support ticket #' + ticket.ticketNumber + '.'}\n\nTicket: #${ticket.ticketNumber} - ${ticket.subject}\n\nBest regards,\nHTWTH Support Team`,
+        text: `Hello ${ticket.userName || 'Valued User'},\n\n${
+          type === 'created' 
+            ? 'Thank you for your support ticket! We have received your query and will resolve it quickly.' 
+            : 'There is a new reply from our support team on your ticket.'
+        }\n\nTicket ID: #${ticket.ticketNumber}\nSubject: ${ticket.subject}\nStatus: ${currentStatus}\n\n${
+          messageText ? `Message:\n"${messageText}"\n\n` : ''
+        }${
+          isResolvedOrClosed 
+            ? `Notice: This ticket has been marked as ${currentStatus} and will be permanently deleted from our databases in 1 hour. No further replies can be made.\n\n` 
+            : ''
+        }Best regards,\nHTWTH Support Team\n${appUrl}`,
         html: formattedHtml
       });
-      console.log(`Support ticket email (${type}) sent to ${ticket.userEmail} for ticket #${ticket.ticketNumber}`);
+      console.log(`Support ticket email (${type}) sent to ${ticket.userEmail} for ticket #${ticket.ticketNumber} [Status: ${currentStatus}]`);
     } catch (err) {
       console.error("Failed to send support ticket email:", err);
     }
@@ -400,18 +437,39 @@ async function startServer() {
             sendTicketEmail(t, 'created', firstMsg, req);
           }
         } else {
-          // Check if admin added a new message
+          // Check if admin added a new message or if the status changed
           const prevMsgCount = Array.isArray(prev.messages) ? prev.messages.length : 0;
           const currMsgCount = Array.isArray(t.messages) ? t.messages.length : 0;
-          if (currMsgCount > prevMsgCount) {
-            const newMsgs = t.messages.slice(prevMsgCount);
-            const realAdminMsg = newMsgs.find((m: any) => m.senderRole === 'admin' && m.senderName !== 'System Notice' && !m.message.includes("Your ticket was resolved"));
-            if (realAdminMsg) {
-              const replyId = t.id + '_' + realAdminMsg.id;
-              if (!processedTicketsForEmail.has(replyId)) {
-                processedTicketsForEmail.add(replyId);
-                sendTicketEmail(t, 'reply', realAdminMsg.message, req);
-              }
+          const statusChanged = prev.status !== t.status;
+
+          if (currMsgCount > prevMsgCount || statusChanged) {
+            const newMsgs = currMsgCount > prevMsgCount ? t.messages.slice(prevMsgCount) : [];
+            
+            // Find the most descriptive message to put in the email
+            // 1. Prefer actual written manual admin messages
+            let msgObj = newMsgs.find((m: any) => 
+              m.senderRole === 'admin' && 
+              m.senderName !== 'System Notice' && 
+              !m.message.includes("Your ticket was resolved") &&
+              !m.message.includes("automatically deleted")
+            );
+            
+            // 2. Fallback to any admin message (like System Notice status updates)
+            if (!msgObj) {
+              msgObj = newMsgs.find((m: any) => m.senderRole === 'admin');
+            }
+
+            // 3. Fallback to the very last message in the list
+            if (!msgObj && t.messages && t.messages.length > 0) {
+              msgObj = t.messages[t.messages.length - 1];
+            }
+
+            const messageText = msgObj ? msgObj.message : `The status of your support ticket has been updated to "${t.status}".`;
+            const replyId = t.id + '_' + (msgObj?.id || 'status_' + t.status);
+
+            if (!processedTicketsForEmail.has(replyId)) {
+              processedTicketsForEmail.add(replyId);
+              sendTicketEmail(t, 'reply', messageText, req);
             }
           }
         }
