@@ -103,14 +103,14 @@ export const getStoredTickets = (): SupportTicket[] => {
   }
 };
 
-export const saveStoredTickets = (tickets: SupportTicket[]) => {
+export const saveStoredTickets = (tickets: SupportTicket[], newEventPayload?: any) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
     window.dispatchEvent(new Event('htwth_tickets_updated'));
     fetch('/api/support/tickets', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tickets, replace: true })
+      body: JSON.stringify({ tickets, replace: true, newEventPayload })
     }).catch(err => console.warn('Server ticket sync note:', err));
   } catch (e) {
     console.error('Failed to save support tickets to localStorage:', e);
@@ -344,7 +344,7 @@ const SupportTicketPage: React.FC<SupportTicketPageProps> = ({ user, addNotifica
     };
 
     const updated = [newTicket, ...tickets];
-    saveStoredTickets(updated);
+    saveStoredTickets(updated, { type: 'created', ticket: newTicket });
     setTickets(updated);
 
     if (addNotification) {
@@ -395,7 +395,8 @@ const SupportTicketPage: React.FC<SupportTicketPageProps> = ({ user, addNotifica
       return t;
     });
 
-    saveStoredTickets(updatedTickets);
+    const modifiedTicket = updatedTickets.find(t => t.id === selectedTicket.id);
+    saveStoredTickets(updatedTickets, { type: 'reply', ticket: modifiedTicket, message: newMsg.message });
     setTickets(updatedTickets);
     setReplyMessage('');
 

@@ -357,6 +357,8 @@ async function startServer() {
     return res.json({ tickets: SERVER_SUPPORT_TICKETS });
   });
 
+  const processedTicketsForEmail = new Set<string>();
+
   app.post("/api/support/tickets", (req, res) => {
     try {
       pruneResolvedTickets();
@@ -392,8 +394,11 @@ async function startServer() {
         const prev = existingMap.get(t.id);
         if (!prev) {
           // Newly created ticket!
-          const firstMsg = Array.isArray(t.messages) && t.messages.length > 0 ? t.messages[0].message : '';
-          sendTicketEmail(t, 'created', firstMsg, req);
+          if (!processedTicketsForEmail.has(t.id)) {
+            processedTicketsForEmail.add(t.id);
+            const firstMsg = Array.isArray(t.messages) && t.messages.length > 0 ? t.messages[0].message : '';
+            sendTicketEmail(t, 'created', firstMsg, req);
+          }
         } else {
           // Check if admin added a new message
           const prevMsgCount = Array.isArray(prev.messages) ? prev.messages.length : 0;
@@ -402,7 +407,11 @@ async function startServer() {
             const newMsgs = t.messages.slice(prevMsgCount);
             const realAdminMsg = newMsgs.find((m: any) => m.senderRole === 'admin' && m.senderName !== 'System Notice' && !m.message.includes("Your ticket was resolved"));
             if (realAdminMsg) {
-              sendTicketEmail(t, 'reply', realAdminMsg.message, req);
+              const replyId = t.id + '_' + realAdminMsg.id;
+              if (!processedTicketsForEmail.has(replyId)) {
+                processedTicketsForEmail.add(replyId);
+                sendTicketEmail(t, 'reply', realAdminMsg.message, req);
+              }
             }
           }
         }
