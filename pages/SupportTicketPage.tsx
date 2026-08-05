@@ -69,6 +69,18 @@ const PRESET_TEMPLATES = [
 
 const INITIAL_SAMPLE_TICKETS: SupportTicket[] = [];
 
+export const isTicketExpired = (t: SupportTicket, now: number = Date.now()): boolean => {
+  if (t.id === 'tck-1' || t.ticketNumber === 'TCK-1001' || t.userName === 'Sample User') return true;
+  if (t.status === 'Resolved' || t.status === 'Closed') {
+    const oneHourMs = 3600000; // 1 hour
+    const lastActiveTime = new Date(t.updatedAt || t.createdAt || 0).getTime();
+    if (now - lastActiveTime > oneHourMs) {
+      return true;
+    }
+  }
+  return false;
+};
+
 export const getStoredTickets = (): SupportTicket[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -79,18 +91,7 @@ export const getStoredTickets = (): SupportTicket[] => {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
       const now = Date.now();
-      const oneHourMs = 3600000;
-      // Clean out legacy mock sample tickets and resolved tickets older than 1 hour
-      const clean = parsed.filter(t => {
-        if (t.id === 'tck-1' || t.ticketNumber === 'TCK-1001' || t.userName === 'Sample User') return false;
-        if (t.status === 'Resolved') {
-          const resolvedTime = new Date(t.updatedAt || t.createdAt || 0).getTime();
-          if (now - resolvedTime > oneHourMs) {
-            return false;
-          }
-        }
-        return true;
-      });
+      const clean = parsed.filter(t => !isTicketExpired(t, now));
       if (clean.length !== parsed.length) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
       }
@@ -118,31 +119,59 @@ export const saveStoredTickets = (tickets: SupportTicket[], newEventPayload?: an
 };
 
 export const syncTicketsFromBackend = async (): Promise<SupportTicket[]> => {
+  const local = getStoredTickets();
   try {
     const res = await fetch('/api/support/tickets');
     if (res.ok) {
       const data = await res.json();
-      if (Array.isArray(data?.tickets)) {
-        const sorted = data.tickets.sort((a: SupportTicket, b: SupportTicket) => 
+      const backendTickets = Array.isArray(data?.tickets) ? data.tickets : [];
+      
+      const map = new Map<string, SupportTicket>();
+      // Keep local stored tickets
+      local.forEach(t => map.set(t.id, t));
+      
+      // Merge backend tickets (preferring newest update)
+      backendTickets.forEach((t: SupportTicket) => {
+        const existing = map.get(t.id);
+        if (!existing || new Date(t.updatedAt || t.createdAt || 0).getTime() >= new Date(existing.updatedAt || existing.createdAt || 0).getTime()) {
+          map.set(t.id, t);
+        }
+      });
+
+      const now = Date.now();
+      const merged = Array.from(map.values())
+        .filter(t => !isTicketExpired(t, now))
+        .sort((a: SupportTicket, b: SupportTicket) => 
           new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
         );
-        sorted.forEach((t: SupportTicket) => {
-          if (Array.isArray(t.messages)) {
-            const msgMap = new Map<string, TicketMessage>();
-            t.messages.forEach(m => msgMap.set(m.id, m));
-            t.messages = Array.from(msgMap.values()).sort((a, b) => 
-              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-            );
-          }
-        });
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(sorted));
-        return sorted;
+
+      merged.forEach((t: SupportTicket) => {
+        if (Array.isArray(t.messages)) {
+          const msgMap = new Map<string, TicketMessage>();
+          t.messages.forEach(m => msgMap.set(m.id, m));
+          t.messages = Array.from(msgMap.values()).sort((a, b) => 
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+        }
+      });
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+
+      // Re-populate server memory if server lost state after deploy
+      if (merged.length > backendTickets.length) {
+        fetch('/api/support/tickets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tickets: merged, replace: true })
+        }).catch(() => {});
       }
+
+      return merged;
     }
   } catch (e) {
     // fallback
   }
-  return getStoredTickets();
+  return local;
 };
 
 const SupportTicketPage: React.FC<SupportTicketPageProps> = ({ user, addNotification }) => {

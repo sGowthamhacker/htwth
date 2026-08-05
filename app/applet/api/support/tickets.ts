@@ -52,6 +52,24 @@ function formatEmailHtml(rawBody: string, senderName: string = 'HTWTH Support'):
   `.trim();
 }
 
+let SERVER_SUPPORT_TICKETS: any[] = [];
+
+function cleanExpiredTickets(tickets: any[]) {
+  if (!Array.isArray(tickets)) return [];
+  const now = Date.now();
+  const oneHourMs = 3600000;
+  return tickets.filter(t => {
+    if (t.id === 'tck-1' || t.ticketNumber === 'TCK-1001' || t.userName === 'Sample User') return false;
+    if (t.status === 'Resolved' || t.status === 'Closed') {
+      const lastActiveTime = new Date(t.updatedAt || t.createdAt || 0).getTime();
+      if (now - lastActiveTime > oneHourMs) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // CORS setup
@@ -68,12 +86,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'GET') {
-      return res.status(200).json({ success: true, tickets: [] });
+      SERVER_SUPPORT_TICKETS = cleanExpiredTickets(SERVER_SUPPORT_TICKETS);
+      return res.status(200).json({ success: true, tickets: SERVER_SUPPORT_TICKETS });
     }
 
     if (req.method === 'POST') {
       const body = req.body || {};
       const { newEventPayload, tickets } = body;
+      
+      if (Array.isArray(tickets)) {
+        SERVER_SUPPORT_TICKETS = cleanExpiredTickets(tickets);
+      }
       
       // Send email if event payload provided
       if (newEventPayload && newEventPayload.ticket && newEventPayload.type) {
@@ -148,7 +171,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
       
-      return res.status(200).json({ success: true, tickets: tickets || [] });
+      return res.status(200).json({ success: true, tickets: SERVER_SUPPORT_TICKETS });
     }
 
     if (req.method === 'DELETE') {
