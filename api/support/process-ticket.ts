@@ -35,7 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const activeSMTPUser = process.env.SMTP_USER || "writeup.portal@gmail.com";
 
-    const systemInstruction = \`You are an expert Backend Support Automation AI. Your job is to process incoming support requests from a web application and format them into perfectly structured email payloads for a Nodemailer/Gmail system.
+    const systemInstruction = `You are an expert Backend Support Automation AI. Your job is to process incoming support requests from a web application and format them into perfectly structured email payloads for a Nodemailer/Gmail system.
 
 Your primary goal is to maintain distinct conversation threads for the same user based on their specific problem, ensuring separate issues do not collapse or mix together.
 
@@ -66,11 +66,11 @@ Always reply in a strict JSON format matching this schema:
   "action": "CREATE_NEW_THREAD" or "APPEND_TO_THREAD",
   "ticketId": "Generated or Matched ID",
   "subject": "The Exact Subject Line",
-  "friendlyFrom": "\\"App Support Team\\" <\${activeSMTPUser}>",
-  "replyTo": "\${activeSMTPUser}",
+  "friendlyFrom": "\\"App Support Team\\" <${activeSMTPUser}>",
+  "replyTo": "${activeSMTPUser}",
   "hiddenFingerprintTarget": "Stored Message-ID string or null",
   "emailBody": "Cleanly formatted email text body"
-}\`;
+}`;
 
     const userPromptPayload = JSON.stringify({
       userEmail,
@@ -81,7 +81,7 @@ Always reply in a strict JSON format matching this schema:
 
     const response = await ai.models.generateContent({
       model: "gemini-3.6-flash",
-      contents: \`Process this incoming support request payload and format the JSON response according to system instructions:\n\${userPromptPayload}\`,
+      contents: `Process this incoming support request payload and format the JSON response according to system instructions:\n${userPromptPayload}`,
       config: {
         systemInstruction,
         responseMimeType: "application/json",
@@ -109,7 +109,7 @@ Always reply in a strict JSON format matching this schema:
       aiResult = JSON.parse(textRes);
     } catch(err) {
       // attempt to sanitize
-      const sanitized = textRes.replace(/\`\`\`json/g, '').replace(/\`\`\`/g, '').trim();
+      const sanitized = textRes.replace(/```json/g, '').replace(/```/g, '').trim();
       aiResult = JSON.parse(sanitized);
     }
 

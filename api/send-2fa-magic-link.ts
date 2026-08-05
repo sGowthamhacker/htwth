@@ -41,27 +41,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       auth: { user: smtpUser, pass: smtpPass }
     });
 
-    const verifyLink = \`\${process.env.APP_URL || 'https://ais-dev-fl5m6z2lmsovznnquito44-475153556207.asia-southeast1.run.app'}/verify?email=\${encodeURIComponent(email)}&code=\${code}\`;
+    const verifyLink = `${process.env.APP_URL || 'https://ais-dev-fl5m6z2lmsovznnquito44-475153556207.asia-southeast1.run.app'}/verify?email=${encodeURIComponent(email)}&code=${code}`;
 
-    const html = \`
+    const html = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; text-align: center;">
         <h2 style="color: #0f172a;">Secure Login Verification</h2>
-        <p style="color: #334155; font-size: 16px;">Hello \${name || 'User'},</p>
+        <p style="color: #334155; font-size: 16px;">Hello ${name || 'User'},</p>
         <p style="color: #334155; font-size: 16px;">Click the button below to verify your login or use the code directly:</p>
         <div style="margin: 30px 0;">
-          <span style="font-size: 32px; font-weight: 800; letter-spacing: 4px; color: #4f46e5; background: #e0e7ff; padding: 10px 20px; border-radius: 8px;">\${code}</span>
+          <span style="font-size: 32px; font-weight: 800; letter-spacing: 4px; color: #4f46e5; background: #e0e7ff; padding: 10px 20px; border-radius: 8px;">${code}</span>
         </div>
         <p style="color: #334155; margin-bottom: 24px;">Or use the magic link:</p>
-        <a href="\${verifyLink}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">Verify Login</a>
+        <a href="${verifyLink}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">Verify Login</a>
         <p style="color: #64748b; font-size: 12px; margin-top: 40px;">If you did not request this verification, please ignore this email.</p>
       </div>
-    \`;
+    `;
 
     await transporter.sendMail({
-      from: \`"\${process.env.SMTP_FROM_NAME || 'HTWTH System'}" <\${smtpUser}>\`,
+      from: `"${process.env.SMTP_FROM_NAME || 'HTWTH System'}" <${smtpUser}>`,
       to: email,
       subject: 'Your Login Verification Code',
-      text: \`Your verification code is: \${code}\n\nOr click here to verify: \${verifyLink}\`,
+      text: `Your verification code is: ${code}\n\nOr click here to verify: ${verifyLink}`,
       html
     });
 
