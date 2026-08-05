@@ -1,7 +1,7 @@
 
 // ... existing imports
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { User, Post, ChatMessage, Comment, ActivityLog, ContactRequest, Notification, GlobalNotification, WorkProfile, Note, Payload, GlobalSettings } from '../types';
+import { User, Post, ChatMessage, Comment, ActivityLog, ContactRequest, Notification, GlobalNotification, WorkProfile, Note, Payload, GlobalSettings, SupportTicket, TicketMessage } from '../types';
 import { MOCK_USERS } from '../data/users';
 import { MOCK_POSTS } from '../data/posts';
 import { MOCK_BLOG_POSTS } from '../data/blogPosts';
@@ -774,5 +774,129 @@ export const subscribeToPresence = (
         s.removeChannel(channel);
     };
 };
+
+// --- Support Tickets Supabase Helpers ---
+
+export const getSupportTicketsFromSupabase = async (userEmail?: string): Promise<SupportTicket[]> => {
+    const s = getSupabase();
+    if (!s) return [];
+
+    try {
+        let query = s.from('support_tickets').select(`
+            id,
+            ticket_number,
+            user_name,
+            user_email,
+            user_avatar,
+            subject,
+            description,
+            category,
+            priority,
+            status,
+            assigned_to,
+            created_at,
+            updated_at,
+            ticket_messages (
+                id,
+                ticket_id,
+                sender_name,
+                sender_email,
+                sender_role,
+                sender_type,
+                avatar,
+                message,
+                created_at
+            )
+        `).order('created_at', { ascending: false });
+
+        if (userEmail) {
+            query = query.ilike('user_email', userEmail);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+            console.warn('[Supabase Warning] getSupportTicketsFromSupabase:', error.message);
+            return [];
+        }
+
+        if (!Array.isArray(data)) return [];
+
+        return data.map((t: any) => ({
+            id: t.id,
+            ticketNumber: t.ticket_number || t.ticketNumber || `TCK-${t.id}`,
+            userName: t.user_name || t.userName || 'User',
+            userEmail: t.user_email || t.userEmail || '',
+            userAvatar: t.user_avatar || t.userAvatar || '',
+            subject: t.subject || 'No Subject',
+            category: t.category || 'Technical Issue',
+            priority: t.priority || 'Medium',
+            status: t.status || 'Open',
+            createdAt: t.created_at || t.createdAt || new Date().toISOString(),
+            updatedAt: t.updated_at || t.updatedAt || new Date().toISOString(),
+            messages: Array.isArray(t.ticket_messages) ? t.ticket_messages.map((m: any) => ({
+                id: m.id,
+                senderName: m.sender_name || m.senderName || 'User',
+                senderEmail: m.sender_email || m.senderEmail || '',
+                senderRole: m.sender_role || m.senderRole || m.sender_type || 'user',
+                avatar: m.avatar || '',
+                message: m.message || '',
+                createdAt: m.created_at || m.createdAt || new Date().toISOString()
+            })).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) : []
+        }));
+    } catch (err) {
+        console.error('Error fetching tickets from Supabase:', err);
+        return [];
+    }
+};
+
+export const saveSupportTicketToSupabase = async (ticket: SupportTicket): Promise<boolean> => {
+    const s = getSupabase();
+    if (!s) return false;
+
+    try {
+        const { error: ticketErr } = await s.from('support_tickets').upsert({
+            id: ticket.id,
+            ticket_number: ticket.ticketNumber,
+            user_name: ticket.userName,
+            user_email: ticket.userEmail,
+            user_avatar: ticket.userAvatar,
+            subject: ticket.subject,
+            category: ticket.category,
+            priority: ticket.priority,
+            status: ticket.status,
+            created_at: ticket.createdAt,
+            updated_at: ticket.updatedAt
+        });
+
+        if (ticketErr) {
+            console.warn('[Supabase Warning] saveSupportTicketToSupabase ticket:', ticketErr.message);
+        }
+
+        if (Array.isArray(ticket.messages) && ticket.messages.length > 0) {
+            const msgsToUpsert = ticket.messages.map(m => ({
+                id: m.id,
+                ticket_id: ticket.id,
+                sender_name: m.senderName,
+                sender_email: m.senderEmail,
+                sender_role: m.senderRole,
+                sender_type: m.senderRole,
+                avatar: m.avatar,
+                message: m.message,
+                created_at: m.createdAt
+            }));
+
+            const { error: msgErr } = await s.from('ticket_messages').upsert(msgsToUpsert);
+            if (msgErr) {
+                console.warn('[Supabase Warning] saveSupportTicketToSupabase messages:', msgErr.message);
+            }
+        }
+
+        return true;
+    } catch (err) {
+        console.error('Error saving ticket to Supabase:', err);
+        return false;
+    }
+};
+
 
 

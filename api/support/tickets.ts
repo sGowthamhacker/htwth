@@ -52,6 +52,24 @@ function formatEmailHtml(rawBody: string, senderName: string = 'HTWTH Support'):
   `.trim();
 }
 
+let SERVER_SUPPORT_TICKETS: any[] = [];
+
+function cleanExpiredTickets(tickets: any[]) {
+  if (!Array.isArray(tickets)) return [];
+  const now = Date.now();
+  const oneHourMs = 3600000;
+  return tickets.filter(t => {
+    if (t.id === 'tck-1' || t.ticketNumber === 'TCK-1001' || t.userName === 'Sample User') return false;
+    if (t.status === 'Resolved' || t.status === 'Closed') {
+      const lastActiveTime = new Date(t.updatedAt || t.createdAt || 0).getTime();
+      if (now - lastActiveTime > oneHourMs) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS setup
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -67,11 +85,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === 'GET') {
-    return res.json({ tickets: [] }); // Stub for Vercel
+    SERVER_SUPPORT_TICKETS = cleanExpiredTickets(SERVER_SUPPORT_TICKETS);
+    return res.status(200).json({ success: true, tickets: SERVER_SUPPORT_TICKETS });
   }
 
   if (req.method === 'POST') {
-    const { newEventPayload } = req.body;
+    const { newEventPayload, tickets } = req.body || {};
+    
+    if (Array.isArray(tickets)) {
+      // Merge with existing server tickets
+      const map = new Map<string, any>();
+      SERVER_SUPPORT_TICKETS.forEach(t => map.set(t.id, t));
+      tickets.forEach(t => {
+        const existing = map.get(t.id);
+        if (!existing || new Date(t.updatedAt || t.createdAt || 0).getTime() >= new Date(existing.updatedAt || existing.createdAt || 0).getTime()) {
+          map.set(t.id, t);
+        }
+      });
+      SERVER_SUPPORT_TICKETS = cleanExpiredTickets(Array.from(map.values()));
+    }
     
     // Only send email if a specific new event payload was provided
     if (newEventPayload && newEventPayload.ticket && newEventPayload.type) {
@@ -156,11 +188,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
     
-    return res.json({ success: true, message: 'Processed via Vercel Edge' });
+    return res.json({ success: true, tickets: SERVER_SUPPORT_TICKETS, message: 'Processed via Vercel Edge' });
   }
 
   if (req.method === 'DELETE') {
-    return res.json({ success: true });
+    const { id } = req.body || req.query || {};
+    if (id) {
+      SERVER_SUPPORT_TICKETS = SERVER_SUPPORT_TICKETS.filter(t => t.id !== id);
+    }
+    return res.json({ success: true, tickets: SERVER_SUPPORT_TICKETS });
   }
 
   return res.status(405).json({ error: 'Method not allowed' });

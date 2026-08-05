@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, SupportTicket, TicketMessage } from '../types';
+import { getSupportTicketsFromSupabase, saveSupportTicketToSupabase } from '../services/database';
 import { 
   LifeBuoy, 
   Plus, 
@@ -113,6 +114,11 @@ export const saveStoredTickets = (tickets: SupportTicket[], newEventPayload?: an
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tickets, replace: true, newEventPayload })
     }).catch(err => console.warn('Server ticket sync note:', err));
+
+    // Async save to Supabase if available
+    tickets.forEach(ticket => {
+      saveSupportTicketToSupabase(ticket).catch(() => {});
+    });
   } catch (e) {
     console.error('Failed to save support tickets to localStorage:', e);
   }
@@ -122,52 +128,64 @@ export const syncTicketsFromBackend = async (): Promise<SupportTicket[]> => {
   const local = getStoredTickets();
   try {
     const res = await fetch('/api/support/tickets');
+    let backendTickets: SupportTicket[] = [];
     if (res.ok) {
       const data = await res.json();
-      const backendTickets = Array.isArray(data?.tickets) ? data.tickets : [];
-      
-      const map = new Map<string, SupportTicket>();
-      // Keep local stored tickets
-      local.forEach(t => map.set(t.id, t));
-      
-      // Merge backend tickets (preferring newest update)
-      backendTickets.forEach((t: SupportTicket) => {
-        const existing = map.get(t.id);
-        if (!existing || new Date(t.updatedAt || t.createdAt || 0).getTime() >= new Date(existing.updatedAt || existing.createdAt || 0).getTime()) {
-          map.set(t.id, t);
-        }
-      });
-
-      const now = Date.now();
-      const merged = Array.from(map.values())
-        .filter(t => !isTicketExpired(t, now))
-        .sort((a: SupportTicket, b: SupportTicket) => 
-          new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
-        );
-
-      merged.forEach((t: SupportTicket) => {
-        if (Array.isArray(t.messages)) {
-          const msgMap = new Map<string, TicketMessage>();
-          t.messages.forEach(m => msgMap.set(m.id, m));
-          t.messages = Array.from(msgMap.values()).sort((a, b) => 
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-          );
-        }
-      });
-
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-
-      // Re-populate server memory if server lost state after deploy
-      if (merged.length > backendTickets.length) {
-        fetch('/api/support/tickets', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tickets: merged, replace: true })
-        }).catch(() => {});
-      }
-
-      return merged;
+      backendTickets = Array.isArray(data?.tickets) ? data.tickets : [];
     }
+
+    // Try fetching from Supabase as well
+    const supabaseTickets = await getSupportTicketsFromSupabase().catch(() => []);
+
+    const map = new Map<string, SupportTicket>();
+    // 1. Keep local stored tickets
+    local.forEach(t => map.set(t.id, t));
+    
+    // 2. Merge backend tickets (preferring newest update)
+    backendTickets.forEach((t: SupportTicket) => {
+      const existing = map.get(t.id);
+      if (!existing || new Date(t.updatedAt || t.createdAt || 0).getTime() >= new Date(existing.updatedAt || existing.createdAt || 0).getTime()) {
+        map.set(t.id, t);
+      }
+    });
+
+    // 3. Merge Supabase tickets
+    supabaseTickets.forEach((t: SupportTicket) => {
+      const existing = map.get(t.id);
+      if (!existing || new Date(t.updatedAt || t.createdAt || 0).getTime() >= new Date(existing.updatedAt || existing.createdAt || 0).getTime()) {
+        map.set(t.id, t);
+      }
+    });
+
+    const now = Date.now();
+    const merged = Array.from(map.values())
+      .filter(t => !isTicketExpired(t, now))
+      .sort((a: SupportTicket, b: SupportTicket) => 
+        new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
+      );
+
+    merged.forEach((t: SupportTicket) => {
+      if (Array.isArray(t.messages)) {
+        const msgMap = new Map<string, TicketMessage>();
+        t.messages.forEach(m => msgMap.set(m.id, m));
+        t.messages = Array.from(msgMap.values()).sort((a, b) => 
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+      }
+    });
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+
+    // Re-populate server memory if server lost state
+    if (merged.length > backendTickets.length) {
+      fetch('/api/support/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tickets: merged, replace: true })
+      }).catch(() => {});
+    }
+
+    return merged;
   } catch (e) {
     // fallback
   }
